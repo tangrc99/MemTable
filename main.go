@@ -163,22 +163,18 @@ func start() {
 }
 
 func main() {
+	skipList := structure.NewSkipList(3)
+	skipList.Insert("1", 1)
+	skipList.InsertIfNotExist("2", "5")
+	skipList.Insert("3", 1)
 
-	dict := structure.NewDict(10)
+	skipList.Delete("2")
 
-	str := string("1")
-	start := time.Now()
-	for i := 1; i < 100; i++ {
-		dict.Set(str, 1)
-		str += "1"
-	}
-	end := time.Since(start) / time.Millisecond
-	println(end)
-
-	keys := dict.Keys()
-
-	for _, key := range keys {
-		println(key)
+	v, ok := skipList.Get("3")
+	if ok {
+		println(v)
+	} else {
+		println("not found")
 	}
 
 }
