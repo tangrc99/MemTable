@@ -163,18 +163,28 @@ func start() {
 }
 
 func main() {
-	skipList := structure.NewSkipList(3)
-	skipList.Insert("1", 1)
-	skipList.InsertIfNotExist("2", "5")
-	skipList.Insert("3", 1)
 
-	skipList.Delete("2")
+	list := structure.NewList()
+	list.PushBack(0)
+	list.PushBack(1)
+	list.PushBack(2)
+	list.PushBack(3)
+	list.Set(645, 4)
+	//nums := list.RemoveValue(66, 5)
+	//println(nums)
 
-	v, ok := skipList.Get("3")
+	//list.InsertBefore(4, -1)
+	//
+	//list.Set(-1, 0)
+	//
+	//list.InsertBefore(-2, -1)
+	//
+	//list.RemoveValue(3, 10)
+
+	values, ok := list.Range(3, 100)
 	if ok {
-		println(v)
-	} else {
-		println("not found")
+		for _, v := range values {
+			println(v.(int))
+		}
 	}
-
 }

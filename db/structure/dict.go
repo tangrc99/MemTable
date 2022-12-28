@@ -2,19 +2,20 @@ package structure
 
 import (
 	"hash/fnv"
+	"math/rand"
 )
 
-const MaxConSize = uint(1<<31 - 1)
+const MaxConSize = int(1<<31 - 1)
 
 type shard = map[string]any
 
 type Dict struct {
 	shards []shard // 存储键值对
-	size   uint    // table 分区数量
-	count  uint64  // 键值对数量
+	size   int     // table 分区数量
+	count  int64   // 键值对数量
 }
 
-func NewDict(size uint) *Dict {
+func NewDict(size int) *Dict {
 	if size <= 0 || size > MaxConSize {
 		size = MaxConSize
 	}
@@ -23,18 +24,18 @@ func NewDict(size uint) *Dict {
 		size:   size,
 		count:  0,
 	}
-	for i := uint(0); i < size; i++ {
+	for i := 0; i < size; i++ {
 		dict.shards[i] = make(map[string]any)
 	}
 	return &dict
 }
 
 // HashKey hash a string to an int value using fnv32 algorithm
-func HashKey(key string) uint {
+func HashKey(key string) int {
 	fnv32 := fnv.New32()
 	key = "@#&" + key + "*^%$"
 	_, _ = fnv32.Write([]byte(key))
-	return uint(fnv32.Sum32())
+	return int(fnv32.Sum32())
 }
 
 func (dict *Dict) countShard(key string) *shard {
@@ -100,8 +101,12 @@ func (dict *Dict) Delete(key string) bool {
 	return false
 }
 
-func (dict *Dict) Size() uint {
+func (dict *Dict) Size() int {
 	return dict.size
+}
+
+func (dict *Dict) Empty() bool {
+	return dict.size == 0
 }
 
 func (dict *Dict) Clear() {
@@ -120,4 +125,25 @@ func (dict *Dict) Keys() []string {
 	}
 
 	return keys
+}
+
+func (dict *Dict) Exist(key string) bool {
+
+	shard := dict.countShard(key)
+	_, exist := (*shard)[key]
+	return exist
+}
+
+func (dict *Dict) Random() (string, any) {
+
+	shard := dict.shards[rand.Int()%dict.size]
+	r := rand.Int() % len(shard)
+
+	for k, v := range shard {
+		r--
+		if r == 0 {
+			return k, v
+		}
+	}
+	return "", nil
 }

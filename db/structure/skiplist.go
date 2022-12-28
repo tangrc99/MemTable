@@ -1,15 +1,17 @@
 package structure
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 type skipListNode struct {
 	next   []*skipListNode
 	height int
-	key    string
+	key    float32
 	value  any
 }
 
-func newSkipListNode(key string, value any, height int) *skipListNode {
+func newSkipListNode(key float32, value any, height int) *skipListNode {
 	return &skipListNode{
 		next:   make([]*skipListNode, height),
 		height: height,
@@ -43,7 +45,7 @@ func NewSkipList(level int) *SkipList {
 	return &SkipList{
 		size:  0,
 		level: level,
-		head:  newSkipListNode("", "", level),
+		head:  newSkipListNode(-1, "", level),
 	}
 }
 
@@ -58,7 +60,7 @@ func randomHeight(max int) int {
 	return level
 }
 
-func (sl *SkipList) Insert(key string, value any) {
+func (sl *SkipList) Insert(key float32, value any) {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -72,10 +74,12 @@ func (sl *SkipList) Insert(key string, value any) {
 		prevs[i] = cur
 	}
 
-	if prevs[0].key == key {
-		prevs[0].value = value
-		return
-	}
+	// 允许重复，所以不加这一段
+	//if prevs[0].key == key {
+	//	prevs[0].value = value
+	//	return
+	//}
+
 	// 随机生成高度节点
 	height := randomHeight(sl.level)
 	node := newSkipListNode(key, value, height)
@@ -88,7 +92,7 @@ func (sl *SkipList) Insert(key string, value any) {
 
 }
 
-func (sl *SkipList) InsertIfNotExist(key string, value any) bool {
+func (sl *SkipList) InsertIfNotExist(key float32, value any) bool {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -118,7 +122,7 @@ func (sl *SkipList) InsertIfNotExist(key string, value any) bool {
 	return true
 }
 
-func (sl *SkipList) Update(key string, value any) bool {
+func (sl *SkipList) Update(key float32, value any) bool {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -136,7 +140,7 @@ func (sl *SkipList) Update(key string, value any) bool {
 	return false
 }
 
-func (sl *SkipList) Get(key string) (any, bool) {
+func (sl *SkipList) Get(key float32) (any, bool) {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -153,7 +157,7 @@ func (sl *SkipList) Get(key string) (any, bool) {
 	return nil, false
 }
 
-func (sl *SkipList) Delete(key string) {
+func (sl *SkipList) Delete(key float32) {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -180,7 +184,7 @@ func (sl *SkipList) Delete(key string) {
 
 }
 
-func (sl *SkipList) Exist(key string) bool {
+func (sl *SkipList) Exist(key float32) bool {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -196,4 +200,67 @@ func (sl *SkipList) Exist(key string) bool {
 
 func (sl *SkipList) Size() int {
 	return sl.size
+}
+
+func (sl *SkipList) Range(min, max float32) ([]any, int) {
+
+	// 需要找到每一个层次的前驱
+	cur := sl.head
+
+	// 每一个 prev 的 key 小于等于需要插入的 key
+	for i := sl.level - 1; i >= 0 && cur.key < min; i-- {
+		for nxt := cur.getNextNode(i); nxt != nil && nxt.key <= min; nxt = cur.getNextNode(i) {
+			cur = nxt
+		}
+
+	}
+
+	for ; cur != nil && cur.key < min; cur = cur.getNextNode(0) {
+	}
+
+	values := make([]any, 0)
+	size := 0
+
+	for ; cur != nil && cur.key <= max; cur = cur.getNextNode(0) {
+		values = append(values, cur.value.(string))
+		size++
+	}
+
+	return values, size
+}
+
+func (sl *SkipList) CountByRange(min, max float32) int {
+	// 需要找到每一个层次的前驱
+	cur := sl.head
+
+	// 每一个 prev 的 key 小于等于需要插入的 key
+	for i := sl.level - 1; i >= 0 && cur.key < min; i-- {
+		for nxt := cur.getNextNode(i); nxt != nil && nxt.key <= min; nxt = cur.getNextNode(i) {
+			cur = nxt
+		}
+
+	}
+
+	for ; cur != nil && cur.key < min; cur = cur.getNextNode(0) {
+	}
+
+	size := 0
+
+	for ; cur != nil && cur.key <= max; cur = cur.getNextNode(0) {
+		size++
+	}
+
+	return size
+}
+
+func (sl *SkipList) GetPosByKey(key float32) int {
+	pos := -1
+	cur := sl.head
+	for ; cur != nil && cur.key <= key; cur = cur.getNextNode(0) {
+		pos++
+	}
+	if cur == nil || cur.key != key {
+		return -1
+	}
+	return pos
 }
