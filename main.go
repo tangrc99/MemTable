@@ -4,10 +4,21 @@ import (
 	"MemTable/db"
 	"MemTable/db/cmd"
 	"MemTable/db/structure"
+	"MemTable/logger"
 	"MemTable/resp"
+	"MemTable/server"
 	"github.com/gofrs/uuid"
 	"net"
 	"time"
+)
+
+type ClientStatus int
+
+const (
+	WAIT ClientStatus = iota
+	CONNECTED
+	EXIT
+	ERROR
 )
 
 type Client struct {
@@ -16,7 +27,7 @@ type Client struct {
 	id  uuid.UUID // Cli 编号
 	tp  time.Time // 通信时间戳
 
-	status int // 状态 0 等待连接 1 正常 -1 退出 -2 异常
+	status ClientStatus // 状态 0 等待连接 1 正常 -1 退出 -2 异常
 
 	database *db.DataBase  // 数据库的序号
 	exit     chan struct{} // 退出标志
@@ -31,7 +42,7 @@ func handleRead(conn net.Conn) {
 	client := Client{
 		cnn:    conn,
 		id:     uid,
-		status: 0,
+		status: WAIT,
 		exit:   make(chan struct{}, 1),
 		res:    make(chan string, 10),
 	}
@@ -79,9 +90,9 @@ func handleRead(conn net.Conn) {
 	}
 
 	// 如果是读写发生错误，需要通知事件循环来关闭连接
-	if client.status != -1 {
+	if client.status != EXIT {
 		// 说明这是异常退出的
-		client.status = -2
+		client.status = ERROR
 		client.cmd = nil
 
 		// 通知顶层
@@ -118,7 +129,7 @@ func eventLoop() {
 			println(cli.cmd)
 
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
-			if cli.status == -2 || cli.status == -1 {
+			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
 				delete(UUIDSet, cli.id)
 
@@ -134,7 +145,7 @@ func eventLoop() {
 				println("this is a new client")
 				UUIDSet[cli.id] = struct{}{}
 				// 变更为正常状态
-				cli.status = 1
+				cli.status = CONNECTED
 			}
 
 			// 更新时间戳
@@ -166,6 +177,12 @@ func backgroundLoop() {
 }
 
 func start() {
+
+	err := logger.Init("/Users/tangrenchu/GolandProjects/MemTable/logs", "bin.log", logger.DEBUG)
+	if err != nil {
+		return
+	}
+
 	listener, err := net.Listen("tcp", "127.0.0.1:6379")
 	if err != nil {
 		return
@@ -184,6 +201,22 @@ func start() {
 }
 
 func main() {
+
+	events := server.NewTimeEventList()
+
+	events.AddTimeEvent(server.NewPeriodTimeEvent(func() {
+		println("this is a time event")
+	}, time.Now().Add(time.Second).Unix(), time.Second))
+
+	time.Sleep(1 * time.Second)
+
+	println(events.ExecuteOneIfExpire())
+	println(events.Size())
+	println(events.ExecuteOneIfExpire())
+	time.Sleep(1 * time.Second)
+	println(events.ExecuteOneIfExpire())
+
+	return
 
 	start()
 

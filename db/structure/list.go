@@ -1,13 +1,21 @@
 package structure
 
-type listNode struct {
-	next, prev *listNode
+type ListNode struct {
+	next, prev *ListNode
 	list       *List
 	Value      any
 }
 
+func (node *ListNode) Next() *ListNode {
+	return node.next
+}
+
+func (node *ListNode) Prev() *ListNode {
+	return node.prev
+}
+
 type List struct {
-	head *listNode
+	head *ListNode
 	size int
 }
 
@@ -16,7 +24,7 @@ func NewList() *List {
 		head: nil,
 		size: 0,
 	}
-	head := &listNode{
+	head := &ListNode{
 		next: nil, prev: nil, list: &l, Value: nil,
 	}
 	head.prev = head
@@ -25,10 +33,10 @@ func NewList() *List {
 	return &l
 }
 
-func (list *List) front() *listNode {
+func (list *List) FrontNode() *ListNode {
 	return list.head.next
 }
-func (list *List) back() *listNode {
+func (list *List) BackNode() *ListNode {
 	return list.head.prev
 }
 func (list *List) Front() any {
@@ -39,14 +47,17 @@ func (list *List) Back() any {
 	return list.head.prev.Value
 }
 
-func (list *List) insertAfter(value any, at *listNode) *listNode {
+func (list *List) InsertAfterNode(value any, at *ListNode) *ListNode {
+	if at == nil {
+		return nil
+	}
 
 	if at.list != list {
 		return nil
 	}
 
 	next := at.next
-	node := listNode{
+	node := ListNode{
 		next:  next,
 		prev:  at,
 		Value: value,
@@ -58,14 +69,17 @@ func (list *List) insertAfter(value any, at *listNode) *listNode {
 	return &node
 }
 
-func (list *List) insertBefore(value any, at *listNode) *listNode {
+func (list *List) InsertBeforeNode(value any, at *ListNode) *ListNode {
+	if at == nil {
+		return nil
+	}
 
 	if at.list != list {
 		return nil
 	}
 
 	prev := at.prev
-	node := listNode{
+	node := ListNode{
 		next:  at,
 		prev:  prev,
 		Value: value,
@@ -77,7 +91,7 @@ func (list *List) insertBefore(value any, at *listNode) *listNode {
 	return &node
 }
 
-func (list *List) remove(at *listNode) any {
+func (list *List) remove(at *ListNode) any {
 
 	if at.list != list {
 		return nil
@@ -96,11 +110,11 @@ func (list *List) remove(at *listNode) any {
 }
 
 func (list *List) PushFront(value any) {
-	list.insertAfter(value, list.head)
+	list.InsertAfterNode(value, list.head)
 }
 
 func (list *List) PushBack(value any) {
-	list.insertBefore(value, list.head)
+	list.InsertBeforeNode(value, list.head)
 }
 
 func (list *List) PopFront() any {
@@ -129,12 +143,12 @@ func (list *List) InsertAfter(value any, pos int) bool {
 	// 倒序插入
 	if list.Size()-pos < pos {
 
-		p := list.back()
+		p := list.BackNode()
 		pos = list.Size() - pos - 1
 		for i := 0; i < pos; i++ {
 			p = p.prev
 		}
-		list.insertAfter(value, p)
+		list.InsertAfterNode(value, p)
 		return true
 	}
 
@@ -144,7 +158,7 @@ func (list *List) InsertAfter(value any, pos int) bool {
 		p = p.next
 	}
 
-	return nil != list.insertAfter(value, p)
+	return nil != list.InsertAfterNode(value, p)
 }
 
 // InsertBefore 将元素插入到给定位置后面
@@ -157,12 +171,12 @@ func (list *List) InsertBefore(value any, pos int) bool {
 	// 倒序插入
 	if list.Size()-pos < pos {
 
-		p := list.back()
+		p := list.BackNode()
 		pos = list.Size() - pos - 1
 		for i := 0; i < pos; i++ {
 			p = p.prev
 		}
-		list.insertBefore(value, p)
+		list.InsertBeforeNode(value, p)
 		return true
 	}
 
@@ -172,7 +186,7 @@ func (list *List) InsertBefore(value any, pos int) bool {
 		p = p.next
 	}
 
-	return nil != list.insertBefore(value, p)
+	return nil != list.InsertBeforeNode(value, p)
 
 }
 
@@ -202,7 +216,7 @@ func (list *List) Range(start, end int) ([]any, bool) {
 func (list *List) RemoveValue(value any, nums int) int {
 	deleted := 0
 
-	for cur := list.front(); cur != list.back(); {
+	for cur := list.FrontNode(); cur != list.BackNode(); {
 
 		if cur.Value == value {
 			node := cur
@@ -223,7 +237,7 @@ func (list *List) Set(value any, pos int) bool {
 	if pos >= list.Size() {
 		return false
 	}
-	p := list.front()
+	p := list.FrontNode()
 
 	for i := 0; i < pos; i++ {
 		p = p.next
