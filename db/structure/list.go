@@ -7,10 +7,16 @@ type ListNode struct {
 }
 
 func (node *ListNode) Next() *ListNode {
+	if node.next == node.list.head {
+		return nil
+	}
 	return node.next
 }
 
 func (node *ListNode) Prev() *ListNode {
+	if node.prev == node.list.head {
+		return nil
+	}
 	return node.prev
 }
 

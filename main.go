@@ -201,20 +201,33 @@ func start() {
 }
 
 func main() {
-
+	err := logger.Init("/Users/tangrenchu/GolandProjects/MemTable/logs", "bin.log", logger.DEBUG)
+	if err != nil {
+		return
+	}
 	events := server.NewTimeEventList()
 
-	events.AddTimeEvent(server.NewPeriodTimeEvent(func() {
+	events.AddTimeEvent(server.NewSingleTimeEvent(func() {
+		println(time.Now().Unix())
 		println("this is a time event")
+	}, time.Now().Add(time.Second).Unix()))
+
+	events.AddTimeEvent(server.NewPeriodTimeEvent(func() {
+		println(time.Now().Unix())
+
+		println("this is a period time event")
 	}, time.Now().Add(time.Second).Unix(), time.Second))
 
 	time.Sleep(1 * time.Second)
 
-	println(events.ExecuteOneIfExpire())
+	events.ExecuteManyBefore(2 * time.Second)
+	//println(events.ExecuteOneIfExpire())
+	//println(events.ExecuteOneIfExpire())
+	//println(events.ExecuteOneIfExpire())
 	println(events.Size())
-	println(events.ExecuteOneIfExpire())
-	time.Sleep(1 * time.Second)
-	println(events.ExecuteOneIfExpire())
+	//println(events.ExecuteOneIfExpire())
+	//time.Sleep(1 * time.Second)
+	//println(events.ExecuteOneIfExpire())
 
 	return
 

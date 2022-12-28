@@ -73,13 +73,18 @@ func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 		e, ok := node.Value.(TimeEvent)
 		// 列表元素类型不对
 		if !ok {
+
 			logger.Error("TimeEventList: type is not TimeEvent")
 		}
 
 		if e.tp >= event.tp {
 			events.list.InsertBeforeNode(event, node) // fixme : 是否有问题
+			return
 		}
 	}
+
+	// 如果是最大的时间，则需要再尾部加入
+	events.list.PushBack(event)
 }
 
 // ExecuteOneIfExpire 执行一个任务，如果无可执行任务返回 false
@@ -117,4 +122,11 @@ func (events *TimeEventList) ExecuteOneIfExpire() bool {
 
 func (events *TimeEventList) Size() int {
 	return events.list.Size()
+}
+
+func (events *TimeEventList) ExecuteManyBefore(duration time.Duration) {
+	expired := time.Now().Add(duration).Unix()
+
+	for expired > time.Now().Unix() && events.ExecuteOneIfExpire() {
+	}
 }
