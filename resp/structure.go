@@ -147,7 +147,7 @@ func (r *ArrayData) Data() []RedisData {
 	return r.data
 }
 
-func (r *ArrayData) TOCommand() [][]byte {
+func (r *ArrayData) ToCommand() [][]byte {
 	res := make([][]byte, 0)
 	for _, v := range r.data {
 		res = append(res, v.ByteData())

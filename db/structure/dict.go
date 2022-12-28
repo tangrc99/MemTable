@@ -89,6 +89,7 @@ func (dict *Dict) Update(key string, value any) bool {
 	return dict.SetIfExist(key, value)
 }
 
+// Delete 成功删除返回 true，无元素返回 false
 func (dict *Dict) Delete(key string) bool {
 	shard := dict.countShard(key)
 
