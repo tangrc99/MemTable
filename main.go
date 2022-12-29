@@ -1,12 +1,14 @@
 package main
 
 import (
+	"MemTable/config"
 	"MemTable/db"
 	"MemTable/db/cmd"
 	"MemTable/db/structure"
 	"MemTable/logger"
 	"MemTable/resp"
 	"MemTable/server"
+	"fmt"
 	"github.com/gofrs/uuid"
 	"net"
 	"time"
@@ -200,9 +202,13 @@ func start() {
 	}
 }
 
+func init() {
+	println("main init")
+}
+
 func main() {
 
-	s := server.NewServer("127.0.0.1:6379")
+	s := server.NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
 	s.Start()
 	return
 

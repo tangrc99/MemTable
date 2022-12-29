@@ -123,3 +123,7 @@ func (clients *ClientList) RemoveLongNotUsed(num int, d time.Duration) {
 
 	}
 }
+
+func (clients *ClientList) Size() int {
+	return clients.list.Size()
+}

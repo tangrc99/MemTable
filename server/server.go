@@ -1,11 +1,15 @@
 package server
 
 import (
+	"MemTable/config"
 	"MemTable/db"
 	"MemTable/db/cmd"
 	"MemTable/logger"
 	"MemTable/resp"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -16,6 +20,10 @@ type Server struct {
 	tl       *TimeEventList // 事件链表
 	url      string         // 监听 url
 	commands chan *Client   // 用于解析完毕的协程同步
+
+	listener net.Listener
+	quit     bool
+	quitFlag chan struct{}
 }
 
 func NewServer(url string) *Server {
@@ -33,6 +41,8 @@ func NewServer(url string) *Server {
 		tl:       NewTimeEventList(),
 		url:      url,
 		commands: make(chan *Client, 1000),
+		quit:     false,
+		quitFlag: make(chan struct{}),
 	}
 }
 
@@ -44,7 +54,7 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	// 这里会阻塞等待有数据到达
 	running := true
-	for running {
+	for running && !s.quit {
 
 		select {
 		// 等待是否有新消息到达
@@ -63,7 +73,7 @@ func (s *Server) handleRead(conn net.Conn) {
 
 			array, ok := parsed.Data.(*resp.ArrayData)
 			if !ok {
-				logger.Warning("Client", client.id, "Parse Command Error")
+				logger.Warning("Client", client.id, "parse Command Error")
 				running = false
 				break
 			}
@@ -118,7 +128,7 @@ func (s *Server) eventLoop() {
 	}, time.Now().Add(300*time.Second).Unix(), 300*time.Second,
 	))
 
-	for {
+	for !s.quit {
 		timer := time.NewTimer(time.Second)
 		select {
 		case <-timer.C:
@@ -132,7 +142,6 @@ func (s *Server) eventLoop() {
 			if cli.cmd == nil {
 				continue
 			}
-			//println(cli.cmd)
 
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
@@ -149,22 +158,11 @@ func (s *Server) eventLoop() {
 			if ok {
 				logger.Debug("EventLoop: New Client")
 			}
-			//_, exist := UUIDSet[cli.id]
-			//
-			//if exist {
-			//	println("this is an old client")
-			//} else {
-			//	println("this is a new client")
-			//	UUIDSet[cli.id] = struct{}{}
-			//	// 变更为正常状态
-			//	cli.status = CONNECTED
-			//}
 
 			// 更新时间戳
-			//cli.tp = time.Now()
 			cli.UpdateTimestamp()
-			// 执行命令
 
+			// 执行命令
 			res := cmd.ExecCommand(cli.db, cli.cmd)
 
 			// 写入回包
@@ -173,6 +171,20 @@ func (s *Server) eventLoop() {
 		}
 	}
 
+	// 处理退出逻辑
+	logger.Info("Server: Ready To Shutdown")
+
+	// 关闭监听
+	_ = s.listener.Close()
+
+	// 关闭所有的客户端协程
+	for s.clis.Size() != 0 {
+		front := s.clis.list.FrontNode()
+		s.clis.removeClientWithPosition(front.Value.(*Client), front)
+	}
+
+	// 通知
+	s.quitFlag <- struct{}{}
 }
 
 func backgroundLoop() {
@@ -180,26 +192,44 @@ func backgroundLoop() {
 	// 完成后台的任务
 }
 
+func (s *Server) AcceptLoop() {
+	for !s.quit {
+		conn, err := s.listener.Accept()
+		if err != nil {
+			break
+		}
+		go s.handleRead(conn)
+	}
+	logger.Info("Server: Shutdown Listener")
+
+}
+
 func (s *Server) Start() {
 
-	err := logger.Init("/Users/tangrenchu/GolandProjects/MemTable/logs", "bin.log", logger.DEBUG)
+	err := logger.Init(config.Conf.LogDir, "bin.log", logger.DEBUG)
 	if err != nil {
 		return
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:6379")
+	s.listener, err = net.Listen("tcp", "127.0.0.1:6379")
+
+	logger.Info("Server: Listen at", s.url)
+
 	if err != nil {
 		return
 	}
 
 	go s.eventLoop()
 
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			break
-		}
-		go s.handleRead(conn)
+	go s.AcceptLoop()
 
-	}
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // 接受软中断信号并且传递到 channel
+	<-quit
+
+	// 通知主线程在完成任务后退出，防止有任务进行到一半
+	s.quit = true
+	<-s.quitFlag
+
+	logger.Info("Server Shutdown...")
 }
