@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"MemTable/db"
 	"MemTable/db/structure"
 	"MemTable/resp"
 	"strings"
@@ -25,43 +24,40 @@ const (
 	MISMATCH
 )
 
-func CheckOldType(db *db.DataBase, key string, vt ValueType) (resp.RedisData, ValueStatus) {
+func CheckType(value any, vt ValueType) resp.RedisData {
 
-	oldVal, oldOk := db.GetKey(key)
 	// check if the value is string
 	var typeOk bool
 
-	// 如果已经存在，进行类型检查
-	if oldOk {
-
+	if value != nil {
+		// 如果已经存在，进行类型检查
 		switch vt {
 		case STRING:
-			_, typeOk = oldVal.(string)
+			_, typeOk = value.(string)
 
 		case HASH:
 			// 复杂数据类型全部为指针
-			_, typeOk = oldVal.(*structure.Dict)
+			_, typeOk = value.(*structure.Dict)
 
 		case LIST:
 			// 复杂数据类型全部为指针
-			_, typeOk = oldVal.(*structure.List)
+			_, typeOk = value.(*structure.List)
 
 		case SET:
 			// 复杂数据类型全部为指针
-			_, typeOk = oldVal.(*structure.Set)
+			_, typeOk = value.(*structure.Set)
 
 		case ZSET:
 			// 复杂数据类型全部为指针
-			_, typeOk = oldVal.(*structure.ZSet)
+			_, typeOk = value.(*structure.ZSet)
 		}
 
 		if !typeOk {
-			return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value"), MISMATCH
-		} else {
-			return nil, MATCH
+			return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 		}
 	}
-	return nil, EMPTY
+
+	return nil
 }
 
 func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {

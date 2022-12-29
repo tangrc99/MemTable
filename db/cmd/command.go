@@ -3,6 +3,7 @@ package cmd
 import (
 	"MemTable/db"
 	"MemTable/resp"
+	"strings"
 )
 
 type Command = func(base *db.DataBase, cmd [][]byte) resp.RedisData
@@ -25,7 +26,7 @@ func ExecCommand(base *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("error: empty command")
 	}
 
-	f, ok := CommandTable[string(cmd[0])]
+	f, ok := CommandTable[strings.ToLower(string(cmd[0]))]
 	if !ok {
 		return resp.MakeErrorData("error: unsupported command")
 	}

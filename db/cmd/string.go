@@ -3,25 +3,20 @@ package cmd
 import (
 	"MemTable/db"
 	"MemTable/resp"
-	"strings"
 )
 
-func Set(db *db.DataBase, cmd [][]byte) resp.RedisData {
-
+func set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	cmdName := strings.ToLower(string(cmd[0]))
-	if cmdName != "set" {
-		return resp.MakeErrorData("Server error")
+	e, ok := CheckCommandAndLength(&cmd, "set", 3)
+	if !ok {
+		return e
 	}
 
-	if len(cmd) < 3 {
-		return resp.MakeErrorData("error: commands is invalid")
-	}
+	value, ok := db.GetKey(string(cmd[1]))
 
 	// 进行类型检查，会自动检查过期选项
-	r, ok := CheckOldType(db, string(cmd[1]), STRING)
-	if ok == MISMATCH {
-		return r
+	if err := CheckType(value, STRING); err != nil {
+		return err
 	}
 
 	// 键值对设置
@@ -33,19 +28,13 @@ func Set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func Get(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	cmdName := strings.ToLower(string(cmd[0]))
-	println(cmdName)
-
-	if cmdName != "get" {
-		return resp.MakeErrorData("Server error")
+func get(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "get", 2)
+	if !ok {
+		return e
 	}
 
-	if len(cmd) < 2 {
-		return resp.MakeErrorData("error: commands is invalid")
-	}
-
-	// 检查 key 是否被设置为 ttl，如果设置需要删除
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
 		return resp.MakeStringData("nil")
@@ -59,18 +48,22 @@ func Get(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeBulkData([]byte(strVal))
 }
 
-func StrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	cmdName := strings.ToLower(string(cmd[0]))
-	println(cmdName)
-
-	if cmdName != "strlen" {
-		return resp.MakeErrorData("Server error")
+func strlen(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "strlen", 2)
+	if !ok {
+		return e
 	}
 
 	// 检查 key 是否被设置为 ttl，如果设置需要删除
 	value, ok := db.GetKey(string(cmd[1]))
+
 	if !ok {
 		return resp.MakeIntData(-1)
+	}
+
+	if err := CheckType(value, STRING); err != nil {
+		return err
 	}
 
 	strVal, ok := value.(string)
@@ -81,10 +74,45 @@ func StrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(int64(len(strVal)))
 }
 
+func getRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
+
+	return resp.MakeStringData("")
+}
+func mget(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	return resp.MakeArrayData(nil)
+}
+
+func mset(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	return resp.MakeStringData("OK")
+}
+
+func incr(db *db.DataBase, cmd [][]byte) resp.RedisData {
+
+	return resp.MakeStringData("")
+}
+
+func incrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	return resp.MakeStringData("")
+
+}
+
+func decr(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	return resp.MakeStringData("")
+
+}
+func decrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	return resp.MakeStringData("")
+
+}
+
+func append(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	return resp.MakeStringData("")
+}
+
 func RegisterStringCommands() {
 
-	RegisterCommand("set", Set)
-	RegisterCommand("get", Get)
-	RegisterCommand("strlen", StrLen)
+	RegisterCommand("set", set)
+	RegisterCommand("get", get)
+	RegisterCommand("strlen", strlen)
 
 }

@@ -4,39 +4,31 @@ import (
 	"MemTable/db"
 	"MemTable/db/structure"
 	"MemTable/resp"
-	"strings"
 )
 
-func SADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
-
+func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	cmdName := strings.ToLower(string(cmd[0]))
-	if cmdName != "sadd" {
-		return resp.MakeErrorData("Server error")
+	e, ok := CheckCommandAndLength(&cmd, "sadd", 3)
+	if !ok {
+		return e
 	}
 
-	if len(cmd) < 3 {
-		return resp.MakeErrorData("error: commands is invalid")
-	}
+	// get 会自动检查是否过期
+	value, ok := db.GetKey(string(cmd[1]))
 
-	// 进行类型检查，会自动检查过期选项
-	r, s := CheckOldType(db, string(cmd[1]), SET)
-
-	if s == MISMATCH {
-		return r
-
-	} else if s == EMPTY {
-
+	if !ok {
 		set := structure.NewSet()
 		set.Add(string(cmd[2]))
 		db.SetKey(string(cmd[1]), set)
-
-	} else {
-
-		set, _ := db.GetKey(string(cmd[1]))
-		set.(*structure.Set).Add(string(cmd[2]))
-
+		return resp.MakeStringData("OK")
 	}
+
+	// 进行类型检查，会自动检查过期选项
+	if err := CheckType(value, SET); err != nil {
+		return err
+	}
+
+	value.(*structure.Set).Add(string(cmd[2]))
 
 	// 重置 TTL
 	db.RemoveTTL(string(cmd[1]))
@@ -45,41 +37,57 @@ func SADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 }
 
-func SIsMember(db *db.DataBase, cmd [][]byte) resp.RedisData {
-
+func scard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	cmdName := strings.ToLower(string(cmd[0]))
-	if cmdName != "sismember" {
-		return resp.MakeErrorData("Server error")
+	e, ok := CheckCommandAndLength(&cmd, "scard", 2)
+	if !ok {
+		return e
 	}
 
-	if len(cmd) < 3 {
-		return resp.MakeErrorData("error: commands is invalid")
+	// get 会自动检查是否过期
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeIntData(0)
+	}
+
+	if err := CheckType(value, SET); err != nil {
+		return err
+	}
+
+	return resp.MakeIntData(int64(value.(*structure.Set).Size()))
+}
+
+func sismember(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "sismember", 2)
+	if !ok {
+		return e
+	}
+
+	// get 会自动检查是否过期
+	value, ok := db.GetKey(string(cmd[1]))
+
+	if !ok {
+		return resp.MakeIntData(0)
+
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	r, s := CheckOldType(db, string(cmd[1]), SET)
+	if err := CheckType(value, SET); err != nil {
+		return err
+	}
 
-	if s == MISMATCH {
-		return r
-
-	} else if s == EMPTY {
-
+	set, _ := db.GetKey(string(cmd[1]))
+	exist := set.(*structure.Set).Exist(string(cmd[2]))
+	if !exist {
 		return resp.MakeIntData(0)
-
-	} else {
-
-		set, _ := db.GetKey(string(cmd[1]))
-		exist := set.(*structure.Set).Exist(string(cmd[2]))
-		if !exist {
-			return resp.MakeIntData(0)
-		}
 	}
 
 	return resp.MakeIntData(1)
 }
 
 func RegisterSetCommands() {
-	RegisterCommand("sadd", SADD)
-	RegisterCommand("sismember", SIsMember)
+	RegisterCommand("sadd", sadd)
+	RegisterCommand("scard", scard)
+	RegisterCommand("sismember", sismember)
 }
