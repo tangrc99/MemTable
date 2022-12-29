@@ -18,7 +18,8 @@ func NewDataBase() *DataBase {
 	}
 }
 
-func (db_ *DataBase) CheckAndRemoveIfExpired(key string) bool {
+// CheckNotExpired 没有过期返回 true
+func (db_ *DataBase) CheckNotExpired(key string) bool {
 
 	ttl, exist := db_.ttlKeys.Get(key)
 	if !exist {
@@ -26,6 +27,7 @@ func (db_ *DataBase) CheckAndRemoveIfExpired(key string) bool {
 	}
 
 	if ttl.(int64) > time.Now().Unix() {
+		// 如果没有过期
 		return true
 	}
 
@@ -39,7 +41,7 @@ func (db_ *DataBase) RemoveTTL(key string) bool {
 }
 
 func (db_ *DataBase) GetKey(key string) (any, bool) {
-	ok := db_.CheckAndRemoveIfExpired(key)
+	ok := db_.CheckNotExpired(key)
 	if !ok {
 		return nil, false
 	}

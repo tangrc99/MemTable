@@ -137,7 +137,6 @@ func (s *Server) eventLoop() {
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
-				//delete(UUIDSet,cli.id)
 				logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
 				s.clis.RemoveClient(cli)
 				continue
@@ -166,15 +165,7 @@ func (s *Server) eventLoop() {
 			cli.UpdateTimestamp()
 			// 执行命令
 
-			var res resp.RedisData
-			if len(cli.cmd) == 2 {
-				res = cmd.Get(cli.db, cli.cmd)
-			} else {
-				res = cmd.Set(cli.db, cli.cmd)
-			}
-
-			// fixme: 现在默认是一个空命令
-			//res := resp.MakeErrorData("error: unsupported command")
+			res := cmd.ExecCommand(cli.db, cli.cmd)
 
 			// 写入回包
 			cli.res <- string(res.ToBytes()) // fixme : 这里有阻塞的风险

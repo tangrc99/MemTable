@@ -1,6 +1,7 @@
 package resp
 
 import (
+	"MemTable/logger"
 	"bufio"
 	"errors"
 	"fmt"
@@ -48,7 +49,7 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 				return
 			} else {
 				// Protocol error
-				//logger.Error(err)
+				logger.Error(err)
 
 				ch <- &ParsedRes{
 					Err: err,
@@ -66,7 +67,7 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 			if msg[0] == '*' {
 				err := parseArrayHeader(msg, state)
 				if err != nil {
-					//logger.Error(err)
+					logger.Error(err)
 					ch <- &ParsedRes{
 						Err: err,
 					}
@@ -92,7 +93,7 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 			if msg[0] == '$' {
 				err := parseBulkHeader(msg, state)
 				if err != nil {
-					//logger.Error(err)
+					logger.Error(err)
 					ch <- &ParsedRes{
 						Err: err,
 					}
@@ -131,7 +132,7 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 		}
 
 		if err != nil {
-			//logger.Error(err)
+			logger.Error(err)
 			ch <- &ParsedRes{
 				Err: err,
 			}
@@ -208,7 +209,7 @@ func parseSingleLine(msg []byte) (RedisData, error) {
 		//    integer
 		data, err := strconv.ParseInt(msgData, 10, 64)
 		if err != nil {
-			//logger.Error("Protocol error: " + string(msg))
+			logger.Error("Protocol error: " + string(msg))
 			return nil, err
 		}
 		res = MakeIntData(data)
@@ -217,7 +218,7 @@ func parseSingleLine(msg []byte) (RedisData, error) {
 		res = MakePlainData(msgData)
 	}
 	if res == nil {
-		//logger.Error("Protocol error: parseSingleLine get nil data")
+		logger.Error("Protocol error: parseSingleLine get nil data")
 		return nil, errors.New("Protocol error: " + string(msg))
 	}
 	return res, nil
