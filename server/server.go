@@ -192,7 +192,7 @@ func backgroundLoop() {
 	// 完成后台的任务
 }
 
-func (s *Server) AcceptLoop() {
+func (s *Server) acceptLoop() {
 	for !s.quit {
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -221,7 +221,7 @@ func (s *Server) Start() {
 
 	go s.eventLoop()
 
-	go s.AcceptLoop()
+	go s.acceptLoop()
 
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // 接受软中断信号并且传递到 channel
