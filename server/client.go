@@ -26,16 +26,18 @@ type Client struct {
 
 	status ClientStatus // 状态 0 等待连接 1 正常 -1 退出 -2 异常
 
-	database *db.DataBase  // 数据库的序号
-	exit     chan struct{} // 退出标志
-	res      chan string   // 回包
+	db   *db.DataBase  // 数据库的序号
+	exit chan struct{} // 退出标志
+	res  chan string   // 回包
 }
 
-func NewClient(conn net.Conn) *Client {
+func NewClient(conn net.Conn, dbImpl *db.DataBase) *Client {
 	return &Client{
 		cnn:    conn,
 		id:     uuid.Must(uuid.NewV1()),
+		tp:     time.Now(),
 		status: WAIT,
+		db:     dbImpl,
 		exit:   make(chan struct{}, 1),
 		res:    make(chan string, 10),
 	}

@@ -9,14 +9,13 @@ import (
 	"time"
 )
 
-var commands = make(chan *Client, 100)
-
 type Server struct {
-	dbs   []*db.DataBase // 多个可以用于切换的数据库
-	dbNum int
-	clis  *ClientList // 客户端列表
-
-	url string
+	dbs      []*db.DataBase // 多个可以用于切换的数据库
+	dbNum    int            //数据库数量
+	clis     *ClientList    // 客户端列表
+	tl       *TimeEventList // 事件链表
+	url      string         // 监听 url
+	commands chan *Client   // 用于解析完毕的协程同步
 }
 
 func NewServer(url string) *Server {
@@ -28,16 +27,18 @@ func NewServer(url string) *Server {
 	}
 
 	return &Server{
-		dbs:   d,
-		dbNum: n,
-		clis:  NewClientList(),
-		url:   "127.0.0.1:6379",
+		dbs:      d,
+		dbNum:    n,
+		clis:     NewClientList(),
+		tl:       NewTimeEventList(),
+		url:      url,
+		commands: make(chan *Client, 1000),
 	}
 }
 
-func handleRead(conn net.Conn) {
+func (s *Server) handleRead(conn net.Conn) {
 	//data := make([]byte, 1000)
-	client := NewClient(conn)
+	client := NewClient(conn, s.dbs[0])
 
 	ch := resp.ParseStream(conn)
 
@@ -48,21 +49,29 @@ func handleRead(conn net.Conn) {
 		select {
 		// 等待是否有新消息到达
 		case parsed := <-ch:
+
 			if parsed.Err != nil {
-				println(parsed.Err.Error())
+
+				if e := parsed.Err.Error(); e == "EOF" {
+					logger.Debug("Client", client.id, "Peer ShutDown Connection")
+				} else {
+					logger.Debug("Client", client.id, "Read Error:", e)
+				}
 				running = false
 				break
 			}
 
 			array, ok := parsed.Data.(*resp.ArrayData)
 			if !ok {
-				println("command eeeeeeeor")
+				logger.Warning("Client", client.id, "Parse Command Error")
+				running = false
+				break
 			}
 
 			client.cmd = array.ToCommand()
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
 			//client.cmd = string(data[0:i])
-			commands <- client
+			s.commands <- client
 
 		case r := <-client.res: // fixme : 这里的分支会导致客户端消息乱序吗
 
@@ -70,7 +79,7 @@ func handleRead(conn net.Conn) {
 			_, err := conn.Write([]byte(r))
 
 			if err != nil {
-				println("write error")
+				logger.Warning("Client", client.id, "Write Error")
 				running = false
 				break
 			}
@@ -88,27 +97,24 @@ func handleRead(conn net.Conn) {
 		client.cmd = nil
 
 		// 通知顶层
-		commands <- client
+		s.commands <- client
 	}
 
-	println("go exit")
 	err := conn.Close()
 	if err != nil {
 		return
 	}
 
+	logger.Debug("Goroutine Exit")
+
 }
 
-func eventLoop() {
-
-	db_ := db.NewDataBase()
-	clis := NewClientList()
-	te := NewTimeEventList()
+func (s *Server) eventLoop() {
 
 	// 每 300 秒清理一次过期客户端
-	te.AddTimeEvent(NewPeriodTimeEvent(func() {
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: Remove Inactive Clients")
-		clis.RemoveLongNotUsed(1, 300*time.Second)
+		s.clis.RemoveLongNotUsed(1, 300*time.Second)
 	}, time.Now().Add(300*time.Second).Unix(), 300*time.Second,
 	))
 
@@ -118,9 +124,9 @@ func eventLoop() {
 		case <-timer.C:
 			logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务
-			te.ExecuteOneIfExpire()
+			s.tl.ExecuteOneIfExpire()
 
-		case cli := <-commands:
+		case cli := <-s.commands:
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
 			if cli.cmd == nil {
@@ -133,12 +139,12 @@ func eventLoop() {
 				// 释放客户端资源
 				//delete(UUIDSet,cli.id)
 				logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
-				clis.RemoveClient(cli)
+				s.clis.RemoveClient(cli)
 				continue
 			}
 
 			// 用于判断是否为新连接
-			ok := clis.AddClientIfNotExist(cli)
+			ok := s.clis.AddClientIfNotExist(cli)
 
 			// 如果是新连接
 			if ok {
@@ -162,9 +168,9 @@ func eventLoop() {
 
 			var res resp.RedisData
 			if len(cli.cmd) == 2 {
-				res = cmd.Get(db_, cli.cmd)
+				res = cmd.Get(cli.db, cli.cmd)
 			} else {
-				res = cmd.Set(db_, cli.cmd)
+				res = cmd.Set(cli.db, cli.cmd)
 			}
 
 			// fixme: 现在默认是一个空命令
@@ -183,7 +189,7 @@ func backgroundLoop() {
 	// 完成后台的任务
 }
 
-func Start() {
+func (s *Server) Start() {
 
 	err := logger.Init("/Users/tangrenchu/GolandProjects/MemTable/logs", "bin.log", logger.DEBUG)
 	if err != nil {
@@ -195,14 +201,14 @@ func Start() {
 		return
 	}
 
-	go eventLoop()
+	go s.eventLoop()
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			break
 		}
-		go handleRead(conn)
+		go s.handleRead(conn)
 
 	}
 }

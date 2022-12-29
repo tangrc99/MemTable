@@ -202,7 +202,8 @@ func start() {
 
 func main() {
 
-	server.Start()
+	s := server.NewServer("127.0.0.1:6379")
+	s.Start()
 	return
 
 	err := logger.Init("/Users/tangrenchu/GolandProjects/MemTable/logs", "bin.log", logger.DEBUG)
