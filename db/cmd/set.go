@@ -79,7 +79,7 @@ func SIsMember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(1)
 }
 
-func RegisterSetCommand() {
+func RegisterSetCommands() {
 	RegisterCommand("sadd", SADD)
 	RegisterCommand("sismember", SIsMember)
 }

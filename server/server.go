@@ -80,7 +80,6 @@ func (s *Server) handleRead(conn net.Conn) {
 
 			client.cmd = array.ToCommand()
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
-			//client.cmd = string(data[0:i])
 			s.commands <- client
 
 		case r := <-client.res: // fixme : 这里的分支会导致客户端消息乱序吗

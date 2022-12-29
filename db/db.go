@@ -40,6 +40,29 @@ func (db_ *DataBase) RemoveTTL(key string) bool {
 	return db_.ttlKeys.Delete(key)
 }
 
+func (db_ *DataBase) GetTTL(key string) int64 {
+
+	ttl, exist := db_.ttlKeys.Get(key)
+	if exist {
+		// 如果存在 ttl，检查过期时间
+		now := time.Now().Unix()
+		r := ttl.(int64) - now
+		if r < 0 {
+			db_.ttlKeys.Delete(key)
+			db_.dict.Delete(key)
+			return -2
+		}
+		return r
+	}
+
+	_, exist = db_.dict.Get(key)
+	if !exist {
+		return -2
+	}
+
+	return -1
+}
+
 func (db_ *DataBase) GetKey(key string) (any, bool) {
 	ok := db_.CheckNotExpired(key)
 	if !ok {
@@ -68,4 +91,46 @@ func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 	db_.ttlKeys.Set(key, ttl)
 
 	return true
+}
+
+func (db_ *DataBase) DeleteKey(key string) bool {
+
+	db_.ttlKeys.Delete(key)
+
+	return db_.dict.Delete(key)
+}
+
+func (db_ *DataBase) RenameKey(old, new string) bool {
+
+	// 顺带检查 ttl 是否过期
+	value, ok := db_.GetKey(old)
+	if !ok {
+		return false
+	}
+
+	ttl, ok := db_.ttlKeys.Get(old)
+	db_.ttlKeys.Delete(old)
+	db_.dict.Delete(old)
+
+	db_.dict.Set(new, value)
+	db_.ttlKeys.Set(new, ttl)
+	return true
+}
+
+func (db_ *DataBase) ExistKey(key string) bool {
+
+	ok := db_.CheckNotExpired(key)
+	if !ok {
+		return false
+	}
+
+	return db_.dict.Exist(key)
+}
+
+func (db_ *DataBase) Keys(pattern string) ([]string, int) {
+	return db_.dict.KeysWithTTL(db_.ttlKeys, pattern)
+}
+
+func (db_ *DataBase) KeysByte(pattern string) ([][]byte, int) {
+	return db_.dict.KeysWithTTLByte(db_.ttlKeys, pattern)
 }

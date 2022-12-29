@@ -1,16 +1,19 @@
 package structure
 
 import (
+	"MemTable/logger"
 	"hash/fnv"
 	"math/rand"
+	"regexp"
+	"time"
 )
 
 const MaxConSize = int(1<<31 - 1)
 
-type shard = map[string]any
+type Shard = map[string]any
 
 type Dict struct {
-	shards []shard // 存储键值对
+	shards []Shard // 存储键值对
 	size   int     // table 分区数量
 	count  int64   // 键值对数量
 }
@@ -20,7 +23,7 @@ func NewDict(size int) *Dict {
 		size = MaxConSize
 	}
 	dict := Dict{
-		shards: make([]shard, size),
+		shards: make([]Shard, size),
 		size:   size,
 		count:  0,
 	}
@@ -38,7 +41,7 @@ func HashKey(key string) int {
 	return int(fnv32.Sum32())
 }
 
-func (dict *Dict) countShard(key string) *shard {
+func (dict *Dict) countShard(key string) *Shard {
 	pos := HashKey(key) % dict.size
 	return &dict.shards[pos]
 }
@@ -114,18 +117,107 @@ func (dict *Dict) Clear() {
 	*dict = *NewDict(dict.size)
 }
 
-func (dict *Dict) Keys() []string {
+// Keys 返回全部键
+func (dict *Dict) Keys(pattern string) ([]string, int) {
+	keys := make([]string, dict.count)
+	i := 0
+	for _, shard := range dict.shards {
+		for key := range shard {
+
+			ok := true
+			var err error
+			if pattern != "" {
+				ok, err = regexp.MatchString(pattern, key)
+				if err != nil {
+					logger.Error(err)
+					continue
+				}
+			}
+			if ok {
+				keys[i] = key
+				i++
+			}
+		}
+	}
+
+	return keys, i
+}
+
+// KeysWithTTL 返回全部未过期键，ttl 记录过期时间
+func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
+
+	now := time.Now().Unix()
+
 	keys := make([]string, dict.count)
 	i := 0
 	for _, shard := range dict.shards {
 
 		for key := range shard {
-			keys[i] = key
-			i++
+
+			tp, exist := ttl.Get(key)
+			if exist && tp.(int64) < now {
+				// 如果过期需要删除
+				delete(shard, key)
+				ttl.Delete(key)
+			} else {
+
+				ok := true
+				var err error
+				if pattern != "" {
+					ok, err = regexp.MatchString(pattern, key)
+					if err != nil {
+						logger.Error(err)
+						continue
+					}
+				}
+				if ok {
+					keys[i] = key
+					i++
+				}
+			}
 		}
 	}
 
-	return keys
+	return keys, i
+
+}
+
+func (dict *Dict) KeysWithTTLByte(ttl *Dict, pattern string) ([][]byte, int) {
+
+	now := time.Now().Unix()
+
+	keys := make([][]byte, dict.count)
+	i := 0
+	for _, shard := range dict.shards {
+
+		for key := range shard {
+
+			tp, exist := ttl.Get(key)
+			if exist && tp.(int64) < now {
+				// 如果过期需要删除
+				delete(shard, key)
+				ttl.Delete(key)
+			} else {
+
+				ok := true
+				var err error
+				if pattern != "" {
+					ok, err = regexp.MatchString(pattern, key)
+					if err != nil {
+						logger.Error(err)
+						continue
+					}
+				}
+				if ok {
+					keys[i] = []byte(key)
+					i++
+				}
+			}
+		}
+	}
+
+	return keys, i
+
 }
 
 func (dict *Dict) Exist(key string) bool {

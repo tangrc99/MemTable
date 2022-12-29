@@ -60,13 +60,31 @@ func Get(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func StrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	cmdName := strings.ToLower(string(cmd[0]))
+	println(cmdName)
 
-	return resp.MakeIntData(-1)
+	if cmdName != "strlen" {
+		return resp.MakeErrorData("Server error")
+	}
+
+	// 检查 key 是否被设置为 ttl，如果设置需要删除
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeIntData(-1)
+	}
+
+	strVal, ok := value.(string)
+	if !ok {
+		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
+	}
+
+	return resp.MakeIntData(int64(len(strVal)))
 }
 
 func RegisterStringCommands() {
 
 	RegisterCommand("set", Set)
 	RegisterCommand("get", Get)
+	RegisterCommand("strlen", StrLen)
 
 }

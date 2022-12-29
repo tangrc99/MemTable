@@ -45,6 +45,6 @@ func (set *Set) RandomGet() string {
 	return key
 }
 
-func (set *Set) Keys() []string {
-	return set.dict.Keys()
+func (set *Set) Keys(pattern string) ([]string, int) {
+	return set.dict.Keys(pattern)
 }
