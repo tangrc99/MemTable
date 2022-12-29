@@ -89,12 +89,20 @@ func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 
 // ExecuteOneIfExpire 执行一个任务，如果无可执行任务返回 false
 func (events *TimeEventList) ExecuteOneIfExpire() bool {
+
 	// 无任务状态
 	if events.list.Empty() {
+		logger.Debug("TimeEventList: empty")
 		return false
 	}
 
-	front, ok := events.list.Front().(TimeEvent)
+	v := events.list.Front()
+	if v == nil {
+		logger.Debug("TimeEventList: empty")
+		return false
+	}
+
+	front, ok := v.(TimeEvent)
 	// 列表元素类型不对
 	if !ok {
 		logger.Error("TimeEventList: type is not TimeEvent")

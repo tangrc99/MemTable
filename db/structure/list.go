@@ -40,15 +40,24 @@ func NewList() *List {
 }
 
 func (list *List) FrontNode() *ListNode {
+	if list.head.next == list.head {
+		return nil
+	}
 	return list.head.next
 }
 func (list *List) BackNode() *ListNode {
+	if list.head.prev == list.head {
+		return nil
+	}
 	return list.head.prev
 }
+
+// Front 如果不存在值会返回 nil
 func (list *List) Front() any {
 	return list.head.next.Value
 }
 
+// Back 如果不存在值会返回 nil
 func (list *List) Back() any {
 	return list.head.prev.Value
 }
@@ -97,7 +106,7 @@ func (list *List) InsertBeforeNode(value any, at *ListNode) *ListNode {
 	return &node
 }
 
-func (list *List) remove(at *ListNode) any {
+func (list *List) RemoveNode(at *ListNode) any {
 
 	if at.list != list {
 		return nil
@@ -124,11 +133,11 @@ func (list *List) PushBack(value any) {
 }
 
 func (list *List) PopFront() any {
-	return list.remove(list.head.next)
+	return list.RemoveNode(list.head.next)
 }
 
 func (list *List) PopBack() any {
-	return list.remove(list.head.prev)
+	return list.RemoveNode(list.head.prev)
 }
 
 func (list *List) Size() int {
@@ -227,7 +236,7 @@ func (list *List) RemoveValue(value any, nums int) int {
 		if cur.Value == value {
 			node := cur
 			cur = cur.next
-			list.remove(node)
+			list.RemoveNode(node)
 			if deleted++; deleted >= nums {
 				break
 			}

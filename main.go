@@ -201,6 +201,10 @@ func start() {
 }
 
 func main() {
+
+	server.Start()
+	return
+
 	err := logger.Init("/Users/tangrenchu/GolandProjects/MemTable/logs", "bin.log", logger.DEBUG)
 	if err != nil {
 		return
