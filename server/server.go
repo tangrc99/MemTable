@@ -165,7 +165,7 @@ func (s *Server) eventLoop() {
 			res := cmd.ExecCommand(cli.db, cli.cmd)
 
 			// 写入回包
-			cli.res <- string(res.ToBytes()) // fixme : 这里有阻塞的风险
+			cli.res <- res.ToBytes() // fixme : 这里有阻塞的风险
 
 		}
 	}

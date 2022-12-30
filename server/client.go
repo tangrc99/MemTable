@@ -28,7 +28,9 @@ type Client struct {
 
 	db   *db.DataBase  // 数据库的序号
 	exit chan struct{} // 退出标志
-	res  chan string   // 回包
+	res  chan []byte   // 回包
+
+	sub chan []byte // 用于订阅通知
 }
 
 func NewClient(conn net.Conn, dbImpl *db.DataBase) *Client {
@@ -39,7 +41,8 @@ func NewClient(conn net.Conn, dbImpl *db.DataBase) *Client {
 		status: WAIT,
 		db:     dbImpl,
 		exit:   make(chan struct{}, 1),
-		res:    make(chan string, 10),
+		res:    make(chan []byte, 10),
+		sub:    make(chan []byte, 10),
 	}
 }
 
