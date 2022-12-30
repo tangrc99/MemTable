@@ -37,6 +37,8 @@ func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 }
 
+func sRem(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
 func scard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "scard", 2)
@@ -85,6 +87,28 @@ func sismember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	return resp.MakeIntData(1)
 }
+
+func sMembers(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sDiff(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sDiffStore(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sInter(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sMove(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sPop(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sRandMember(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sUnion(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sUnionStore(db *db.DataBase, cmd [][]byte) resp.RedisData {}
+
+func sScan(db *db.DataBase, cmd [][]byte) resp.RedisData {}
 
 func RegisterSetCommands() {
 	RegisterCommand("sadd", sadd)
