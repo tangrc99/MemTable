@@ -3,6 +3,7 @@ package cmd
 import (
 	"MemTable/db/structure"
 	"MemTable/resp"
+	"fmt"
 	"strings"
 )
 
@@ -33,7 +34,7 @@ func CheckType(value any, vt ValueType) resp.RedisData {
 		// 如果已经存在，进行类型检查
 		switch vt {
 		case STRING:
-			_, typeOk = value.(string)
+			_, typeOk = value.([]byte)
 
 		case HASH:
 			// 复杂数据类型全部为指针
@@ -67,7 +68,7 @@ func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.Redi
 	}
 
 	if len(*cmd) < minLength {
-		return resp.MakeErrorData("error: commands is invalid"), false
+		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (*cmd)[1])), false
 	}
 
 	return nil, true

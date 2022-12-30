@@ -230,7 +230,7 @@ func typeKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		typeName = "none"
 	} else {
 
-		if _, ok := value.(string); ok {
+		if _, ok := value.([]byte); ok {
 			typeName = "string"
 		} else if _, ok := value.(*structure.List); ok {
 			typeName = "list"

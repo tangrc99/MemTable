@@ -40,6 +40,7 @@ type PlainData struct {
 	data string
 }
 
+// MakeBulkData 返回值在客户端中是有 "" 的
 func MakeBulkData(data []byte) *BulkData {
 	return &BulkData{
 		data: data,
@@ -67,6 +68,7 @@ func (r *BulkData) ByteData() []byte {
 	return r.data
 }
 
+// MakeStringData 返回值在客户端中没有 ""
 func MakeStringData(data string) *StringData {
 	return &StringData{
 		data: data,
@@ -84,6 +86,7 @@ func (r *StringData) ByteData() []byte {
 	return []byte(r.data)
 }
 
+// MakeIntData 返回值在客户端中具有 (integer) 标识
 func MakeIntData(data int64) *IntData {
 	return &IntData{
 		data: data,
@@ -102,6 +105,7 @@ func (r *IntData) ByteData() []byte {
 	return []byte(strconv.FormatInt(r.data, 10))
 }
 
+// MakeErrorData 返回值在客户端中具有 (error) 标识
 func MakeErrorData(data string) *ErrorData {
 	return &ErrorData{
 		data: data,
