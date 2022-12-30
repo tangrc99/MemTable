@@ -10,8 +10,8 @@ func NewSet() *Set {
 	}
 }
 
-func (set *Set) Add(key string) {
-	set.dict.Set(key, struct{}{})
+func (set *Set) Add(key string) bool {
+	return set.dict.SetIfNotExist(key, struct{}{})
 }
 
 func (set *Set) Delete(key string) bool {
@@ -23,28 +23,54 @@ func (set *Set) Exist(key string) bool {
 }
 
 func (set *Set) Size() int {
-	return set.dict.size
+	return set.dict.count
 }
 
-func (set *Set) RandomDelete() string {
+func (set *Set) RandomDelete(nums int) int {
 	if set.dict.Empty() {
-		return ""
+		return 0
 	}
 
-	key, _ := set.dict.Random()
-	set.dict.Delete(key)
-	return key
+	keys := set.dict.RandomKeys(nums)
+
+	deleted := 0
+
+	for key, _ := range keys {
+		if set.dict.Delete(key) {
+			deleted++
+		}
+	}
+
+	return deleted
 }
 
-func (set *Set) RandomGet() string {
+func (set *Set) RandomGet(nums int) map[string]struct{} {
 	if set.dict.Empty() {
-		return ""
+		return make(map[string]struct{})
 	}
 
-	key, _ := set.dict.Random()
-	return key
+	keys := set.dict.RandomKeys(nums)
+	return keys
+}
+
+func (set *Set) RandomPop(nums int) map[string]struct{} {
+	if set.dict.Empty() {
+		return make(map[string]struct{})
+	}
+
+	keys := set.dict.RandomKeys(nums)
+
+	for key := range keys {
+		set.dict.Delete(key)
+	}
+
+	return keys
 }
 
 func (set *Set) Keys(pattern string) ([]string, int) {
 	return set.dict.Keys(pattern)
+}
+
+func (set *Set) KeysByte(pattern string) ([][]byte, int) {
+	return set.dict.KeysByte(pattern)
 }

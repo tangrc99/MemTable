@@ -11,5 +11,4 @@ func main() {
 	s := server.NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
 	s.Start()
 
-	return
 }

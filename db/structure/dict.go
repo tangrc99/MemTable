@@ -15,7 +15,7 @@ type Shard = map[string]any
 type Dict struct {
 	shards []Shard // 存储键值对
 	size   int     // table 分区数量
-	count  int64   // 键值对数量
+	count  int     // 键值对数量
 }
 
 func NewDict(size int) *Dict {
@@ -106,11 +106,11 @@ func (dict *Dict) Delete(key string) bool {
 }
 
 func (dict *Dict) Size() int {
-	return dict.size
+	return dict.count
 }
 
 func (dict *Dict) Empty() bool {
-	return dict.size == 0
+	return dict.count == 0
 }
 
 func (dict *Dict) Clear() {
@@ -135,6 +135,31 @@ func (dict *Dict) Keys(pattern string) ([]string, int) {
 			}
 			if ok {
 				keys[i] = key
+				i++
+			}
+		}
+	}
+
+	return keys, i
+}
+
+func (dict *Dict) KeysByte(pattern string) ([][]byte, int) {
+	keys := make([][]byte, dict.count)
+	i := 0
+	for _, shard := range dict.shards {
+		for key := range shard {
+
+			ok := true
+			var err error
+			if pattern != "" {
+				ok, err = regexp.MatchString(pattern, key)
+				if err != nil {
+					logger.Error(err)
+					continue
+				}
+			}
+			if ok {
+				keys[i] = []byte(key)
 				i++
 			}
 		}
@@ -227,16 +252,84 @@ func (dict *Dict) Exist(key string) bool {
 	return exist
 }
 
-func (dict *Dict) Random() (string, any) {
+//func (dict *Dict) Random() (string, any) {
+//
+//	shard := dict.shards[rand.Int()%dict.size]
+//	r := rand.Int() % len(shard)
+//
+//	for k, v := range shard {
+//		r--
+//		if r == 0 {
+//			return k, v
+//		}
+//	}
+//	return "", nil
+//}
 
-	shard := dict.shards[rand.Int()%dict.size]
-	r := rand.Int() % len(shard)
+func (dict *Dict) Random(num int) map[string]any {
 
-	for k, v := range shard {
-		r--
-		if r == 0 {
-			return k, v
+	selected := make(map[string]any)
+
+	// 这里优化为直接遍历
+	if num >= dict.count {
+		for _, shard := range dict.shards {
+			for key := range shard {
+				selected[key] = struct{}{}
+			}
 		}
+		return selected
 	}
-	return "", nil
+
+	for len(selected) < num {
+
+		for i := 0; i < dict.size && len(selected) < num; i++ {
+			for k, v := range dict.shards[i] {
+				// 使用概率选择法，每一个 key 被选择的概率都是 1/n
+				n := rand.Int() % dict.count
+				if n == 0 {
+					// 成功被选择
+					selected[k] = v
+				}
+				if len(selected) < num {
+					break
+				}
+			}
+		}
+
+	}
+
+	return selected
+}
+
+func (dict *Dict) RandomKeys(num int) map[string]struct{} {
+	selected := make(map[string]struct{})
+
+	// 这里优化为直接遍历
+	if num >= dict.count {
+		for _, shard := range dict.shards {
+			for key := range shard {
+				selected[key] = struct{}{}
+			}
+		}
+		return selected
+	}
+
+	for len(selected) < num {
+
+		for i := 0; i < dict.size && len(selected) < num; i++ {
+			for k, _ := range dict.shards[i] {
+				// 使用概率选择法，每一个 key 被选择的概率都是 1/n
+				n := rand.Int() % dict.count
+				if n == 0 {
+					// 成功被选择
+					selected[k] = struct{}{}
+				}
+				if len(selected) < num {
+					break
+				}
+			}
+		}
+
+	}
+	return selected
 }
