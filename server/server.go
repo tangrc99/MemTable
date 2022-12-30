@@ -15,12 +15,13 @@ import (
 
 type Server struct {
 	dbs      []*db.DataBase // 多个可以用于切换的数据库
+	Chs      *db.Channels   // 订阅发布频道
 	dbNum    int            //数据库数量
 	clis     *ClientList    // 客户端列表
 	tl       *TimeEventList // 事件链表
-	url      string         // 监听 url
 	commands chan *Client   // 用于解析完毕的协程同步
 
+	url      string // 监听 url
 	listener net.Listener
 	quit     bool
 	quitFlag chan struct{}
@@ -37,6 +38,7 @@ func NewServer(url string) *Server {
 	return &Server{
 		dbs:      d,
 		dbNum:    n,
+		Chs:      db.NewChannels(),
 		clis:     NewClientList(),
 		tl:       NewTimeEventList(),
 		url:      url,
@@ -85,7 +87,7 @@ func (s *Server) handleRead(conn net.Conn) {
 		case r := <-client.res: // fixme : 这里的分支会导致客户端消息乱序吗
 
 			// 将主线程的返回值写入到 socket 中
-			_, err := conn.Write([]byte(r))
+			_, err := conn.Write(r)
 
 			if err != nil {
 				logger.Warning("Client", client.id, "Write Error")
@@ -95,7 +97,15 @@ func (s *Server) handleRead(conn net.Conn) {
 
 		case <-client.exit:
 			running = false
-			break
+		case msg := <-client.msg:
+			// 写入发布订阅消息
+			_, err := conn.Write(msg)
+
+			if err != nil {
+				logger.Warning("Client", client.id, "Write Error")
+				running = false
+				break
+			}
 		}
 	}
 
@@ -146,6 +156,8 @@ func (s *Server) eventLoop() {
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
 				logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
+				// fixme : 删除订阅
+				cli.UnSubscribeAll(s.Chs)
 				s.clis.RemoveClient(cli)
 				continue
 			}
@@ -162,7 +174,11 @@ func (s *Server) eventLoop() {
 			cli.UpdateTimestamp()
 
 			// 执行命令
-			res := cmd.ExecCommand(cli.db, cli.cmd)
+			// todo : 处理发布订阅
+			res := ExecCommand(s, cli, cli.cmd)
+			if res == nil {
+				res = cmd.ExecCommand(cli.db, cli.cmd)
+			}
 
 			// 写入回包
 			cli.res <- res.ToBytes() // fixme : 这里有阻塞的风险
@@ -180,6 +196,7 @@ func (s *Server) eventLoop() {
 	for s.clis.Size() != 0 {
 		front := s.clis.list.FrontNode()
 		s.clis.removeClientWithPosition(front.Value.(*Client), front)
+		// 不用删除订阅
 	}
 
 	// 通知

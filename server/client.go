@@ -30,7 +30,8 @@ type Client struct {
 	exit chan struct{} // 退出标志
 	res  chan []byte   // 回包
 
-	sub chan []byte // 用于订阅通知
+	chs map[string]struct{} //订阅频道
+	msg chan []byte         // 用于订阅通知
 }
 
 func NewClient(conn net.Conn, dbImpl *db.DataBase) *Client {
@@ -42,12 +43,32 @@ func NewClient(conn net.Conn, dbImpl *db.DataBase) *Client {
 		db:     dbImpl,
 		exit:   make(chan struct{}, 1),
 		res:    make(chan []byte, 10),
-		sub:    make(chan []byte, 10),
+		chs:    make(map[string]struct{}),
+		msg:    make(chan []byte, 10),
 	}
 }
 
 func (cli *Client) UpdateTimestamp() {
 	cli.tp = time.Now()
+}
+
+func (cli *Client) Subscribe(chs *db.Channels, channel string) int {
+	chs.Subscribe(channel, cli.id.String(), &cli.msg)
+	cli.chs[channel] = struct{}{}
+	return len(cli.chs)
+}
+
+func (cli *Client) UnSubscribe(chs *db.Channels, channel string) int {
+	chs.UnSubscribe(channel, cli.id.String())
+	delete(cli.chs, channel)
+	return len(cli.chs)
+}
+
+func (cli *Client) UnSubscribeAll(chs *db.Channels) {
+	for channel := range cli.chs {
+		chs.UnSubscribe(channel, cli.id.String())
+	}
+	cli.chs = make(map[string]struct{})
 }
 
 type ClientList struct {
@@ -80,7 +101,7 @@ func (clients *ClientList) AddClientIfNotExist(cli *Client) bool {
 	return true
 }
 
-// removeClientWithPosition 给定客户端指针和链表位置
+// removeClientWithPosition 给定客户端指针和链表位置，删除逻辑最终定位到这里
 func (clients *ClientList) removeClientWithPosition(cli *Client, node *structure.ListNode) {
 	logger.Debug("ClientList: Remove Client", cli.id)
 	cli.status = EXIT
