@@ -29,7 +29,6 @@ func subscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	}
 
 	res := make([]resp.RedisData, (len(cmd)-1)*3)
-	println(len(res))
 
 	for i, channel := range cmd[1:] {
 		subscribed := cli.Subscribe(server.Chs, string(channel))

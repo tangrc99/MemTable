@@ -33,7 +33,7 @@ func NewTrieTree() *TrieTree {
 	return &tree
 }
 
-func (tree *TrieTree) AddNode(paths []string, key string, value any) {
+func (tree *TrieTree) AddNode(paths []string, value any) *TrieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
@@ -44,8 +44,34 @@ func (tree *TrieTree) AddNode(paths []string, key string, value any) {
 		}
 		cur = node
 	}
-	cur.children[key] = newTrieTreeNode(key, value, true, cur, tree)
+
+	cur.isLeaf = true
+	cur.Value = value
 	tree.count++
+	return cur
+}
+
+func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value any) (*TrieTreeNode, bool) {
+
+	cur := tree.root
+
+	for _, path := range paths {
+		node, exists := cur.children[path]
+		if !exists {
+			node = newTrieTreeNode(path, nil, false, cur, tree)
+			cur.children[path] = node
+		}
+		cur = node
+	}
+
+	if cur.isLeaf {
+		return cur, false
+	}
+
+	cur.isLeaf = true
+	cur.Value = value
+	tree.count++
+	return cur, true
 }
 
 func (tree *TrieTree) DeleteLeafNode(node *TrieTreeNode) bool {
@@ -107,6 +133,24 @@ func (tree *TrieTree) GetValue(paths []string) (any, bool) {
 		cur = node
 	}
 	return cur.Value, cur.isLeaf
+}
+
+func (tree *TrieTree) GetLeafNode(paths []string) (*TrieTreeNode, bool) {
+	cur := tree.root
+
+	for _, path := range paths {
+		node, exists := cur.children[path]
+		if !exists {
+			return nil, false
+		}
+		cur = node
+	}
+
+	if cur.isLeaf {
+		return cur, true
+	}
+
+	return nil, false
 }
 
 // AllLeafNodeInPath 返回当前路径以及路径下的叶子节点（非递归）

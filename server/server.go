@@ -148,14 +148,10 @@ func (s *Server) eventLoop() {
 		case cli := <-s.commands:
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
-			if cli.cmd == nil {
-				continue
-			}
-
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
-				logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
+				logger.Info("EventLoop: Remove Closed Client", cli.id.String())
 				// fixme : 删除订阅
 				cli.UnSubscribeAll(s.Chs)
 				s.clis.RemoveClient(cli)
@@ -167,7 +163,7 @@ func (s *Server) eventLoop() {
 
 			// 如果是新连接
 			if ok {
-				logger.Debug("EventLoop: New Client")
+				logger.Info("EventLoop: New Client", cli.id.String())
 			}
 
 			// 更新时间戳
