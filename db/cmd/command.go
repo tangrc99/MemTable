@@ -15,9 +15,12 @@ func RegisterCommand(name string, cmd Command) {
 }
 
 func init() {
+	RegisterKeyCommands()
 	RegisterStringCommands()
 	RegisterSetCommands()
-	RegisterKeyCommands()
+	RegisterListCommands()
+	RegisterHashCommands()
+	RegisterZSetCommands()
 }
 
 func ExecCommand(base *db.DataBase, cmd [][]byte) resp.RedisData {

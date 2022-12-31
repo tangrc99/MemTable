@@ -45,6 +45,7 @@ func (list *List) FrontNode() *ListNode {
 	}
 	return list.head.next
 }
+
 func (list *List) BackNode() *ListNode {
 	if list.head.prev == list.head {
 		return nil
@@ -133,10 +134,17 @@ func (list *List) PushBack(value any) {
 }
 
 func (list *List) PopFront() any {
+	if list.Size() == 0 {
+		return nil
+	}
+
 	return list.RemoveNode(list.head.next)
 }
 
 func (list *List) PopBack() any {
+	if list.Size() == 0 {
+		return nil
+	}
 	return list.RemoveNode(list.head.prev)
 }
 
@@ -148,9 +156,8 @@ func (list *List) Empty() bool {
 	return list.size == 0
 }
 
-// InsertAfter 将元素插入到给定位置后面
+// InsertAfter 将元素插入到给定位置后面,pos > 0
 func (list *List) InsertAfter(value any, pos int) bool {
-
 	if pos >= list.Size() || pos < 0 {
 		return false
 	}
@@ -176,7 +183,7 @@ func (list *List) InsertAfter(value any, pos int) bool {
 	return nil != list.InsertAfterNode(value, p)
 }
 
-// InsertBefore 将元素插入到给定位置后面
+// InsertBefore 将元素插入到给定位置后面,pos > 0
 func (list *List) InsertBefore(value any, pos int) bool {
 
 	if pos >= list.Size() || pos < 0 {
@@ -205,12 +212,82 @@ func (list *List) InsertBefore(value any, pos int) bool {
 
 }
 
-func (list *List) Range(start, end int) ([]any, bool) {
-	if start >= list.Size() || start > end {
+// Pos 大于 0 正向遍历，小于 0 反向遍历
+func (list *List) Pos(pos int) (any, bool) {
+	if pos < 0 {
+		pos += list.Size()
+	}
+
+	if pos >= list.Size() || pos < 0 {
 		return nil, false
 	}
-	if end > list.Size()-1 || end < 0 {
-		end = list.Size() - 1
+
+	// 倒序插入
+	if list.Size()-pos < pos {
+
+		p := list.BackNode()
+		pos = list.Size() - pos - 1
+		for i := 0; i < pos; i++ {
+			p = p.prev
+		}
+		return p.Value, true
+	}
+
+	p := list.head.next
+
+	for i := 0; i < pos; i++ {
+		p = p.next
+	}
+
+	return p.Value, true
+}
+
+func (list *List) PosNode(pos int) (*ListNode, bool) {
+	if pos < 0 {
+		pos += list.Size()
+	}
+
+	if pos >= list.Size() || pos < 0 {
+		return nil, false
+	}
+
+	// 倒序插入
+	if list.Size()-pos < pos {
+
+		p := list.BackNode()
+		pos = list.Size() - pos - 1
+		for i := 0; i < pos; i++ {
+			p = p.prev
+		}
+		return p, true
+	}
+
+	p := list.head.next
+
+	for i := 0; i < pos; i++ {
+		p = p.next
+	}
+
+	return p, true
+}
+
+func (list *List) Range(start, end int) ([]any, bool) {
+
+	// 先处理倒序然后判断 start 和 end 的关系
+	if end < 0 {
+		if end+list.Size() <= 0 {
+			return nil, false
+		} else {
+			end += list.Size()
+		}
+	} else {
+		if end > list.Size()-1 {
+			end = list.Size() - 1
+		}
+	}
+
+	if start >= list.Size() || start < 0 {
+		return nil, false
 	}
 
 	p := list.head.next
@@ -226,6 +303,57 @@ func (list *List) Range(start, end int) ([]any, bool) {
 		p = p.next
 	}
 	return values, true
+}
+
+// Trim 删除[start,end]范围外的元素，start 和 end 可以为负数代表倒序。如果[start,end]为空，则删除所有元素
+func (list *List) Trim(start, end int) bool {
+	// 先处理倒序然后判断 start 和 end 的关系
+	if end < 0 {
+		end += list.Size()
+	}
+
+	if start < 0 {
+		start += list.Size()
+	}
+
+	// 空范围直接删除所有元素
+	if start > end || (start < 0 && end < 0) || (start >= list.Size() && end >= list.Size()) {
+		list.Clear()
+		return true
+	}
+
+	// 确定范围不为空，进行边界处理
+	if start < 0 {
+		start = 0
+	}
+	if end < 0 {
+		end = 0
+	}
+	if start >= list.Size() {
+		start = list.Size() - 1
+	}
+	if end >= list.Size() {
+		end = list.Size() - 1
+	}
+
+	startNode, ok := list.PosNode(start)
+	if !ok {
+		return false
+	}
+
+	endNode, ok := list.PosNode(end)
+	if !ok {
+		return false
+	}
+
+	list.head.next = startNode
+	startNode.prev = list.head
+
+	list.head.prev = endNode
+	endNode.next = list.head
+
+	list.size = end - start + 1
+	return true
 }
 
 func (list *List) RemoveValue(value any, nums int) int {
@@ -248,15 +376,39 @@ func (list *List) RemoveValue(value any, nums int) int {
 	return deleted
 }
 
+// Set 大于 0 正向遍历，小于 0 反向遍历
 func (list *List) Set(value any, pos int) bool {
-	if pos >= list.Size() {
+	if pos < 0 {
+		pos += list.Size()
+	}
+
+	if pos >= list.Size() || pos < 0 {
 		return false
 	}
-	p := list.FrontNode()
+
+	// 倒序插入
+	if list.Size()-pos < pos {
+
+		p := list.BackNode()
+		pos = list.Size() - pos - 1
+		for i := 0; i < pos; i++ {
+			p = p.prev
+		}
+		p.Value = value
+		return true
+	}
+
+	p := list.head.next
 
 	for i := 0; i < pos; i++ {
 		p = p.next
 	}
 	p.Value = value
 	return true
+}
+
+func (list *List) Clear() {
+	list.head.prev = list.head
+	list.head.next = list.head
+	list.size = 0
 }

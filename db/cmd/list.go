@@ -1,22 +1,479 @@
 package cmd
 
+import (
+	"MemTable/db"
+	"MemTable/db/structure"
+	"MemTable/resp"
+	"strconv"
+	"strings"
+)
+
+func lLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "llen", 2)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeIntData(0)
+	}
+
+	err := CheckType(value, LIST)
+	if err != nil {
+		return err
+	}
+
+	l := value.(*structure.List).Size()
+
+	return resp.MakeIntData(int64(l))
+}
+
+func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "lpush", 3)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		value = structure.NewList()
+		db.SetKey(string(cmd[1]), value)
+	}
+
+	err := CheckType(value, LIST)
+	if err != nil {
+		return err
+	}
+
+	listVal := value.(*structure.List)
+
+	n := 0
+
+	for _, ele := range cmd[2:] {
+		n++
+		listVal.PushFront(ele)
+	}
+
+	return resp.MakeIntData(int64(n))
+}
+
+func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "rpush", 3)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		value = structure.NewList()
+		db.SetKey(string(cmd[1]), value)
+	}
+
+	err := CheckType(value, LIST)
+	if err != nil {
+		return err
+	}
+
+	listVal := value.(*structure.List)
+
+	n := 0
+
+	for _, ele := range cmd[2:] {
+		n++
+		listVal.PushBack(ele)
+	}
+
+	return resp.MakeIntData(int64(n))
+}
+
+func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "lpop", 2)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	count := 1
+
+	if len(cmd) == 3 {
+		var w error
+		count, w = strconv.Atoi(string(cmd[2]))
+		if w != nil {
+			return resp.MakeErrorData("ERR value is not an integer or out of range")
+		}
+	}
+
+	if count >= listVal.Size() {
+		count = listVal.Size()
+		// 全部取出元素，需要删除
+		db.DeleteKey(string(cmd[1]))
+	}
+
+	res := make([]resp.RedisData, count)
+
+	for i := 0; i < count; i++ {
+		v, _ := listVal.PopFront().([]byte)
+		res[i] = resp.MakeBulkData(v)
+	}
+
+	return resp.MakeArrayData(res)
+}
+
+func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "rpop", 2)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	count := 1
+
+	if len(cmd) == 3 {
+		var w error
+		count, w = strconv.Atoi(string(cmd[2]))
+		if w != nil {
+			return resp.MakeErrorData("ERR value is not an integer or out of range")
+		}
+	}
+
+	if count >= listVal.Size() {
+		count = listVal.Size()
+		// 全部取出元素，需要删除
+		db.DeleteKey(string(cmd[1]))
+	}
+
+	res := make([]resp.RedisData, count)
+
+	for i := 0; i < count; i++ {
+		v, _ := listVal.PopBack().([]byte)
+		res[i] = resp.MakeBulkData(v)
+	}
+
+	return resp.MakeArrayData(res)
+}
+
+func lIndex(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "lindex", 3)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	pos, w := strconv.Atoi(string(cmd[2]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	nodeVal, ok := listVal.Pos(pos)
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	return resp.MakeBulkData(nodeVal.([]byte))
+}
+
+func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "lpos", 3)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	pos := 0
+
+	for cur := listVal.FrontNode(); cur != nil; cur = cur.Next() {
+		byteVal := cur.Value.([]byte)
+
+		if string(byteVal) == string(cmd[2]) {
+			return resp.MakeIntData(int64(pos))
+		}
+		pos++
+	}
+	return resp.MakeStringData("nil")
+}
+
+func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "lset", 4)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeErrorData("ERR no such key")
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	pos, w := strconv.Atoi(string(cmd[2]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	ok = listVal.Set(cmd[3], pos)
+	if !ok {
+		return resp.MakeErrorData("ERR index out of range")
+	}
+
+	return resp.MakeStringData("OK")
+}
+
+func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
+
+	e, ok := CheckCommandAndLength(&cmd, "lrem", 4)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeIntData(0)
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	count, w := strconv.Atoi(string(cmd[2]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	deleted := 0
+	for cur := listVal.FrontNode(); cur != nil && deleted <= count; {
+		byteVal := cur.Value.([]byte)
+
+		if string(byteVal) == string(cmd[2]) {
+
+			nxt := cur.Next()
+			listVal.RemoveNode(cur)
+			cur = nxt
+			deleted++
+		} else {
+			cur = cur.Next()
+		}
+
+	}
+	return resp.MakeIntData(int64(deleted))
+}
+
+func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "lrange", 4)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeArrayData(nil)
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	start, w := strconv.Atoi(string(cmd[2]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	end, w := strconv.Atoi(string(cmd[3]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	values, ok := listVal.Range(start, end)
+	if !ok {
+		return resp.MakeArrayData(nil)
+	}
+	res := make([]resp.RedisData, len(values))
+	for i, v := range values {
+		res[i] = resp.MakeBulkData(v.([]byte))
+	}
+
+	return resp.MakeArrayData(res)
+}
+
+// lTrim 删除指定范围外的所有元素
+func lTrim(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "ltrim", 4)
+	if !ok {
+		return e
+	}
+
+	value, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeStringData("OK")
+	}
+
+	e = CheckType(value, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal := value.(*structure.List)
+
+	start, w := strconv.Atoi(string(cmd[2]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	end, w := strconv.Atoi(string(cmd[3]))
+	if w != nil {
+		return resp.MakeErrorData("ERR value is not an integer or out of range")
+	}
+
+	listVal.Trim(start, end)
+
+	return resp.MakeStringData("OK")
+}
+
+func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	e, ok := CheckCommandAndLength(&cmd, "lmove", 5)
+	if !ok {
+		return e
+	}
+
+	value1, ok := db.GetKey(string(cmd[1]))
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	e = CheckType(value1, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal1 := value1.(*structure.List)
+
+	value2, ok := db.GetKey(string(cmd[2]))
+	if !ok {
+		value2 = structure.NewList()
+		db.SetKey(string(cmd[2]), value2)
+	}
+
+	e = CheckType(value2, LIST)
+	if e != nil {
+		return e
+	}
+
+	listVal2 := value2.(*structure.List)
+
+	// 这里目的为每一个 cmd 只比较一次
+	if strings.ToUpper(string(cmd[3])) == "LEFT" {
+
+		if strings.ToUpper(string(cmd[4])) == "LEFT" {
+
+			listVal2.PushFront(listVal1.PopFront())
+
+		} else if strings.ToUpper(string(cmd[4])) == "RIGHT" {
+
+			listVal2.PushBack(listVal1.PopFront())
+
+		} else {
+
+			return resp.MakeErrorData("ERR syntax error")
+		}
+
+	} else if strings.ToUpper(string(cmd[3])) == "RIGHT" {
+
+		if strings.ToUpper(string(cmd[4])) == "LEFT" {
+
+			listVal2.PushFront(listVal1.PopBack())
+
+		} else if strings.ToUpper(string(cmd[4])) == "RIGHT" {
+
+			listVal2.PushBack(listVal1.PopBack())
+
+		} else {
+
+			return resp.MakeErrorData("ERR syntax error")
+		}
+
+	} else {
+		return resp.MakeErrorData("ERR syntax error")
+	}
+
+	return resp.MakeStringData("OK")
+
+}
+
 /*
-func lLen(db *db.DataBase, cmd [][]byte) resp.RedisData   {}
-func lIndex(db *db.DataBase, cmd [][]byte) resp.RedisData {}
-func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
-func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData   {}
-func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData   {}
-func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
-func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData   {}
-func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData   {}
-func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData   {}
-func lTrim(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
-func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {}
-func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
+
+
 func bLPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
 func bRPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
 */
 
 func RegisterListCommands() {
-
+	RegisterCommand("llen", lLen)
+	RegisterCommand("lpush", lPush)
+	RegisterCommand("lpop", lPop)
+	RegisterCommand("rpush", rPush)
+	RegisterCommand("rpop", rPop)
+	RegisterCommand("lindex", lIndex)
+	RegisterCommand("lpos", lPos)
+	RegisterCommand("lset", lSet)
+	RegisterCommand("lrem", lRem)
+	RegisterCommand("lrange", lRange)
+	RegisterCommand("ltrim", lTrim)
+	RegisterCommand("lmove", lMove)
 }
