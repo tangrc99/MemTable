@@ -333,3 +333,7 @@ func (dict *Dict) RandomKeys(num int) map[string]struct{} {
 	}
 	return selected
 }
+
+func (dict *Dict) GetAll() (*[]map[string]any, int) {
+	return &dict.shards, dict.count
+}

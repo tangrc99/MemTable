@@ -188,8 +188,18 @@ func ttl(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func randomKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	err, ok := CheckCommandAndLength(&cmd, "randomkey", 1)
+	if !ok {
+		return err
+	}
 
-	return resp.MakeErrorData("")
+	key, ok := db.RandomKey()
+	if !ok {
+		return resp.MakeStringData("nil")
+	}
+
+	return resp.MakeBulkData([]byte(key))
 }
 
 func rename(db *db.DataBase, cmd [][]byte) resp.RedisData {
@@ -258,4 +268,5 @@ func RegisterKeyCommands() {
 	//RegisterCommand("pexpireat", pExpireAt)
 	RegisterCommand("rename", rename)
 	RegisterCommand("type", typeKey)
+	RegisterCommand("randomkey", randomKey)
 }

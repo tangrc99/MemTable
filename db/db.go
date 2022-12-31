@@ -134,3 +134,11 @@ func (db_ *DataBase) Keys(pattern string) ([]string, int) {
 func (db_ *DataBase) KeysByte(pattern string) ([][]byte, int) {
 	return db_.dict.KeysWithTTLByte(db_.ttlKeys, pattern)
 }
+
+func (db_ *DataBase) RandomKey() (string, bool) {
+	keys := db_.dict.Random(1)
+	for k := range keys {
+		return k, true
+	}
+	return "", false
+}
