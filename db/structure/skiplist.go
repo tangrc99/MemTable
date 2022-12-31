@@ -157,7 +157,7 @@ func (sl *SkipList) Get(key float32) (any, bool) {
 	return nil, false
 }
 
-func (sl *SkipList) Delete(key float32) {
+func (sl *SkipList) Delete(key float32) bool {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -172,16 +172,18 @@ func (sl *SkipList) Delete(key float32) {
 	}
 
 	height := 0
-	if prevs[0].getNextNode(0).key == key {
+	if prevs[0].getNextNode(0) != nil && prevs[0].getNextNode(0).key == key {
 		height = prevs[0].getNextNode(0).height
-	}
 
-	// 从底层到高层依次插入
-	for i := 0; i < height; i++ {
-		prevs[i].removeNextNode(i)
-	}
-	sl.size--
+		// 从底层到高层依次插入
+		for i := 0; i < height; i++ {
+			prevs[i].removeNextNode(i)
+		}
+		sl.size--
+		return true
 
+	}
+	return false
 }
 
 func (sl *SkipList) Exist(key float32) bool {
@@ -263,4 +265,103 @@ func (sl *SkipList) GetPosByKey(key float32) int {
 		return -1
 	}
 	return pos
+}
+
+func (sl *SkipList) DeleteRange(min, max float32) ([]any, int) {
+	// 需要找到每一个层次的前驱
+	cur := sl.head
+
+	deleted := 0
+	values := make([]any, 0)
+
+	// 每一个 prev 的 key 小于等于需要插入的 key
+	for i := sl.level - 1; i >= 0 && cur.key < min; i-- {
+
+		for nxt := cur.getNextNode(i); nxt != nil && nxt.key < min; nxt = cur.getNextNode(i) {
+			cur = nxt
+		}
+		// 这里 cur 的值正好是 < min 的
+		n := cur.getNextNode(i)
+		for ; n != nil && n.key <= max; n = n.getNextNode(i) {
+			if i == 0 {
+				values = append(values, n.value)
+				deleted++
+			}
+
+		}
+		// 这里 n 的值 > max
+		cur.next[i] = n
+	}
+	sl.size -= deleted
+	return values, deleted
+}
+
+func (sl *SkipList) DeletePos(start, end int) ([]any, int) {
+	//fixme : 性能较低，一次遍历
+
+	// 判别位置
+	if start < 0 {
+		start += sl.size
+	}
+	if end < 0 {
+		end += sl.size
+	}
+	if start > end || end < 0 || start >= sl.size {
+		return nil, 0
+	}
+	if start < 0 {
+		start = 0
+	}
+	if end >= sl.size {
+		end = sl.size - 1
+	}
+
+	cur := sl.head
+
+	for i := 0; i < start; i++ {
+		cur = cur.getNextNode(0)
+	}
+
+	min := cur.getNextNode(0).key
+	for i := start; i < end; i++ {
+		cur = cur.getNextNode(0)
+	}
+	max := cur.getNextNode(0).key
+	return sl.DeleteRange(min, max)
+
+}
+
+func (sl *SkipList) Pos(start, end int) ([]any, int) {
+
+	// 判别位置
+	if start < 0 {
+		start += sl.size
+	}
+	if end < 0 {
+		end += sl.size
+	}
+	if start > end || end < 0 || start >= sl.size {
+		return nil, 0
+	}
+	if start < 0 {
+		start = 0
+	}
+	if end >= sl.size {
+		end = sl.size - 1
+	}
+
+	cur := sl.head
+
+	for i := 0; i <= start; i++ {
+		cur = cur.getNextNode(0)
+	}
+
+	values := make([]any, 0)
+
+	for i := start; i <= end; i++ {
+		values = append(values, cur.value)
+		cur = cur.getNextNode(0)
+	}
+	return values, end - start + 1
+
 }

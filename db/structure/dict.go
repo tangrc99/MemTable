@@ -105,6 +105,18 @@ func (dict *Dict) Delete(key string) bool {
 	return false
 }
 
+func (dict *Dict) DeleteGet(key string) any {
+	shard := dict.countShard(key)
+
+	if value, exist := (*shard)[key]; exist {
+		delete(*shard, key)
+		dict.count--
+		return value
+	}
+
+	return nil
+}
+
 func (dict *Dict) Size() int {
 	return dict.count
 }

@@ -12,28 +12,49 @@ func NewZSet() *ZSet {
 	}
 }
 
-func (zset *ZSet) Insert(key string, score float32) {
+func (zset *ZSet) Add(score float32, key string) {
 
 	old, exist := zset.dict.Get(key)
 
 	if exist {
-		zset.dict.SetIfExist(key, score)
+
+		// 如果存在则需要先删除跳跃表中原来的键值对
+		zset.dict.Set(key, score)
+		zset.skipList.Delete(old.(float32))
 		zset.skipList.Insert(score, key)
 
 	} else {
-		// 如果存在则需要先删除跳跃表中原来的键值对
-		zset.dict.SetIfNotExist(key, score)
-		zset.skipList.Delete(old.(float32))
+		zset.dict.Set(key, score)
 		zset.skipList.Insert(score, key)
 	}
 }
 
-func (zset *ZSet) Delete(key string, score float32) {
+func (zset *ZSet) AddIfNotExist(score float32, key string) bool {
 
-	ok := zset.dict.Delete(key)
-	if ok {
-		zset.skipList.Delete(score)
+	_, exist := zset.dict.Get(key)
+
+	if exist {
+
+		return false
+
 	}
+
+	zset.dict.Set(key, score)
+	zset.skipList.Insert(score, key)
+
+	return true
+}
+
+func (zset *ZSet) Delete(key string) bool {
+
+	score := zset.dict.DeleteGet(key)
+
+	if score == nil {
+		return false
+	}
+
+	zset.skipList.Delete(score.(float32))
+	return true
 }
 
 func (zset *ZSet) Size() int {
@@ -43,6 +64,9 @@ func (zset *ZSet) Size() int {
 func (zset *ZSet) GetScoreByKey(key string) (float32, bool) {
 
 	score, ok := zset.dict.Get(key)
+	if !ok {
+		return -1, false
+	}
 	return score.(float32), ok
 }
 
@@ -64,4 +88,63 @@ func (zset *ZSet) CountByRange(min, max float32) int {
 
 func (zset *ZSet) PosByScore(score float32) int {
 	return zset.skipList.GetPosByKey(score)
+}
+
+func (zset *ZSet) ReviseScore(key string, score float32) bool {
+	old, exist := zset.dict.Get(key)
+
+	if exist {
+
+		return false
+
+	}
+
+	if old.(float32) == score {
+		return true
+	}
+
+	zset.skipList.Delete(old.(float32))
+	zset.skipList.Insert(score, key)
+	return true
+}
+
+func (zset *ZSet) IncrScore(key string, increment float32) (float32, bool) {
+	old, exist := zset.dict.Get(key)
+
+	if !exist {
+		return -1, false
+	}
+
+	if increment == 0 {
+		return old.(float32), true
+	}
+
+	zset.dict.Set(key, old.(float32)+increment)
+	zset.skipList.Delete(old.(float32))
+	zset.skipList.Insert(increment+old.(float32), key)
+	return increment + old.(float32), true
+}
+
+func (zset *ZSet) DeleteRange(start, end int) int {
+	keys, deleted := zset.skipList.DeletePos(start, end)
+
+	for _, key := range keys {
+		zset.dict.Delete(key.(string))
+	}
+
+	return deleted
+}
+
+func (zset *ZSet) DeleteRangeByScore(min, max float32) int {
+	keys, deleted := zset.skipList.DeleteRange(min, max)
+
+	for _, key := range keys {
+		zset.dict.Delete(key.(string))
+	}
+
+	return deleted
+}
+
+func (zset *ZSet) Pos(start, end int) ([]any, int) {
+	return zset.skipList.Pos(start, end)
 }

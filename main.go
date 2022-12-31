@@ -2,7 +2,7 @@ package main
 
 import (
 	"MemTable/config"
-	"MemTable/db"
+	"MemTable/db/structure"
 	"MemTable/server"
 	"fmt"
 )
@@ -37,21 +37,17 @@ func TrieTreeTest(s *[]string) {
 
 func main() {
 
-	chs := db.NewChannels()
-	notify := make(chan []byte)
-	chs.SubscribePath("/a/b", "1", &notify)
-
-	go func() {
-		println(chs.Publish("/a", []byte("sss")))
-	}()
-
-	println(<-notify)
-
-	chs.UnSubscribePath("/a/b", "1")
-	go func() {
-		println(chs.Publish("/a", []byte("sss")))
-	}()
-
+	sl := structure.NewSkipList(3)
+	sl.Insert(1, "1")
+	sl.Insert(2, "2")
+	sl.Insert(4, "4")
+	sl.Insert(5, "5")
+	vs, _ := sl.Pos(-2, -1)
+	for _, v := range vs {
+		println(v.(string))
+	}
+	//println(sl.Size())
+	//println(sl.Delete(2))
 	//str := "/a"
 	//
 	//paths := strings.Split(str, "/")

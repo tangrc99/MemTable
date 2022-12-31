@@ -5,3 +5,16 @@
 - 定时任务
 - 发布订阅（路径版本）
 - 持久化 AOF 和 RBD
+
+
+// 管道其实就是一次发送了多条命令
+[root@VM_0_4_centos ~]# echo -e "set k1000 1000\n incr k1000\n get k1000\n" | nc localhost 6379
++OK
+:1001
+$4
+1001
+[root@VM_0_4_centos ~]# redis-cli
+127.0.0.1:6379> keys *
+1) "k1000"
+   127.0.0.1:6379> get k1000
+   "1001"
