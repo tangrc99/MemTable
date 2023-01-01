@@ -142,3 +142,25 @@ func (db_ *DataBase) RandomKey() (string, bool) {
 	}
 	return "", false
 }
+
+// CleanTTLKeys 在 db 中随机抽取 samples 个数的 ttl key，如果过期则删除，并返回删除掉的个数
+func (db_ *DataBase) CleanTTLKeys(samples int) int {
+
+	now := time.Now().Unix()
+
+	ttls := db_.ttlKeys.Random(samples)
+	deleted := 0
+	for key, expire := range ttls {
+		if expire.(int64) < now {
+			deleted++
+			db_.ttlKeys.Delete(key)
+			db_.dict.Delete(key)
+		}
+	}
+	return deleted
+}
+
+func (db_ *DataBase) Clear() {
+	db_.dict = structure.NewDict(12)
+	db_.ttlKeys = structure.NewDict(1)
+}

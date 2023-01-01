@@ -19,16 +19,19 @@ const (
 )
 
 type Client struct {
-	cmd [][]byte  // 当前命令
+	cmd [][]byte // 当前命令
+	raw []byte   // 当前命令的 resp 格式
+
 	cnn net.Conn  // 连接实例
 	id  uuid.UUID // Cli 编号
 	tp  time.Time // 通信时间戳
 
 	status ClientStatus // 状态 0 等待连接 1 正常 -1 退出 -2 异常
 
-	db   *db.DataBase  // 数据库的序号
-	exit chan struct{} // 退出标志
-	res  chan []byte   // 回包
+	db    *db.DataBase // 数据库的序号
+	dbSeq int
+	exit  chan struct{} // 退出标志
+	res   chan []byte   // 回包
 
 	chs map[string]struct{} //订阅频道
 	msg chan []byte         // 用于订阅通知
@@ -41,6 +44,7 @@ func NewClient(conn net.Conn, dbImpl *db.DataBase) *Client {
 		tp:     time.Now(),
 		status: WAIT,
 		db:     dbImpl,
+		dbSeq:  0,
 		exit:   make(chan struct{}, 1),
 		res:    make(chan []byte, 10),
 		chs:    make(map[string]struct{}),

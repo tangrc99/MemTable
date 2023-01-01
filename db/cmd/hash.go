@@ -346,6 +346,7 @@ func hLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	return resp.MakeIntData(int64(count))
 }
+
 func hStrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	e, ok := CheckCommandAndLength(&cmd, "hstrlen", 3)
 	if !ok {

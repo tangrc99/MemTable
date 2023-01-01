@@ -6,9 +6,11 @@ import (
 	"MemTable/db/cmd"
 	"MemTable/logger"
 	"MemTable/resp"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -25,6 +27,8 @@ type Server struct {
 	listener net.Listener
 	quit     bool
 	quitFlag chan struct{}
+
+	aof *AOFBuffer
 }
 
 func NewServer(url string) *Server {
@@ -45,11 +49,12 @@ func NewServer(url string) *Server {
 		commands: make(chan *Client, 1000),
 		quit:     false,
 		quitFlag: make(chan struct{}),
+		aof:      NewAOFBuffer("/Users/tangrenchu/GolandProjects/MemTable/logs/aof"),
 	}
 }
 
 func (s *Server) handleRead(conn net.Conn) {
-	//data := make([]byte, 1000)
+
 	client := NewClient(conn, s.dbs[0])
 
 	ch := resp.ParseStream(conn)
@@ -81,6 +86,8 @@ func (s *Server) handleRead(conn net.Conn) {
 			}
 
 			client.cmd = array.ToCommand()
+			client.raw = parsed.Data.ToBytes()
+
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
 			s.commands <- client
 
@@ -97,6 +104,7 @@ func (s *Server) handleRead(conn net.Conn) {
 
 		case <-client.exit:
 			running = false
+
 		case msg := <-client.msg:
 			// 写入发布订阅消息
 			_, err := conn.Write(msg)
@@ -130,12 +138,7 @@ func (s *Server) handleRead(conn net.Conn) {
 
 func (s *Server) eventLoop() {
 
-	// 每 300 秒清理一次过期客户端
-	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
-		logger.Debug("TimeEvent: Remove Inactive Clients")
-		s.clis.RemoveLongNotUsed(1, 300*time.Second)
-	}, time.Now().Add(300*time.Second).Unix(), 300*time.Second,
-	))
+	s.initTimeEvents()
 
 	for !s.quit {
 		timer := time.NewTimer(time.Second)
@@ -152,7 +155,6 @@ func (s *Server) eventLoop() {
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
 				logger.Info("EventLoop: Remove Closed Client", cli.id.String())
-				// fixme : 删除订阅
 				cli.UnSubscribeAll(s.Chs)
 				s.clis.RemoveClient(cli)
 				continue
@@ -169,14 +171,20 @@ func (s *Server) eventLoop() {
 			// 更新时间戳
 			cli.UpdateTimestamp()
 
-			// 执行命令
-			// todo : 处理发布订阅
+			// 执行服务命令
 			res := ExecCommand(s, cli, cli.cmd)
 			if res == nil {
+				// 执行数据库命令
 				res = cmd.ExecCommand(cli.db, cli.cmd)
+
+				// 只有数据库命令需要持久化
+				dbStr := strconv.Itoa(cli.dbSeq)
+				s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+				s.aof.Append(cli.raw)
 			}
 
 			// 写入回包
+
 			cli.res <- res.ToBytes() // fixme : 这里有阻塞的风险
 
 		}
@@ -187,6 +195,10 @@ func (s *Server) eventLoop() {
 
 	// 关闭监听
 	_ = s.listener.Close()
+
+	// aof 刷盘
+	s.aof.Flush()
+	s.aof.Sync()
 
 	// 关闭所有的客户端协程
 	for s.clis.Size() != 0 {
@@ -216,7 +228,48 @@ func (s *Server) acceptLoop() {
 
 }
 
+func (s *Server) initTimeEvents() {
+
+	// 每 300 秒清理一次过期客户端
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("TimeEvent: Remove Inactive Clients")
+		s.clis.RemoveLongNotUsed(1, 300*time.Second)
+	}, time.Now().Add(300*time.Second).Unix(), 300*time.Second,
+	))
+
+	// 过期 key 清理
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("TimeEvent: Remove Expired Keys")
+
+		for _, dataBase := range s.dbs {
+			// 抽样 20 个，如果有 5 个过期，则再次删除
+			for dataBase.CleanTTLKeys(20) >= 5 {
+			}
+		}
+
+	}, time.Now().Add(time.Second).Unix(), time.Second,
+	))
+
+	// AOF 刷盘
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("TimeEvent: AOF FLUSH")
+
+		s.aof.Flush()
+		s.aof.Sync()
+
+	}, time.Now().Add(time.Second).Unix(), time.Second,
+	))
+
+	// bgsave 持久化 trigger
+
+	// 更新服务端信息
+
+	// 从服务器同步操作
+}
+
 func (s *Server) Start() {
+
+	// 初始化操作
 
 	err := logger.Init(config.Conf.LogDir, "bin.log", logger.DEBUG)
 	if err != nil {
