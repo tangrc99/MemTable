@@ -12,7 +12,11 @@ func ping(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
-	return resp.MakeStringData("pong")
+	if len(cmd) == 2 {
+		return resp.MakeBulkData(cmd[1])
+	}
+
+	return resp.MakeBulkData([]byte("pong"))
 }
 
 func quit(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
@@ -39,12 +43,11 @@ func selectDB(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
-	if dbSeq > server.dbNum {
+	if dbSeq >= server.dbNum {
 		return resp.MakeErrorData("ERR DB index is out of range")
 	}
 
 	cli.dbSeq = dbSeq
-	cli.db = server.dbs[dbSeq]
 
 	return resp.MakeStringData("OK")
 }

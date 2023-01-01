@@ -68,7 +68,7 @@ type AOFBuffer struct {
 }
 
 func NewAOFBuffer(filename string) *AOFBuffer {
-	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		println(err.Error())
 	}

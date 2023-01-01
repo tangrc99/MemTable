@@ -55,7 +55,7 @@ func NewServer(url string) *Server {
 
 func (s *Server) handleRead(conn net.Conn) {
 
-	client := NewClient(conn, s.dbs[0])
+	client := NewClient(conn)
 
 	ch := resp.ParseStream(conn)
 
@@ -175,16 +175,17 @@ func (s *Server) eventLoop() {
 			res := ExecCommand(s, cli, cli.cmd)
 			if res == nil {
 				// 执行数据库命令
-				res = cmd.ExecCommand(cli.db, cli.cmd)
+				res = cmd.ExecCommand(s.dbs[cli.dbSeq], cli.cmd)
 
-				// 只有数据库命令需要持久化
-				dbStr := strconv.Itoa(cli.dbSeq)
-				s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-				s.aof.Append(cli.raw)
+				if len(cli.raw) > 0 {
+					// 只有数据库命令需要持久化
+					dbStr := strconv.Itoa(cli.dbSeq)
+					s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+					s.aof.Append(cli.raw)
+				}
 			}
 
 			// 写入回包
-
 			cli.res <- res.ToBytes() // fixme : 这里有阻塞的风险
 
 		}
@@ -276,8 +277,6 @@ func (s *Server) Start() {
 		return
 	}
 
-	s.listener, err = net.Listen("tcp", "127.0.0.1:6379")
-
 	logger.Info("Server: Listen at", s.url)
 
 	if err != nil {
@@ -286,10 +285,16 @@ func (s *Server) Start() {
 
 	go s.eventLoop()
 
+	s.recoverFromAOF("/Users/tangrenchu/GolandProjects/MemTable/logs/aof")
+
+	// 开启监听
+	s.listener, err = net.Listen("tcp", "127.0.0.1:6379")
 	go s.acceptLoop()
 
 	quit := make(chan os.Signal)
+
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // 接受软中断信号并且传递到 channel
+
 	<-quit
 
 	// 通知主线程在完成任务后退出，防止有任务进行到一半
@@ -297,4 +302,40 @@ func (s *Server) Start() {
 	<-s.quitFlag
 
 	logger.Info("Server Shutdown...")
+}
+
+func (s *Server) recoverFromAOF(filename string) {
+	reader, err := os.OpenFile(filename, os.O_RDONLY, 777)
+	if err != nil {
+		println(err.Error())
+		os.Exit(-1)
+	}
+
+	client := NewClient(nil)
+
+	ch := resp.ParseStream(reader)
+
+	for parsedRes := range ch {
+
+		if parsedRes.Err != nil {
+
+			if e := parsedRes.Err.Error(); e != "EOF" {
+				logger.Error("Client", client.id, "Read Error:", e)
+			}
+			break
+		}
+
+		array, ok := parsedRes.Data.(*resp.ArrayData)
+		if !ok {
+			logger.Error("Client", client.id, "parse Command Error")
+			os.Exit(-1)
+		}
+
+		client.cmd = array.ToCommand()
+
+		// 如果解析完毕有可以执行的命令，则发送给主线程执行
+		s.commands <- client
+
+		<-client.res
+	}
 }

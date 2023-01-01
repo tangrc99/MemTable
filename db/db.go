@@ -164,3 +164,7 @@ func (db_ *DataBase) Clear() {
 	db_.dict = structure.NewDict(12)
 	db_.ttlKeys = structure.NewDict(1)
 }
+
+func (db_ *DataBase) Size() int {
+	return db_.dict.Size()
+}

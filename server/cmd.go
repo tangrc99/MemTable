@@ -17,6 +17,7 @@ func RegisterCommand(name string, cmd Command) {
 func init() {
 	RegisterPubSubCommands()
 	RegisterConnectionCommands()
+	RegisterServerCommand()
 }
 
 func ExecCommand(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
