@@ -280,6 +280,8 @@ func (dict *Dict) Exist(key string) bool {
 
 func (dict *Dict) Random(num int) map[string]any {
 
+	// fixme :  这样的效率似乎不如 remain/size,后者收敛比较快
+
 	selected := make(map[string]any)
 
 	// 这里优化为直接遍历
