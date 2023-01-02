@@ -377,18 +377,18 @@ func appendStr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func RegisterStringCommands() {
 
-	RegisterCommand("set", set)
-	RegisterCommand("get", get)
-	RegisterCommand("getset", getset)
-	RegisterCommand("strlen", strlen)
-	RegisterCommand("getrange", getRange)
-	RegisterCommand("setrange", setRange)
-	RegisterCommand("mget", mget)
-	RegisterCommand("mset", mset)
-	RegisterCommand("incr", incr)
-	RegisterCommand("incrby", incrby)
-	RegisterCommand("decr", decr)
-	RegisterCommand("decrby", decrby)
-	RegisterCommand("append", appendStr)
+	RegisterCommand("set", set, WR)
+	RegisterCommand("get", get, RD)
+	RegisterCommand("getset", getset, WR)
+	RegisterCommand("strlen", strlen, RD)
+	RegisterCommand("getrange", getRange, RD)
+	RegisterCommand("setrange", setRange, WR)
+	RegisterCommand("mget", mget, RD)
+	RegisterCommand("mset", mset, WR)
+	RegisterCommand("incr", incr, WR)
+	RegisterCommand("incrby", incrby, WR)
+	RegisterCommand("decr", decr, WR)
+	RegisterCommand("decrby", decrby, WR)
+	RegisterCommand("append", appendStr, WR)
 
 }

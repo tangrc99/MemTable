@@ -17,14 +17,6 @@ const (
 	LIST
 )
 
-type ValueStatus int
-
-const (
-	EMPTY ValueStatus = iota
-	MATCH
-	MISMATCH
-)
-
 func CheckType(value any, vt ValueType) resp.RedisData {
 
 	// check if the value is string

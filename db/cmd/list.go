@@ -464,16 +464,16 @@ func bRPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
 */
 
 func RegisterListCommands() {
-	RegisterCommand("llen", lLen)
-	RegisterCommand("lpush", lPush)
-	RegisterCommand("lpop", lPop)
-	RegisterCommand("rpush", rPush)
-	RegisterCommand("rpop", rPop)
-	RegisterCommand("lindex", lIndex)
-	RegisterCommand("lpos", lPos)
-	RegisterCommand("lset", lSet)
-	RegisterCommand("lrem", lRem)
-	RegisterCommand("lrange", lRange)
-	RegisterCommand("ltrim", lTrim)
-	RegisterCommand("lmove", lMove)
+	RegisterCommand("llen", lLen, RD)
+	RegisterCommand("lpush", lPush, WR)
+	RegisterCommand("lpop", lPop, WR)
+	RegisterCommand("rpush", rPush, WR)
+	RegisterCommand("rpop", rPop, WR)
+	RegisterCommand("lindex", lIndex, RD)
+	RegisterCommand("lpos", lPos, RD)
+	RegisterCommand("lset", lSet, WR)
+	RegisterCommand("lrem", lRem, WR)
+	RegisterCommand("lrange", lRange, RD)
+	RegisterCommand("ltrim", lTrim, WR)
+	RegisterCommand("lmove", lMove, WR)
 }

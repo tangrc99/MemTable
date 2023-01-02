@@ -172,17 +172,16 @@ func (s *Server) eventLoop() {
 			cli.UpdateTimestamp()
 
 			// 执行服务命令
-			res := ExecCommand(s, cli, cli.cmd)
+			res, isWriteCommand := ExecCommand(s, cli, cli.cmd)
+
 			if res == nil {
 				// 执行数据库命令
-				res = cmd.ExecCommand(s.dbs[cli.dbSeq], cli.cmd)
+				res, isWriteCommand = cmd.ExecCommand(s.dbs[cli.dbSeq], cli.cmd)
+			}
 
-				if len(cli.raw) > 0 {
-					// 只有数据库命令需要持久化
-					dbStr := strconv.Itoa(cli.dbSeq)
-					s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-					s.aof.Append(cli.raw)
-				}
+			// 只有写命令需要完成aof持久化
+			if isWriteCommand {
+				s.appendAOF(cli)
 			}
 
 			// 写入回包
@@ -302,6 +301,23 @@ func (s *Server) Start() {
 	<-s.quitFlag
 
 	logger.Info("Server Shutdown...")
+}
+
+func (s *Server) appendAOF(cli *Client) {
+
+	if len(cli.raw) <= 0 {
+		return
+	}
+
+	// 只有写命令需要持久化
+
+	if cli.dbSeq != 0 {
+		// 多数据库场景需要加入数据库选择语句
+		dbStr := strconv.Itoa(cli.dbSeq)
+		s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+	}
+
+	s.aof.Append(cli.raw)
 }
 
 func (s *Server) recoverFromAOF(filename string) {

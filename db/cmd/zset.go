@@ -534,19 +534,19 @@ func zRevRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 //func zUnionStore(db *db.DataBase, cmd [][]byte) resp.RedisData             {}
 
 func RegisterZSetCommands() {
-	RegisterCommand("zadd", zADD)
-	RegisterCommand("zcount", zCount)
-	RegisterCommand("zcard", zCard)
-	RegisterCommand("zrem", zRem)
-	RegisterCommand("zincrby", zIncrBy)
-	RegisterCommand("zscore", zScore)
-	RegisterCommand("zrank", zRank)
-	RegisterCommand("zrevrank", zRevRank)
-	RegisterCommand("zremrangebyscore", zRemRangeByScore)
-	RegisterCommand("zremrangebyrank", zRemRangeByRank)
-	RegisterCommand("zrange", zRange)
-	RegisterCommand("zrevrange", zRevRange)
-	RegisterCommand("zrangebyscore", zRangeByScore)
-	RegisterCommand("zrevrangebyscire", zRevRangeByScore)
+	RegisterCommand("zadd", zADD, WR)
+	RegisterCommand("zcount", zCount, RD)
+	RegisterCommand("zcard", zCard, RD)
+	RegisterCommand("zrem", zRem, WR)
+	RegisterCommand("zincrby", zIncrBy, WR)
+	RegisterCommand("zscore", zScore, RD)
+	RegisterCommand("zrank", zRank, RD)
+	RegisterCommand("zrevrank", zRevRank, RD)
+	RegisterCommand("zremrangebyscore", zRemRangeByScore, WR)
+	RegisterCommand("zremrangebyrank", zRemRangeByRank, WR)
+	RegisterCommand("zrange", zRange, RD)
+	RegisterCommand("zrevrange", zRevRange, RD)
+	RegisterCommand("zrangebyscore", zRangeByScore, RD)
+	RegisterCommand("zrevrangebyscire", zRevRangeByScore, RD)
 
 }

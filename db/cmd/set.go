@@ -533,7 +533,7 @@ func sUnion(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	res := make([]resp.RedisData, len(ks))
 	pos := 0
-	for k, _ := range ks {
+	for k := range ks {
 		res[pos] = resp.MakeBulkData([]byte(k))
 		pos++
 	}
@@ -586,18 +586,19 @@ func sScan(db *db.DataBase, cmd [][]byte) resp.RedisData {}
 */
 
 func RegisterSetCommands() {
-	RegisterCommand("sadd", sadd)
-	RegisterCommand("scard", scard)
-	RegisterCommand("sismember", sismember)
-	RegisterCommand("srem", sRem)
-	RegisterCommand("smembers", sMembers)
-	RegisterCommand("spop", sPop)
-	RegisterCommand("srandmember", sRandMember)
-	RegisterCommand("smove", sMove)
-	RegisterCommand("sdiff", sDiff)
-	RegisterCommand("sdiffstore", sDiffStore)
-	RegisterCommand("sinter", sInter)
-	RegisterCommand("sinterstore", sInterStore)
-	RegisterCommand("sunion", sUnion)
-	RegisterCommand("sunionstore", sUnionStore)
+	RegisterCommand("sadd", sadd, WR)
+	RegisterCommand("scard", scard, RD)
+	RegisterCommand("sismember", sismember, RD)
+	RegisterCommand("srem", sRem, WR)
+	RegisterCommand("smembers", sMembers, RD)
+	RegisterCommand("spop", sPop, RD)
+	RegisterCommand("srandmember", sRandMember, RD)
+	RegisterCommand("smove", sMove, WR)
+
+	RegisterCommand("sdiff", sDiff, RD)
+	RegisterCommand("sdiffstore", sDiffStore, WR)
+	RegisterCommand("sinter", sInter, RD)
+	RegisterCommand("sinterstore", sInterStore, WR)
+	RegisterCommand("sunion", sUnion, RD)
+	RegisterCommand("sunionstore", sUnionStore, WR)
 }

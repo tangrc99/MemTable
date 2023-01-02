@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func ping(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func ping(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "ping", 1)
 	if !ok {
@@ -53,7 +53,7 @@ func selectDB(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 }
 
 func RegisterConnectionCommands() {
-	RegisterCommand("ping", ping)
-	RegisterCommand("quit", quit)
-	RegisterCommand("select", selectDB)
+	RegisterCommand("ping", ping, RD)
+	RegisterCommand("quit", quit, RD)
+	RegisterCommand("select", selectDB, RD)
 }

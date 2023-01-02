@@ -258,15 +258,15 @@ func typeKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func RegisterKeyCommands() {
 
-	RegisterCommand("del", del)
-	RegisterCommand("exists", exists)
-	RegisterCommand("keys", keys)
-	RegisterCommand("ttl", ttl)
-	RegisterCommand("expire", expire)
+	RegisterCommand("del", del, WR)
+	RegisterCommand("exists", exists, RD)
+	RegisterCommand("keys", keys, RD)
+	RegisterCommand("ttl", ttl, RD)
+	RegisterCommand("expire", expire, WR)
 	//RegisterCommand("expireat", expireAt)
-	RegisterCommand("pexpire", pExpire)
+	RegisterCommand("pexpire", pExpire, WR)
 	//RegisterCommand("pexpireat", pExpireAt)
-	RegisterCommand("rename", rename)
-	RegisterCommand("type", typeKey)
-	RegisterCommand("randomkey", randomKey)
+	RegisterCommand("rename", rename, WR)
+	RegisterCommand("type", typeKey, RD)
+	RegisterCommand("randomkey", randomKey, RD)
 }

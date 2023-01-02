@@ -407,7 +407,7 @@ func hRandField(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	res := make([]resp.RedisData, len(selected))
 	i := 0
-	for key, _ := range selected {
+	for key := range selected {
 		res[i] = resp.MakeBulkData([]byte(key))
 		i++
 	}
@@ -415,17 +415,17 @@ func hRandField(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func RegisterHashCommands() {
-	RegisterCommand("hset", hSet)
-	RegisterCommand("hget", hGet)
-	RegisterCommand("hexists", hExists)
-	RegisterCommand("hdel", hDel)
-	RegisterCommand("hmset", hMSet)
-	RegisterCommand("hmget", hMGet)
-	RegisterCommand("hgetall", hGetAll)
-	RegisterCommand("hkeys", hKeys)
-	RegisterCommand("hvals", hVals)
-	RegisterCommand("hincrby", hIncrBy)
-	RegisterCommand("hlen", hLen)
-	RegisterCommand("hstrlen", hStrLen)
-	RegisterCommand("hrandfield", hRandField)
+	RegisterCommand("hset", hSet, WR)
+	RegisterCommand("hget", hGet, RD)
+	RegisterCommand("hexists", hExists, RD)
+	RegisterCommand("hdel", hDel, WR)
+	RegisterCommand("hmset", hMSet, WR)
+	RegisterCommand("hmget", hMGet, RD)
+	RegisterCommand("hgetall", hGetAll, RD)
+	RegisterCommand("hkeys", hKeys, RD)
+	RegisterCommand("hvals", hVals, RD)
+	RegisterCommand("hincrby", hIncrBy, WR)
+	RegisterCommand("hlen", hLen, RD)
+	RegisterCommand("hstrlen", hStrLen, RD)
+	RegisterCommand("hrandfield", hRandField, RD)
 }

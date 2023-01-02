@@ -22,7 +22,7 @@ func save(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeBulkData([]byte("pong"))
 }
 
-func shutdown(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func shutdown(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "shutdown", 1)
 	if !ok {
@@ -91,8 +91,8 @@ func dbsize(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 }
 
 func RegisterServerCommand() {
-	RegisterCommand("shutdown", shutdown)
-	RegisterCommand("flushdb", flushdb)
-	RegisterCommand("flushall", flushall)
-	RegisterCommand("dbsize", dbsize)
+	RegisterCommand("shutdown", shutdown, RD)
+	RegisterCommand("flushdb", flushdb, WR)
+	RegisterCommand("flushall", flushall, WR)
+	RegisterCommand("dbsize", dbsize, RD)
 }

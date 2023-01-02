@@ -6,12 +6,23 @@ import (
 	"strings"
 )
 
+type ExecStatus int
+
+const (
+	RD ExecStatus = iota
+	WR
+)
+
 type Command = func(server *Server, cli *Client, cmd [][]byte) resp.RedisData
 
 var CommandTable = make(map[string]Command)
+var WriteCommands = make(map[string]struct{})
 
-func RegisterCommand(name string, cmd Command) {
+func RegisterCommand(name string, cmd Command, status ExecStatus) {
 	CommandTable[name] = cmd
+	if status == WR {
+		WriteCommands[name] = struct{}{}
+	}
 }
 
 func init() {
@@ -20,18 +31,20 @@ func init() {
 	RegisterServerCommand()
 }
 
-func ExecCommand(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func ExecCommand(server *Server, cli *Client, cmd [][]byte) (resp.RedisData, bool) {
 
 	if len(cmd) == 0 {
-		return resp.MakeErrorData("error: empty command")
+		return resp.MakeErrorData("error: empty command"), false
 	}
+
+	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmd[0]))]
 
 	f, ok := CommandTable[strings.ToLower(string(cmd[0]))]
 	if !ok {
-		return nil
+		return nil, isWriteCommand
 	}
 
-	return f(server, cli, cmd)
+	return f(server, cli, cmd), isWriteCommand
 }
 
 func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
