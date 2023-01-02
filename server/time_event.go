@@ -132,9 +132,16 @@ func (events *TimeEventList) Size() int {
 	return events.list.Size()
 }
 
-func (events *TimeEventList) ExecuteManyBefore(duration time.Duration) {
+func (events *TimeEventList) ExecuteManyDuring(duration time.Duration) {
 	expired := time.Now().Add(duration).Unix()
 
+	finished := 0
+
 	for expired > time.Now().Unix() && events.ExecuteOneIfExpire() {
+		finished++
+	}
+
+	if finished > 0 {
+		logger.Info("TimeEventList: Finished", finished, "Tasks")
 	}
 }

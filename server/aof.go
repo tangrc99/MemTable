@@ -48,7 +48,7 @@ func (buff *bufferPage) flush(writer *os.File) bool {
 
 		w, err := writer.Write(buff.content[wn:buff.pos])
 		if err != nil {
-			logger.Error("Aof: ", err.Error())
+			logger.Error("Aof:", err.Error())
 			os.Exit(-1)
 		}
 		wn += w
@@ -73,9 +73,9 @@ type AOFBuffer struct {
 }
 
 func NewAOFBuffer(filename string) *AOFBuffer {
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
-		logger.Error("Aof: ", err.Error())
+		logger.Error("Aof:", err.Error())
 	}
 
 	buffers := &AOFBuffer{

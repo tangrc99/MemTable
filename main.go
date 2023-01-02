@@ -2,8 +2,10 @@ package main
 
 import (
 	"MemTable/config"
+	"MemTable/logger"
 	"MemTable/server"
 	"fmt"
+	"time"
 )
 
 func TrieTreeTest(s *[]string) {
@@ -36,6 +38,14 @@ func TrieTreeTest(s *[]string) {
 
 func main() {
 
+	ss := server.NewStatus()
+
+	now := time.Now()
+
+	ss.UpdateSysStatus()
+
+	println(time.Since(now).Milliseconds())
+
 	//println(sl.Size())
 	//println(sl.Delete(2))
 	//str := "/a"
@@ -47,6 +57,11 @@ func main() {
 	//	println(path)
 	//}
 	//return
+
+	err := logger.Init(config.Conf.LogDir, "bin.log", logger.INFO)
+	if err != nil {
+		return
+	}
 
 	s := server.NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
 	s.Start()

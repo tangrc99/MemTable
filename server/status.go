@@ -1,14 +1,22 @@
 package server
 
+import (
+	"MemTable/utils/sys_status"
+)
+
 type Status struct {
+	sys_status.SysStatus
+}
 
-	// server 状态
+func NewStatus() *Status {
 
-	// 客户端数量
+	s := &Status{}
 
-	// 内存状况
+	s.UpdateSysStatus()
 
-	// CPU
+	return s
+}
 
-	// 键值对数量
+func (s *Status) UpdateStatus() {
+	s.UpdateSysStatus()
 }

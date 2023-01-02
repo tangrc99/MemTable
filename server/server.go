@@ -1,11 +1,11 @@
 package server
 
 import (
-	"MemTable/config"
 	"MemTable/db"
 	"MemTable/db/cmd"
 	"MemTable/logger"
 	"MemTable/resp"
+	"MemTable/utils/gopool"
 	"fmt"
 	"net"
 	"os"
@@ -29,6 +29,8 @@ type Server struct {
 	quitFlag chan struct{}
 
 	aof *AOFBuffer
+
+	sts *Status
 }
 
 func NewServer(url string) *Server {
@@ -50,6 +52,7 @@ func NewServer(url string) *Server {
 		quit:     false,
 		quitFlag: make(chan struct{}),
 		aof:      NewAOFBuffer("/Users/tangrenchu/GolandProjects/MemTable/logs/aof"),
+		sts:      NewStatus(),
 	}
 }
 
@@ -141,12 +144,16 @@ func (s *Server) eventLoop() {
 	s.initTimeEvents()
 
 	for !s.quit {
-		timer := time.NewTimer(time.Second)
+
+		timer := time.NewTimer(100 * time.Millisecond)
+
 		select {
+
 		case <-timer.C:
 			logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务
-			s.tl.ExecuteOneIfExpire()
+			s.tl.ExecuteManyDuring(25 * time.Millisecond)
+			//s.tl.ExecuteOneIfExpire()
 
 		case cli := <-s.commands:
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
@@ -154,7 +161,7 @@ func (s *Server) eventLoop() {
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
-				logger.Info("EventLoop: Remove Closed Client", cli.id.String())
+				logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
 				cli.UnSubscribeAll(s.Chs)
 				s.clis.RemoveClient(cli)
 				continue
@@ -165,7 +172,7 @@ func (s *Server) eventLoop() {
 
 			// 如果是新连接
 			if ok {
-				logger.Info("EventLoop: New Client", cli.id.String())
+				logger.Debug("EventLoop: New Client", cli.id.String())
 			}
 
 			// 更新时间戳
@@ -216,12 +223,20 @@ func backgroundLoop() {
 }
 
 func (s *Server) acceptLoop() {
+
+	pool := gopool.NewPool(10000, 0, 2000)
+
+	logger.Info("Server: Start Listen")
+
 	for !s.quit {
 		conn, err := s.listener.Accept()
 		if err != nil {
 			break
 		}
-		go s.handleRead(conn)
+		pool.Schedule(func() {
+			s.handleRead(conn)
+		})
+		//go s.handleRead(conn)
 	}
 	logger.Info("Server: Shutdown Listener")
 
@@ -232,6 +247,7 @@ func (s *Server) initTimeEvents() {
 	// 每 300 秒清理一次过期客户端
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: Remove Inactive Clients")
+
 		s.clis.RemoveLongNotUsed(1, 300*time.Second)
 	}, time.Now().Add(300*time.Second).Unix(), 300*time.Second,
 	))
@@ -261,6 +277,13 @@ func (s *Server) initTimeEvents() {
 	// bgsave 持久化 trigger
 
 	// 更新服务端信息
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("TimeEvent: Update Status")
+
+		s.sts.UpdateStatus()
+
+	}, time.Now().Add(time.Second).Unix(), time.Second,
+	))
 
 	// 从服务器同步操作
 }
@@ -269,23 +292,19 @@ func (s *Server) Start() {
 
 	// 初始化操作
 
-	err := logger.Init(config.Conf.LogDir, "bin.log", logger.DEBUG)
-	if err != nil {
-		return
-	}
-
 	logger.Info("Server: Listen at", s.url)
-
-	if err != nil {
-		return
-	}
 
 	go s.eventLoop()
 
 	s.recoverFromAOF("/Users/tangrenchu/GolandProjects/MemTable/logs/aof")
 
 	// 开启监听
+	var err error
 	s.listener, err = net.Listen("tcp", "127.0.0.1:6379")
+	if err != nil {
+		logger.Error("Server:", err.Error())
+	}
+
 	go s.acceptLoop()
 
 	quit := make(chan os.Signal)
@@ -321,8 +340,8 @@ func (s *Server) appendAOF(cli *Client) {
 func (s *Server) recoverFromAOF(filename string) {
 	reader, err := os.OpenFile(filename, os.O_RDONLY, 777)
 	if err != nil {
-		println(err.Error())
-		os.Exit(-1)
+		logger.Warning("AOF: File Not Exists")
+		return
 	}
 
 	client := NewClient(nil)

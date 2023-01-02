@@ -75,13 +75,13 @@ func (cli *Client) UnSubscribeAll(chs *db.Channels) {
 
 type ClientList struct {
 	list    *structure.List
-	UUIDSet map[uuid.UUID]struct{} // 用于判断是否为新链接
+	UUIDSet map[uuid.UUID]*structure.ListNode // 用于判断是否为新链接
 }
 
 func NewClientList() *ClientList {
 	return &ClientList{
 		list:    structure.NewList(),
-		UUIDSet: make(map[uuid.UUID]struct{}),
+		UUIDSet: make(map[uuid.UUID]*structure.ListNode),
 	}
 }
 
@@ -98,8 +98,9 @@ func (clients *ClientList) AddClientIfNotExist(cli *Client) bool {
 	}
 
 	cli.status = CONNECTED
-	clients.UUIDSet[cli.id] = struct{}{}
+	// 将客户端加入到链表头
 	clients.list.PushFront(cli)
+	clients.UUIDSet[cli.id] = clients.list.FrontNode()
 	return true
 }
 
@@ -114,12 +115,17 @@ func (clients *ClientList) removeClientWithPosition(cli *Client, node *structure
 
 // RemoveClient 不知道具体位置时，需要遍历
 func (clients *ClientList) RemoveClient(cli *Client) {
-	for node := clients.list.FrontNode(); node != nil; node = node.Next() {
-		if node.Value.(*Client).id == cli.id {
-			clients.removeClientWithPosition(cli, node)
-			break
-		}
+
+	if cli == nil {
+		return
 	}
+
+	node, exist := clients.UUIDSet[cli.id]
+	if !exist {
+		return
+	}
+
+	clients.removeClientWithPosition(cli, node)
 }
 
 func (clients *ClientList) RemoveLongNotUsed(num int, d time.Duration) {
@@ -127,24 +133,25 @@ func (clients *ClientList) RemoveLongNotUsed(num int, d time.Duration) {
 	// 早于该时间的视为过期
 	expired := time.Now().Add(-1 * d)
 
-	for node := clients.list.FrontNode(); node != nil && num >= 0; {
+	// 客户端列表尾端的时间戳会减小
+	for node := clients.list.BackNode(); node != nil && num >= 0; {
 		cli, ok := node.Value.(*Client)
 
 		if !ok {
 			logger.Error("ClientList: type is not Client")
-			next := node.Next()
+			prev := node.Prev()
 			clients.list.RemoveNode(node)
-			node = next
+			node = prev
 
 		} else if cli.tp.Before(expired) || cli.status == ERROR || cli.status == EXIT {
 			// 清理过期和失效客户端
-			next := node.Next()
+			prev := node.Prev()
 			clients.removeClientWithPosition(cli, node)
-			node = next
+			node = prev
 			num--
 
 		} else {
-			node = node.Next()
+			node = node.Prev()
 		}
 
 	}
@@ -152,4 +159,21 @@ func (clients *ClientList) RemoveLongNotUsed(num int, d time.Duration) {
 
 func (clients *ClientList) Size() int {
 	return clients.list.Size()
+}
+
+func (clients *ClientList) UpdateTimestamp(cli *Client) {
+
+	if cli == nil {
+		return
+	}
+
+	node, exist := clients.UUIDSet[cli.id]
+	if !exist {
+		return
+	}
+
+	// 更新客户端列表，并且将其移动到首部
+	cli.tp = time.Now()
+	clients.list.RemoveNode(node)
+	clients.list.PushFront(cli)
 }

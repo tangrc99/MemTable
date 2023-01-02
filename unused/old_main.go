@@ -232,7 +232,7 @@ func main() {
 
 	time.Sleep(1 * time.Second)
 
-	events.ExecuteManyBefore(2 * time.Second)
+	events.ExecuteManyDuring(2 * time.Second)
 	//println(events.ExecuteOneIfExpire())
 	//println(events.ExecuteOneIfExpire())
 	//println(events.ExecuteOneIfExpire())
