@@ -197,8 +197,7 @@ func (s *Server) eventLoop() {
 	_ = s.listener.Close()
 
 	// aof 刷盘
-	s.aof.Flush()
-	s.aof.Sync()
+	s.aof.Quit()
 
 	// 关闭所有的客户端协程
 	for s.clis.Size() != 0 {
@@ -255,7 +254,6 @@ func (s *Server) initTimeEvents() {
 		logger.Debug("TimeEvent: AOF FLUSH")
 
 		s.aof.Flush()
-		s.aof.Sync()
 
 	}, time.Now().Add(time.Second).Unix(), time.Second,
 	))
