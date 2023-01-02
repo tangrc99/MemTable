@@ -8,6 +8,7 @@ import (
 type DataBase struct {
 	dict    *structure.Dict // 存储键值对
 	ttlKeys *structure.Dict // 存储过期键
+	watches *structure.Dict // 存储监视键
 }
 
 // NewDataBase Create a new database impl
@@ -15,6 +16,7 @@ func NewDataBase() *DataBase {
 	return &DataBase{
 		dict:    structure.NewDict(12),
 		ttlKeys: structure.NewDict(1),
+		watches: structure.NewDict(1),
 	}
 }
 
@@ -167,4 +169,67 @@ func (db_ *DataBase) Clear() {
 
 func (db_ *DataBase) Size() int {
 	return db_.dict.Size()
+}
+
+// 事务实现
+
+// Watch 监控一个键
+func (db_ *DataBase) Watch(key string, flag *bool) {
+
+	v, ok := db_.watches.Get(key)
+	if !ok {
+		flags := make(map[*bool]struct{})
+		flags[flag] = struct{}{}
+		db_.watches.Set(key, &flags)
+		return
+	}
+
+	flags := v.(*map[*bool]struct{})
+	(*flags)[flag] = struct{}{}
+}
+
+// UnWatch 取消监控
+func (db_ *DataBase) UnWatch(key string, flag *bool) {
+	v, ok := db_.watches.Get(key)
+	if !ok {
+		return
+	}
+	flags := v.(*map[*bool]struct{})
+	delete(*flags, flag)
+
+	if len(*flags) == 0 {
+		db_.watches.Delete(key)
+	}
+}
+
+// ReviseNotify 通知键修改
+func (db_ *DataBase) ReviseNotify(key string) {
+	v, ok := db_.watches.Get(key)
+	if !ok {
+		return
+	}
+	flags := v.(*map[*bool]struct{})
+
+	for flag := range *flags {
+		*flag = true
+	}
+}
+
+// ReviveNotifyAll 通知所有键修改，用于 flushdb 和 flushall 命令
+func (db_ *DataBase) ReviveNotifyAll() {
+
+	dicts, _ := db_.watches.GetAll()
+
+	for _, dict := range *dicts {
+		for _, v := range dict {
+			flags := v.(*map[*bool]struct{})
+			for flag := range *flags {
+				*flag = true
+			}
+		}
+	}
+}
+
+func (db_ *DataBase) WatchSize() int {
+	return db_.watches.Size()
 }

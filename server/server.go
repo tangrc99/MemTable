@@ -48,7 +48,7 @@ func NewServer(url string) *Server {
 		clis:     NewClientList(),
 		tl:       NewTimeEventList(),
 		url:      url,
-		commands: make(chan *Client, 1000),
+		commands: make(chan *Client, 10000),
 		quit:     false,
 		quitFlag: make(chan struct{}),
 		aof:      NewAOFBuffer("/Users/tangrenchu/GolandProjects/MemTable/logs/aof"),
@@ -187,7 +187,7 @@ func (s *Server) eventLoop() {
 			}
 
 			// 只有写命令需要完成aof持久化
-			if isWriteCommand {
+			if isWriteCommand && fmt.Sprintf("%T", res) == "*resp.ErrorData" {
 				s.appendAOF(cli)
 			}
 
@@ -270,6 +270,7 @@ func (s *Server) initTimeEvents() {
 		logger.Debug("TimeEvent: AOF FLUSH")
 
 		s.aof.Flush()
+		//s.aof.Sync()
 
 	}, time.Now().Add(time.Second).Unix(), time.Second,
 	))

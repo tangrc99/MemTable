@@ -1,0 +1,135 @@
+package server
+
+import (
+	"MemTable/db/cmd"
+	"MemTable/resp"
+	"fmt"
+	"strconv"
+)
+
+func multi(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "multi", 1)
+	if !ok {
+		return e
+	}
+
+	if cli.inTx {
+		return resp.MakeErrorData("ERR MULTI calls can not be nested")
+	}
+
+	cli.inTx = true
+
+	return resp.MakeStringData("OK")
+}
+
+func exec(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmds, "exec", 1)
+	if !ok {
+		return e
+	}
+
+	if !cli.inTx {
+		return resp.MakeErrorData("ERR EXEC without MULTI")
+	}
+
+	defer func() {
+		cli.inTx = false
+		cli.tx = make([][][]byte, 0)
+
+		for dbSeq, keys := range cli.watched {
+			for _, key := range keys {
+				server.dbs[dbSeq].UnWatch(key, &cli.revised)
+			}
+		}
+
+		cli.watched = make(map[int][]string)
+		cli.revised = false
+	}()
+
+	if cli.revised {
+
+		return resp.MakeStringData("nil")
+	}
+
+	cli.inTx = false
+
+	reses := make([]resp.RedisData, len(cli.tx))
+
+	for i, c := range cli.tx {
+
+		// 执行服务命令
+		res, isWriteCommand := ExecCommand(server, cli, c)
+
+		if res == nil {
+			// 执行数据库命令
+			res, isWriteCommand = cmd.ExecCommand(server.dbs[cli.dbSeq], c)
+		}
+
+		// 写命令需要完成aof持久化
+		if isWriteCommand {
+
+			if cli.dbSeq != 0 {
+				// 多数据库场景需要加入数据库选择语句
+				dbStr := strconv.Itoa(cli.dbSeq)
+				server.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+			}
+			server.aof.Append(cli.txRaw[i])
+		}
+
+		reses[i] = res
+
+		if fmt.Sprintf("%T", res) == "*resp.ErrorData" {
+
+			return resp.MakeArrayData(reses[0 : i+1])
+		}
+	}
+
+	return resp.MakeArrayData(reses)
+}
+
+func watch(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "exec", 2)
+	if !ok {
+		return e
+	}
+
+	if cli.inTx {
+		return resp.MakeErrorData("ERR WATCH inside MULTI is not allowed")
+	}
+
+	for _, key := range cmd[1:] {
+
+		cli.watched[cli.dbSeq] = append(cli.watched[cli.dbSeq], string(key))
+		server.dbs[cli.dbSeq].Watch(string(key), &cli.revised)
+	}
+
+	return resp.MakeStringData("OK")
+}
+
+func discard(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "discard", 1)
+	if !ok {
+		return e
+	}
+
+	if !cli.inTx {
+		return resp.MakeErrorData("ERR DISCARD without MULTI")
+	}
+
+	cli.inTx = false
+	cli.tx = make([][][]byte, 0)
+	cli.watched = make(map[int][]string)
+	cli.revised = false
+	return resp.MakeStringData("OK")
+}
+
+func RegisterTransactionCommand() {
+	RegisterCommand("multi", multi, RD)
+	RegisterCommand("exec", exec, RD)
+	RegisterCommand("discard", discard, RD)
+}

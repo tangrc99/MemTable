@@ -29,6 +29,7 @@ func init() {
 	RegisterPubSubCommands()
 	RegisterConnectionCommands()
 	RegisterServerCommand()
+	RegisterTransactionCommand()
 }
 
 func ExecCommand(server *Server, cli *Client, cmd [][]byte) (resp.RedisData, bool) {
@@ -39,8 +40,17 @@ func ExecCommand(server *Server, cli *Client, cmd [][]byte) (resp.RedisData, boo
 
 	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmd[0]))]
 
+	// 如果正在事务中
+	if cli.inTx && NotTxCommand(strings.ToLower(string(cmd[0]))) {
+		cli.tx = append(cli.tx, cli.cmd)
+		cli.txRaw = append(cli.txRaw, cli.raw)
+		return resp.MakeStringData("QUEUED"), false
+	}
+
 	f, ok := CommandTable[strings.ToLower(string(cmd[0]))]
+
 	if !ok {
+
 		return nil, isWriteCommand
 	}
 
@@ -58,4 +68,8 @@ func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.Redi
 	}
 
 	return nil, true
+}
+
+func NotTxCommand(cmd string) bool {
+	return cmd != "exec" && cmd != "discard" && cmd != "watch" && cmd != "multi"
 }

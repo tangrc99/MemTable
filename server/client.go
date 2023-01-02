@@ -34,19 +34,30 @@ type Client struct {
 
 	chs map[string]struct{} //订阅频道
 	msg chan []byte         // 用于订阅通知
+
+	inTx    bool             // 是否处于事务中
+	tx      [][][]byte       // 用于解析后的命令
+	txRaw   [][]byte         // 解析前的命令
+	watched map[int][]string //记录监控的键值
+	revised bool             //监控是否被修改
 }
 
 func NewClient(conn net.Conn) *Client {
 	return &Client{
-		cnn:    conn,
-		id:     uuid.Must(uuid.NewV1()),
-		tp:     time.Now(),
-		status: WAIT,
-		dbSeq:  0,
-		exit:   make(chan struct{}, 1),
-		res:    make(chan []byte, 10),
-		chs:    make(map[string]struct{}),
-		msg:    make(chan []byte, 10),
+		cnn:     conn,
+		id:      uuid.Must(uuid.NewV1()),
+		tp:      time.Now(),
+		status:  WAIT,
+		dbSeq:   0,
+		exit:    make(chan struct{}, 1),
+		res:     make(chan []byte, 100),
+		chs:     make(map[string]struct{}),
+		msg:     make(chan []byte, 100),
+		inTx:    false,
+		tx:      make([][][]byte, 0),
+		txRaw:   make([][]byte, 0),
+		watched: make(map[int][]string),
+		revised: false,
 	}
 }
 

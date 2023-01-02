@@ -5,7 +5,8 @@ import (
 	"MemTable/logger"
 	"MemTable/server"
 	"fmt"
-	"time"
+	_ "net/http/pprof"
+	_ "time"
 )
 
 func TrieTreeTest(s *[]string) {
@@ -37,14 +38,6 @@ func TrieTreeTest(s *[]string) {
 }
 
 func main() {
-
-	ss := server.NewStatus()
-
-	now := time.Now()
-
-	ss.UpdateSysStatus()
-
-	println(time.Since(now).Milliseconds())
 
 	//println(sl.Size())
 	//println(sl.Delete(2))
