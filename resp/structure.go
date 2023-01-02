@@ -2,6 +2,7 @@ package resp
 
 import (
 	"strconv"
+	"strings"
 )
 
 // this file implements data structure for resp
@@ -176,10 +177,22 @@ func MakePlainData(data string) *PlainData {
 func (r *PlainData) ToBytes() []byte {
 	return []byte(r.data + CRLF)
 }
+
 func (r *PlainData) Data() string {
 	return r.data
 }
 
 func (r *PlainData) ByteData() []byte {
 	return []byte(r.data)
+}
+
+func (r *PlainData) ToCommand() [][]byte {
+
+	segs := strings.Split(r.data, " ")
+	res := make([][]byte, len(segs))
+
+	for n, seg := range segs {
+		res[n] = []byte(seg)
+	}
+	return res
 }

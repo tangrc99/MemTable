@@ -62,8 +62,11 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	ch := resp.ParseStream(conn)
 
+	//pipelined := 0
+
 	// 这里会阻塞等待有数据到达
 	running := true
+
 	for running && !s.quit {
 
 		select {
@@ -81,28 +84,50 @@ func (s *Server) handleRead(conn net.Conn) {
 				break
 			}
 
-			array, ok := parsed.Data.(*resp.ArrayData)
-			if !ok {
+			if plain, ok := parsed.Data.(*resp.PlainData); ok {
+
+				//pipelined++
+				client.cmd = plain.ToCommand()
+				client.raw = parsed.Data.ToBytes()
+
+			} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
+
+				client.cmd = array.ToCommand()
+				client.raw = parsed.Data.ToBytes()
+
+			} else {
+
 				logger.Warning("Client", client.id, "parse Command Error")
 				running = false
 				break
 			}
 
-			client.cmd = array.ToCommand()
-			client.raw = parsed.Data.ToBytes()
-
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
 			s.commands <- client
 
-		case r := <-client.res: // fixme : 这里的分支会导致客户端消息乱序吗
+			//		case r := <-client.res: // fixme : 这里的分支会导致客户端消息乱序吗
 
-			// 将主线程的返回值写入到 socket 中
-			_, err := conn.Write(r)
+			// 使用 select 防止协程无法释放
+			select {
 
-			if err != nil {
-				logger.Warning("Client", client.id, "Write Error")
+			case <-client.exit:
 				running = false
-				break
+
+			case r := <-client.res:
+
+				//if pipelined > 0 {
+				//	r = resp.MakePlainData(string(r.ByteData()))
+				//	pipelined--
+				//}
+
+				// 将主线程的返回值写入到 socket 中
+				_, err := conn.Write(r.ToBytes())
+
+				if err != nil {
+					logger.Warning("Client", client.id, "Write Error")
+					running = false
+					break
+				}
 			}
 
 		case <-client.exit:
@@ -158,6 +183,7 @@ func (s *Server) eventLoop() {
 		case cli := <-s.commands:
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
+			// todo:  关闭使用定时队列来实现
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
@@ -192,7 +218,7 @@ func (s *Server) eventLoop() {
 			}
 
 			// 写入回包
-			cli.res <- res.ToBytes() // fixme : 这里有阻塞的风险
+			cli.res <- res
 
 		}
 	}
@@ -249,7 +275,8 @@ func (s *Server) initTimeEvents() {
 		logger.Debug("TimeEvent: Remove Inactive Clients")
 
 		s.clis.RemoveLongNotUsed(1, 300*time.Second)
-	}, time.Now().Add(300*time.Second).Unix(), 300*time.Second,
+
+	}, time.Now().Add(10*time.Second).Unix(), 10*time.Second,
 	))
 
 	// 过期 key 清理

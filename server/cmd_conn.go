@@ -16,7 +16,7 @@ func ping(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeBulkData(cmd[1])
 	}
 
-	return resp.MakeBulkData([]byte("pong"))
+	return resp.MakeStringData(string([]byte("pong")))
 }
 
 func quit(server *Server, cli *Client, cmd [][]byte) resp.RedisData {

@@ -4,6 +4,7 @@ import (
 	"MemTable/db"
 	"MemTable/db/structure"
 	"MemTable/logger"
+	"MemTable/resp"
 	"github.com/gofrs/uuid"
 	"net"
 	"time"
@@ -29,8 +30,8 @@ type Client struct {
 	status ClientStatus // 状态 0 等待连接 1 正常 -1 退出 -2 异常
 
 	dbSeq int
-	exit  chan struct{} // 退出标志
-	res   chan []byte   // 回包
+	exit  chan struct{}       // 退出标志
+	res   chan resp.RedisData // 回包
 
 	chs map[string]struct{} //订阅频道
 	msg chan []byte         // 用于订阅通知
@@ -50,7 +51,7 @@ func NewClient(conn net.Conn) *Client {
 		status:  WAIT,
 		dbSeq:   0,
 		exit:    make(chan struct{}, 1),
-		res:     make(chan []byte, 100),
+		res:     make(chan resp.RedisData, 100),
 		chs:     make(map[string]struct{}),
 		msg:     make(chan []byte, 100),
 		inTx:    false,
