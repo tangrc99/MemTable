@@ -271,12 +271,12 @@ func (list *List) PosNode(pos int) (*ListNode, bool) {
 	return p, true
 }
 
-func (list *List) Range(start, end int) ([]any, bool) {
+func (list *List) Range(start, end int) ([]any, int) {
 
 	// 先处理倒序然后判断 start 和 end 的关系
 	if end < 0 {
 		if end+list.Size() <= 0 {
-			return nil, false
+			return nil, 0
 		} else {
 			end += list.Size()
 		}
@@ -287,7 +287,7 @@ func (list *List) Range(start, end int) ([]any, bool) {
 	}
 
 	if start >= list.Size() || start < 0 {
-		return nil, false
+		return nil, 0
 	}
 
 	p := list.head.next
@@ -302,7 +302,7 @@ func (list *List) Range(start, end int) ([]any, bool) {
 		values[i-start] = p.Value
 		p = p.next
 	}
-	return values, true
+	return values, end - start + 1
 }
 
 // Trim 删除[start,end]范围外的元素，start 和 end 可以为负数代表倒序。如果[start,end]为空，则删除所有元素

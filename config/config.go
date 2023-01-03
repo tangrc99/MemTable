@@ -16,6 +16,16 @@ type Config struct {
 	Port     int
 	LogDir   string
 	LogLevel string
+
+	DataBases   int
+	Timeout     int
+	Daemonize   bool
+	Dir         string
+	MaxMemory   uint64
+	AppendFsync int
+	AppendOnly  bool
+	GoPool      bool
+	GoPoolSize  int
 }
 
 var Conf Config
@@ -71,8 +81,11 @@ func (cfg *Config) parseFile() error {
 				}
 				cfg.Port = port
 			} else if cfgName == "logdir" {
+
 				cfg.LogDir = strings.ToLower(fields[1])
+
 			} else if cfgName == "loglevel" {
+
 				cfg.LogLevel = strings.ToLower(fields[1])
 			}
 		}

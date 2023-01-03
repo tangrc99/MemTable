@@ -15,7 +15,7 @@ func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
-		value = structure.NewDict(12)
+		value = structure.NewDict(1)
 		db.SetKey(string(cmd[1]), value)
 	}
 
@@ -49,7 +49,7 @@ func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
-		value = structure.NewDict(12)
+		value = structure.NewDict(1)
 		db.SetKey(string(cmd[1]), value)
 	}
 
@@ -289,7 +289,7 @@ func hIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
-		value = structure.NewDict(12)
+		value = structure.NewDict(1)
 		db.SetKey(string(cmd[1]), value)
 	}
 

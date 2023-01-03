@@ -186,7 +186,7 @@ func readLine(reader *bufio.Reader, state *readState) ([]byte, error) {
 			return msg, err
 		}
 
-		if len(msg) == 0 || msg[len(msg)-2] != '\r' {
+		if len(msg) < 2 || msg[len(msg)-2] != '\r' {
 			return nil, errors.New(fmt.Sprintf("Protocol error. Stream message %s is invalid.", string(msg)))
 		}
 	}

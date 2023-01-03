@@ -10,16 +10,36 @@ import (
 
 func save(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "ping", 1)
+	e, ok := CheckCommandAndLength(&cmd, "save", 1)
 	if !ok {
 		return e
 	}
 
 	if len(cmd) == 2 {
-		return resp.MakeBulkData(cmd[1])
+		return resp.MakeErrorData("ERR wrong number of arguments for 'save' command")
+
 	}
 
-	return resp.MakeBulkData([]byte("pong"))
+	server.RDB("dump.rdb")
+
+	return resp.MakeStringData("OK")
+}
+
+func bgsave(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+	// 进行输入类型检查
+	e, ok := CheckCommandAndLength(&cmd, "bgsave", 1)
+	if !ok {
+		return e
+	}
+
+	if len(cmd) == 2 {
+		return resp.MakeErrorData("ERR wrong number of arguments for 'save' command")
+
+	}
+
+	server.BGRDB()
+
+	return resp.MakeStringData("Background saving started")
 }
 
 func shutdown(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
@@ -97,4 +117,6 @@ func RegisterServerCommand() {
 	RegisterCommand("flushdb", flushdb, WR)
 	RegisterCommand("flushall", flushall, WR)
 	RegisterCommand("dbsize", dbsize, RD)
+	RegisterCommand("save", save, RD)
+	RegisterCommand("bgsave", bgsave, RD)
 }

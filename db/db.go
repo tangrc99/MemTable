@@ -171,6 +171,10 @@ func (db_ *DataBase) Size() int {
 	return db_.dict.Size()
 }
 
+func (db_ *DataBase) TTLSize() int {
+	return db_.ttlKeys.Size()
+}
+
 // 事务实现
 
 // Watch 监控一个键

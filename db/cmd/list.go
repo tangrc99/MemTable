@@ -340,8 +340,8 @@ func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
-	values, ok := listVal.Range(start, end)
-	if !ok {
+	values, n := listVal.Range(start, end)
+	if n == 0 {
 		return resp.MakeArrayData(nil)
 	}
 	res := make([]resp.RedisData, len(values))

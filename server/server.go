@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 )
@@ -213,7 +212,7 @@ func (s *Server) eventLoop() {
 			}
 
 			// 只有写命令需要完成aof持久化
-			if isWriteCommand && fmt.Sprintf("%T", res) == "*resp.ErrorData" {
+			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
 				s.appendAOF(cli)
 			}
 
@@ -231,6 +230,8 @@ func (s *Server) eventLoop() {
 
 	// aof 刷盘
 	s.aof.Quit()
+	// rdb 持久化
+	//s.RDB()
 
 	// 关闭所有的客户端协程
 	for s.clis.Size() != 0 {
@@ -322,9 +323,9 @@ func (s *Server) Start() {
 
 	logger.Info("Server: Listen at", s.url)
 
-	go s.eventLoop()
-
 	s.recoverFromAOF("/Users/tangrenchu/GolandProjects/MemTable/logs/aof")
+
+	go s.eventLoop()
 
 	// 开启监听
 	var err error
@@ -346,57 +347,4 @@ func (s *Server) Start() {
 	<-s.quitFlag
 
 	logger.Info("Server Shutdown...")
-}
-
-func (s *Server) appendAOF(cli *Client) {
-
-	if len(cli.raw) <= 0 {
-		return
-	}
-
-	// 只有写命令需要持久化
-
-	if cli.dbSeq != 0 {
-		// 多数据库场景需要加入数据库选择语句
-		dbStr := strconv.Itoa(cli.dbSeq)
-		s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-	}
-
-	s.aof.Append(cli.raw)
-}
-
-func (s *Server) recoverFromAOF(filename string) {
-	reader, err := os.OpenFile(filename, os.O_RDONLY, 777)
-	if err != nil {
-		logger.Warning("AOF: File Not Exists")
-		return
-	}
-
-	client := NewClient(nil)
-
-	ch := resp.ParseStream(reader)
-
-	for parsedRes := range ch {
-
-		if parsedRes.Err != nil {
-
-			if e := parsedRes.Err.Error(); e != "EOF" {
-				logger.Error("Client", client.id, "Read Error:", e)
-			}
-			break
-		}
-
-		array, ok := parsedRes.Data.(*resp.ArrayData)
-		if !ok {
-			logger.Error("Client", client.id, "parse Command Error")
-			os.Exit(-1)
-		}
-
-		client.cmd = array.ToCommand()
-
-		// 如果解析完毕有可以执行的命令，则发送给主线程执行
-		s.commands <- client
-
-		<-client.res
-	}
 }
