@@ -34,6 +34,8 @@ func init() {
 	RegisterListCommands()
 	RegisterHashCommands()
 	RegisterZSetCommands()
+
+	RegisterBitMapCommands()
 }
 
 func ExecCommand(base *db.DataBase, cmd [][]byte) (resp.RedisData, bool) {

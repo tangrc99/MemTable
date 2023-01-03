@@ -54,13 +54,18 @@ func CheckType(value any, vt ValueType) resp.RedisData {
 }
 
 func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
+
+	if len(*cmd) == 0 {
+		return resp.MakeErrorData("ERR empty command"), false
+	}
+
 	cmdName := strings.ToLower(string((*cmd)[0]))
 	if cmdName != name {
 		return resp.MakeErrorData("Server error"), false
 	}
 
 	if len(*cmd) < minLength {
-		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (*cmd)[1])), false
+		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (*cmd)[0])), false
 	}
 
 	return nil, true
