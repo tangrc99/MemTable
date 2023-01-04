@@ -8,7 +8,17 @@ import (
 	"sync"
 )
 
+// 禁止 RDB 重入锁
 var lock sync.Mutex
+
+const (
+	rdbNormal = iota
+	rdbWaitForSync
+)
+
+var rdbWaitNum int = 0
+
+var rdbFileStatus int
 
 func (s *Server) RDB(file string) {
 
@@ -59,13 +69,12 @@ func (s *Server) RDB(file string) {
 	if err != nil {
 		panic(err)
 	}
-
 }
 
-func (s *Server) BGRDB() {
+func (s *Server) BGRDB() bool {
 
 	if !lock.TryLock() {
-		return
+		return false
 	}
 
 	// 复制 aof
@@ -73,13 +82,13 @@ func (s *Server) BGRDB() {
 	if err != nil {
 		lock.Unlock()
 		logger.Error("AOF Rewrite: Can't Load AOF File")
-		return
+		return false
 	}
 	file2, err := os.OpenFile(s.aof.filename+".tmp", os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		lock.Unlock()
 		logger.Error("AOF Rewrite: Can't Create Temporary AOF File")
-		return
+		return false
 	}
 
 	defer file1.Close()
@@ -89,7 +98,7 @@ func (s *Server) BGRDB() {
 	if err != nil {
 		lock.Unlock()
 		logger.Error("AOF Rewrite: AOF Copy Error")
-		return
+		return false
 	}
 
 	go func() {
@@ -103,7 +112,12 @@ func (s *Server) BGRDB() {
 		_ = os.Rename("dump1.rdb", "dump.rdb")
 		lock.Unlock()
 	}()
+	return true
+}
 
+func (s *Server) waitForRDBFinished() {
+	lock.Lock()
+	defer lock.Unlock()
 }
 
 func (s *Server) recoverFromRDB(file string) {

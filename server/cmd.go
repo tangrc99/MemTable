@@ -30,6 +30,7 @@ func init() {
 	RegisterConnectionCommands()
 	RegisterServerCommand()
 	RegisterTransactionCommand()
+	RegisterReplicationCommands()
 }
 
 func ExecCommand(server *Server, cli *Client, cmd [][]byte) (resp.RedisData, bool) {

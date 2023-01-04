@@ -38,17 +38,8 @@ func TrieTreeTest(s *[]string) {
 }
 
 func main() {
-
-	//println(sl.Size())
-	//println(sl.Delete(2))
-	//str := "/a"
+	//server.Test()
 	//
-	//paths := strings.Split(str, "/")
-	//
-	//for i, path := range paths {
-	//	println(i)
-	//	println(path)
-	//}
 	//return
 
 	err := logger.Init(config.Conf.LogDir, "bin.log", logger.INFO)

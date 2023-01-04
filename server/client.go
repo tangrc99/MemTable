@@ -33,14 +33,22 @@ type Client struct {
 	exit  chan struct{}       // 退出标志
 	res   chan resp.RedisData // 回包
 
+	// 发布订阅
 	chs map[string]struct{} //订阅频道
 	msg chan []byte         // 用于订阅通知
 
+	// 事务
 	inTx    bool             // 是否处于事务中
 	tx      [][][]byte       // 用于解析后的命令
 	txRaw   [][]byte         // 解析前的命令
 	watched map[int][]string //记录监控的键值
 	revised bool             //监控是否被修改
+
+	// 阻塞监听
+	blocked bool // 客户端是否执行阻塞等待的命令
+
+	// 主从复制
+	SlaveStatus
 }
 
 func NewClient(conn net.Conn) *Client {
@@ -59,6 +67,8 @@ func NewClient(conn net.Conn) *Client {
 		txRaw:   make([][]byte, 0),
 		watched: make(map[int][]string),
 		revised: false,
+
+		blocked: false,
 	}
 }
 
@@ -140,13 +150,13 @@ func (clients *ClientList) RemoveClient(cli *Client) {
 	clients.removeClientWithPosition(cli, node)
 }
 
-func (clients *ClientList) RemoveLongNotUsed(num int, d time.Duration) {
+func (clients *ClientList) RemoveLongNotUsed(num, max int, d time.Duration) {
 
 	// 早于该时间的视为过期
 	expired := time.Now().Add(-1 * d)
 
 	// 客户端列表尾端的时间戳会减小
-	for node := clients.list.BackNode(); node != nil && num >= 0; {
+	for node := clients.list.BackNode(); node != nil && num >= 0 && max >= 0; {
 		cli, ok := node.Value.(*Client)
 
 		if !ok {
@@ -166,6 +176,7 @@ func (clients *ClientList) RemoveLongNotUsed(num int, d time.Duration) {
 			node = node.Prev()
 		}
 
+		max--
 	}
 }
 

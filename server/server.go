@@ -30,6 +30,8 @@ type Server struct {
 	aof *AOFBuffer
 
 	sts *Status
+
+	ReplicaStatus
 }
 
 func NewServer(url string) *Server {
@@ -104,8 +106,6 @@ func (s *Server) handleRead(conn net.Conn) {
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
 			s.commands <- client
 
-			//		case r := <-client.res: // fixme : 这里的分支会导致客户端消息乱序吗
-
 			// 使用 select 防止协程无法释放
 			select {
 
@@ -113,11 +113,6 @@ func (s *Server) handleRead(conn net.Conn) {
 				running = false
 
 			case r := <-client.res:
-
-				//if pipelined > 0 {
-				//	r = resp.MakePlainData(string(r.ByteData()))
-				//	pipelined--
-				//}
 
 				// 将主线程的返回值写入到 socket 中
 				_, err := conn.Write(r.ToBytes())
@@ -214,10 +209,15 @@ func (s *Server) eventLoop() {
 			// 只有写命令需要完成aof持久化
 			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
 				s.appendAOF(cli)
+				s.appendBackLog(cli)
 			}
 
-			// 写入回包
-			cli.res <- res
+			println(string(cli.raw))
+
+			// 非阻塞状态的客户端写入回包
+			if !cli.blocked {
+				cli.res <- res
+			}
 
 		}
 	}
@@ -275,7 +275,7 @@ func (s *Server) initTimeEvents() {
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: Remove Inactive Clients")
 
-		s.clis.RemoveLongNotUsed(1, 300*time.Second)
+		s.clis.RemoveLongNotUsed(3, 20, 300*time.Second)
 
 	}, time.Now().Add(10*time.Second).Unix(), 10*time.Second,
 	))
@@ -315,6 +315,13 @@ func (s *Server) initTimeEvents() {
 	))
 
 	// 从服务器同步操作
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("Replication: Send BackLog")
+
+		s.sendBackLog()
+
+	}, time.Now().Add(time.Second).Unix(), time.Second,
+	))
 }
 
 func (s *Server) Start() {
@@ -329,7 +336,7 @@ func (s *Server) Start() {
 
 	// 开启监听
 	var err error
-	s.listener, err = net.Listen("tcp", "127.0.0.1:6379")
+	s.listener, err = net.Listen("tcp", s.url)
 	if err != nil {
 		logger.Error("Server:", err.Error())
 	}

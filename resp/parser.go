@@ -48,6 +48,7 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 				close(ch)
 				return
 			} else {
+
 				// Protocol error
 				logger.Error(err)
 

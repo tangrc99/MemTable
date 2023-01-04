@@ -100,7 +100,7 @@ func init() {
 	Conf = Config{
 		ConfFile: "",
 		Host:     "127.0.0.1",
-		Port:     6379,
+		Port:     6380,
 		LogDir:   "./logs",
 		LogLevel: "info",
 	}

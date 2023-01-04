@@ -57,8 +57,11 @@ func (dict *Dict) Set(key string, value any) bool {
 
 	shard := dict.countShard(key)
 
+	if _, exist := (*shard)[key]; !exist {
+		dict.count++
+	}
+
 	(*shard)[key] = value
-	dict.count++
 	return true
 }
 

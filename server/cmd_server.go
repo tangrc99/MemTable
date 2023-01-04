@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func save(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func save(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "save", 1)
 	if !ok {
@@ -72,7 +72,7 @@ func flushdb(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func flushall(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func flushall(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "flushall", 1)
 	if !ok {

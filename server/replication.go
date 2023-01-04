@@ -1,0 +1,188 @@
+package server
+
+import (
+	"MemTable/logger"
+	"MemTable/utils/rand_str"
+	"MemTable/utils/ring_buffer"
+	"fmt"
+	"strconv"
+)
+
+const (
+	StandAlone = 0
+	Master     = 1
+	Slave      = 2
+)
+
+type ReplicaStatus struct {
+	role          int
+	capacity      uint64
+	offset        uint64
+	rdbOffset     uint64 // 生成 rdb 时的 offset
+	runID         string // 集群 id
+	backLog       ring_buffer.RingBuffer
+	onLineSlaves  map[*Client]struct{}
+	offLineSlaves map[*Client]struct{}
+	initSlaves    map[*Client]struct{}
+}
+
+// Master 接口
+
+func (s *ReplicaStatus) minOffset() uint64 {
+	return s.backLog.LowWaterLevel()
+}
+
+func (s *ReplicaStatus) registerSlave(cli *Client) {
+
+	if s.role == Slave {
+		logger.Error("Replica: Slave Received Sync Request")
+		return
+	}
+
+	if s.role == StandAlone {
+		// 准备
+		s.standAloneToMaster()
+	}
+
+	cli.blocked = true
+	s.initSlaves[cli] = struct{}{}
+	cli.slaveStatus = slaveInit
+	cli.offset = 0
+}
+
+func (s *ReplicaStatus) changeSlaveOnline(cli *Client, slaveOffset uint64) {
+
+	rdbWaitNum--
+	if rdbWaitNum == 0 {
+		rdbFileStatus = rdbNormal
+	}
+
+	cli.slaveStatus = slaveOnline
+	cli.offset = slaveOffset
+	cli.blocked = false
+}
+
+func (s *ReplicaStatus) standAloneToMaster() {
+	s.role = Master
+	s.runID = rand_str.RandHexString(40)
+	s.backLog.Init(1 << 20)
+	s.capacity = 1 << 20
+	s.rdbOffset = 0
+	s.offset = 0
+	s.onLineSlaves = make(map[*Client]struct{})
+	s.offLineSlaves = make(map[*Client]struct{})
+	s.initSlaves = make(map[*Client]struct{})
+}
+
+func (s *ReplicaStatus) sendBackLog() {
+
+	if s.role != Master {
+		return
+	}
+
+	// 检查是否有正在初始化的客户端
+	for cli := range s.initSlaves {
+		if cli.slaveStatus == slaveOnline {
+			delete(s.initSlaves, cli)
+			s.onLineSlaves[cli] = struct{}{}
+
+		}
+	}
+
+	for cli := range s.onLineSlaves {
+
+		if cli.offset < s.minOffset() {
+			delete(s.onLineSlaves, cli)
+			s.offLineSlaves[cli] = struct{}{}
+		}
+
+		// 更新时间戳
+
+		// 一次最多读取 1kb
+		bytes := s.backLog.Read(cli.offset, 1<<10)
+
+		if len(bytes) == 0 {
+
+			//从服务器完成同步
+			_, _ = cli.cnn.Write([]byte("*1\r\n$4\r\nping\r\n"))
+
+		} else {
+
+			n, err := cli.cnn.Write(bytes)
+
+			cli.offset += uint64(n)
+			if err != nil {
+				// 如果发生错误，等待 slave 的offset 落后会自动转换为 offline
+				continue
+			}
+
+		}
+		// 成功写入会更新时间戳
+		cli.UpdateTimestamp()
+
+	}
+
+}
+
+func (s *ReplicaStatus) appendBackLog(cli *Client) {
+	if s.role != Master {
+		return
+	}
+
+	if len(cli.raw) <= 0 {
+		return
+	}
+
+	// 只有写命令需要持久化
+
+	if cli.dbSeq != 0 {
+		// 多数据库场景需要加入数据库选择语句
+		dbStr := strconv.Itoa(cli.dbSeq)
+		s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+	}
+
+	s.offset = s.backLog.Append(cli.raw)
+
+}
+
+func (s *Server) rdbForReplica() uint64 {
+
+	// 不需要进行复制
+	if s.offset-s.rdbOffset < s.capacity {
+		return s.rdbOffset
+	}
+
+	ok := s.BGRDB()
+
+	// 如果正在复制，需要等待
+	if !ok {
+		s.waitForRDBFinished()
+	}
+
+	rdbWaitNum++
+	rdbFileStatus = rdbWaitForSync
+	s.rdbOffset = s.offset
+
+	return s.rdbOffset
+
+}
+
+// Slaves 接口
+
+func (s *ReplicaStatus) standAloneToSlave(runId string) {
+	s.role = Slave
+	s.runID = runId
+	s.offset = 0
+}
+
+const (
+	slaveNot = iota
+	slaveInit
+	slaveOnline
+	slaveOffline
+)
+
+type SlaveStatus struct {
+	slaveStatus int
+	offset      uint64
+}

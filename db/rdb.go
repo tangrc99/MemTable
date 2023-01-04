@@ -3,6 +3,7 @@ package db
 import (
 	"MemTable/db/structure"
 	"errors"
+	"fmt"
 	"github.com/hdt3213/rdb/core"
 	"github.com/hdt3213/rdb/encoder"
 	"github.com/hdt3213/rdb/model"
@@ -89,6 +90,10 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 				} else {
 					err = enc.WriteHashMapObject(k, entrys)
 				}
+			} else {
+
+				panic(fmt.Sprintf("Unexpected type %T", v))
+
 			}
 
 			if err != nil {
@@ -97,9 +102,11 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 		}
 	}
 
-	if ttls != db_.TTLSize() || keys != db_.Size() {
-		return errors.New("DB Size Or TTL Size Not Matched")
+	if ttls != db_.TTLSize() {
+		return errors.New(fmt.Sprintf("DB TTL Size Not Matched, Expected %d But %d", db_.TTLSize(), ttls))
 	}
-
+	if keys != db_.Size() {
+		return errors.New(fmt.Sprintf("DB Size Not Matched, Expected %d But %d", db_.Size(), keys))
+	}
 	return err
 }
