@@ -39,28 +39,16 @@ func TrieTreeTest(s *[]string) {
 
 func main() {
 
-	//arg := []string{"-c", "protocol", "-o", "received.aof", "dump.rdb"}
-	//cmd := exec.Command("rdb", arg...)
-	//err := cmd.Run()
-	//if err != nil {
-	//	println(string(err.Error()))
-	//	return
-	//}
-	//
-	//println(cmd.ProcessState.ExitCode())
-	////	println(string(out))
-	//
-	//return
-
-	err := logger.Init(config.Conf.LogDir, "bin.log", logger.INFO)
+	err := logger.Init(config.Conf.LogDir, "bin.log", logger.StringToLogLevel(config.Conf.LogLevel))
 	if err != nil {
+		println(err.Error())
 		return
 	}
 
 	s := server.NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
-
+	s.TryRecover()
+	s.InitModules()
 	//s.SendPSyncToMaster()
 	//return
 	s.Start()
-
 }

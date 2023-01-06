@@ -17,4 +17,6 @@
 - 错误信息，int 提示有问题
 - scan 命令
 - rdb 可重入的问题
+- 列表的阻塞等待命令
 - recover from rdb
+- 进行恢复时，要从 rdb 里面读取到 replid 还有 offset，然后再根据 aof 的偏移量相加

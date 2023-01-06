@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"sync"
 )
@@ -94,12 +95,12 @@ func (s *Server) RDB(file string) bool {
 func (s *Server) BGRDB() bool {
 
 	// 复制 aof
-	file1, err := os.Open(s.aof.filename)
+	file1, err := os.Open(path.Join(s.dir, s.aofFile))
 	if err != nil {
 		logger.Error("AOF Rewrite: Can't Load AOF File")
 		return false
 	}
-	file2, err := os.OpenFile(s.aof.filename+".tmp", os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	file2, err := os.OpenFile(path.Join(s.dir, s.aofFile+".tmp"), os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		logger.Error("AOF Rewrite: Can't Create Temporary AOF File")
 		return false
@@ -122,9 +123,9 @@ func (s *Server) BGRDB() bool {
 
 	go func() {
 
-		ws.recoverFromAOF(s.aof.filename + ".tmp")
+		ws.recoverFromAOF(path.Join(s.dir, s.aofFile+".tmp"))
 		// server 进行恢复后，保存 rdb
-		ok := ws.RDB("dump.rdb")
+		ok := ws.RDB(path.Join(s.dir, s.rdbFile))
 
 		logger.Info("BGSave Finished")
 
@@ -133,7 +134,7 @@ func (s *Server) BGRDB() bool {
 		}
 
 		// 清理文件
-		_ = os.Remove(s.aof.filename + ".tmp")
+		_ = os.Remove(s.aofFile + ".tmp")
 
 	}()
 	return true
@@ -162,4 +163,8 @@ func (s *Server) recoverFromRDB(aofFile, rdbFile string) {
 
 	s.recoverFromAOF(aofFile)
 
+	if !s.aofEnabled {
+		// 删除 aof 文件
+		_ = os.Remove(aofFile)
+	}
 }

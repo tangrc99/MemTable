@@ -10,6 +10,10 @@ import (
 
 func (s *Server) appendAOF(cli *Client) {
 
+	if s.aof == nil || !s.aofEnabled {
+		return
+	}
+
 	if len(cli.raw) <= 0 {
 		return
 	}

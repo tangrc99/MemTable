@@ -1,6 +1,7 @@
 package server
 
 import (
+	"MemTable/config"
 	"MemTable/db"
 	"MemTable/logger"
 	"MemTable/resp"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 )
@@ -26,34 +28,65 @@ type Server struct {
 	quit     bool
 	quitFlag chan struct{}
 
-	aof *AOFBuffer
+	cliTimeout int
+	maxClients int
 
-	sts *Status
+	dir     string
+	rdbFile string
+
+	aofFile    string
+	aof        *AOFBuffer
+	aofEnabled bool
+
+	gopool *gopool.Pool // 用于客户端启动的协程池
+	sts    *Status
+
+	dirty      int // 脏数据计数器
+	checkPoint int64
 
 	RDBStatus
 	ReplicaStatus
 }
 
 func NewServer(url string) *Server {
-	n := 2
 
-	d := make([]*db.DataBase, n)
-	for i := 0; i < n; i++ {
+	d := make([]*db.DataBase, config.Conf.DataBases)
+	for i := 0; i < config.Conf.DataBases; i++ {
 		d[i] = db.NewDataBase()
 	}
 
-	return &Server{
-		dbs:      d,
-		dbNum:    n,
-		Chs:      db.NewChannels(),
-		clis:     NewClientList(),
-		tl:       NewTimeEventList(),
-		url:      url,
-		commands: make(chan *Client, 10000),
-		quit:     false,
-		quitFlag: make(chan struct{}),
-		aof:      NewAOFBuffer("/Users/tangrenchu/GolandProjects/MemTable/logs/aof"),
-		sts:      NewStatus(),
+	s := &Server{
+		dbs:        d,
+		dbNum:      config.Conf.DataBases,
+		Chs:        db.NewChannels(),
+		clis:       NewClientList(),
+		tl:         NewTimeEventList(),
+		url:        url,
+		commands:   make(chan *Client, 10000),
+		quit:       false,
+		quitFlag:   make(chan struct{}),
+		rdbFile:    config.Conf.RDBFile,
+		sts:        NewStatus(),
+		cliTimeout: config.Conf.Timeout,
+		maxClients: config.Conf.MaxClients,
+		dir:        config.Conf.Dir,
+		aofEnabled: config.Conf.AppendOnly,
+		aofFile:    "appendonly.aof",
+	}
+	return s
+}
+
+func (s *Server) InitModules() {
+	// aof 开关
+	if config.Conf.AppendOnly {
+		logger.Debug("Config: AppendOnly Enabled")
+		s.aof = NewAOFBuffer(config.Conf.Dir + "appendonly.aof")
+
+	}
+
+	if config.Conf.GoPool {
+		s.gopool = gopool.NewPool(config.Conf.GoPoolSize, 0, config.Conf.GoPoolSpawn)
+		logger.Debug("Config: GoPool Enabled")
 	}
 }
 
@@ -203,18 +236,12 @@ func (s *Server) eventLoop() {
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, cli.cmd)
 
-			//if res == nil {
-			//	// 执行数据库命令
-			//	res, isWriteCommand = cmd.ExecCommand(s.dbs[cli.dbSeq], cli.cmd)
-			//}
-
 			// 只有写命令需要完成aof持久化
 			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
 				s.appendAOF(cli)
 				s.updateReplicaStatus(cli)
+				s.dirty++
 			}
-
-			println(string(cli.raw))
 
 			// 非阻塞状态的客户端写入回包
 			if !cli.blocked {
@@ -230,10 +257,8 @@ func (s *Server) eventLoop() {
 	// 关闭监听
 	_ = s.listener.Close()
 
-	// aof 刷盘
-	s.aof.Quit()
-	// rdb 持久化
-	//s.RDB()
+	// 进行数据持久化
+	s.saveData()
 
 	// 关闭所有的客户端协程
 	for s.clis.Size() != 0 {
@@ -253,8 +278,6 @@ func backgroundLoop() {
 
 func (s *Server) acceptLoop() {
 
-	pool := gopool.NewPool(10000, 0, 2000)
-
 	logger.Info("Server: Start Listen")
 
 	for !s.quit {
@@ -262,10 +285,22 @@ func (s *Server) acceptLoop() {
 		if err != nil {
 			break
 		}
-		pool.Schedule(func() {
-			s.handleRead(conn)
-		})
-		//go s.handleRead(conn)
+
+		// 如果客户端数量过多，拒绝服务
+		if s.maxClients > 0 && s.clis.Size() >= s.maxClients {
+			_ = conn.Close()
+		}
+
+		if s.gopool != nil {
+
+			s.gopool.Schedule(func() {
+				s.handleRead(conn)
+			})
+
+		} else {
+			go s.handleRead(conn)
+		}
+
 	}
 	logger.Info("Server: Shutdown Listener")
 
@@ -277,7 +312,12 @@ func (s *Server) initTimeEvents() {
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: Remove Inactive Clients")
 
-		s.clis.RemoveLongNotUsed(3, 20, 300*time.Second)
+		// 如果设置过期值小于 0 则不需要进行清理
+		if s.cliTimeout < 0 {
+			return
+		}
+
+		s.clis.RemoveLongNotUsed(3, 20, time.Duration(s.cliTimeout)*time.Second)
 
 	}, time.Now().Add(10*time.Second).Unix(), 10*time.Second,
 	))
@@ -299,13 +339,24 @@ func (s *Server) initTimeEvents() {
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: AOF FLUSH")
 
-		s.aof.Flush()
+		if s.aofEnabled {
+			s.aof.Flush()
+		}
 		//s.aof.Sync()
 
 	}, time.Now().Add(time.Second).Unix(), time.Second,
 	))
 
 	// bgsave 持久化 trigger
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("TimeEvent: RDB Check")
+
+		if !s.aofEnabled && (s.dirty > 100 || time.Now().Unix()-s.checkPoint > 10) {
+			s.BGRDB()
+		}
+
+	}, time.Now().Add(time.Second).Unix(), time.Second,
+	))
 
 	// 更新服务端信息
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
@@ -331,10 +382,6 @@ func (s *Server) Start() {
 	// 初始化操作
 
 	logger.Info("Server: Listen at", s.url)
-
-	//s.recoverFromAOF("/Users/tangrenchu/GolandProjects/MemTable/logs/aof")
-
-	//s.recoverFromRDB("received.aof", "dump.rdb")
 
 	go s.eventLoop()
 
@@ -362,4 +409,33 @@ func (s *Server) Start() {
 
 func (s *Server) TryRecover() {
 
+	aof := path.Join(s.dir, s.aofFile)
+	rdb := path.Join(s.dir, s.rdbFile)
+
+	if _, err := os.Stat(aof); err == nil {
+		logger.Info("Recover From AppendOnly File")
+		s.recoverFromAOF(aof)
+	} else if _, err := os.Stat(aof); err == nil {
+		logger.Info("Recover From RDB File")
+		s.recoverFromRDB(aof, rdb)
+	}
+
+}
+
+func (s *Server) saveData() {
+
+	// 优先使用 aof 进行存储
+	if s.aofEnabled && s.aof != nil {
+
+		s.aof.Quit()
+
+	} else {
+
+		ok := s.RDB(path.Join(s.dir, s.rdbFile))
+		if !ok {
+			logger.Error("Quit: Generate RDB File Failed")
+		} else {
+			logger.Info("Quit: Generated RDB File")
+		}
+	}
 }

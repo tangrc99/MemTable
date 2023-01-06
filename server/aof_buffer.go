@@ -60,8 +60,7 @@ func (buff *bufferPage) flush(writer *os.File) bool {
 }
 
 type AOFBuffer struct {
-	writer   *os.File
-	filename string
+	writer *os.File
 
 	flush    int64 // 当前刷盘序列号
 	appends  int64 // 当前写入序列号
@@ -81,7 +80,6 @@ func NewAOFBuffer(filename string) *AOFBuffer {
 
 	buffers := &AOFBuffer{
 		writer:       file,
-		filename:     filename,
 		pages:        make([]*bufferPage, 3),
 		flush:        0,
 		appends:      0,

@@ -5,6 +5,7 @@ import (
 	"MemTable/resp"
 	"io"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -79,7 +80,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 			offset := server.rdbForReplica()
 			server.waitForRDBFinished()
 
-			rdbFile, err := os.Open("dump.rdb")
+			rdbFile, err := os.Open(path.Join(server.dir, server.rdbFile))
 			if err != nil {
 				logger.Error("Sync: No RDBFile:", err.Error())
 				return
@@ -131,7 +132,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 }
 
-func replconf(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func replconf(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "replconf", 2)
 	if !ok {
@@ -155,7 +156,7 @@ func replconf(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func slaveof(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func slaveof(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "slaveof", 3)
 	if !ok {

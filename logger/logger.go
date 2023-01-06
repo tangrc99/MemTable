@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -35,6 +36,25 @@ var (
 	defaultCallerDepth = 2
 	logPrefix          = ""
 )
+
+// StringToLogLevel 根据输入字符串返回响应的日志等级，如果无匹配，则默认为 INFO 等级日志
+func StringToLogLevel(level string) LogLevel {
+
+	switch strings.ToLower(level) {
+	case "debug":
+		return DEBUG
+	case "info":
+		return INFO
+	case "warning":
+		return WARNING
+	case "error":
+		return ERROR
+	case "panic":
+		return PANIC
+	}
+
+	return INFO
+}
 
 func Init(dir string, filename string, level LogLevel) error {
 	var err error

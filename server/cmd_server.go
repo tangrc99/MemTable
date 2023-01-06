@@ -4,6 +4,7 @@ import (
 	"MemTable/db"
 	"MemTable/resp"
 	"os"
+	"path"
 	"strconv"
 	"syscall"
 )
@@ -20,12 +21,12 @@ func save(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 	}
 
-	server.RDB("dump.rdb")
+	server.RDB(path.Join(server.dir, server.rdbFile))
 
 	return resp.MakeStringData("OK")
 }
 
-func bgsave(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func bgsave(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "bgsave", 1)
 	if !ok {

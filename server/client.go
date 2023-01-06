@@ -20,18 +20,17 @@ const (
 )
 
 type Client struct {
-	cmd [][]byte // 当前命令
-	raw []byte   // 当前命令的 resp 格式
+	cmd [][]byte            // 当前命令
+	raw []byte              // 当前命令的 resp 格式
+	res chan resp.RedisData // 回包
 
-	cnn net.Conn  // 连接实例
-	id  uuid.UUID // Cli 编号
-	tp  time.Time // 通信时间戳
-
-	status ClientStatus // 状态 0 等待连接 1 正常 -1 退出 -2 异常
-
+	cnn   net.Conn  // 连接实例
+	id    uuid.UUID // Cli 编号
+	tp    time.Time // 通信时间戳
 	dbSeq int
-	exit  chan struct{}       // 退出标志
-	res   chan resp.RedisData // 回包
+
+	status ClientStatus  // 状态 0 等待连接 1 正常 -1 退出 -2 异常
+	exit   chan struct{} // 退出标志
 
 	// 发布订阅
 	chs map[string]struct{} //订阅频道
@@ -53,20 +52,13 @@ type Client struct {
 
 func NewClient(conn net.Conn) *Client {
 	return &Client{
-		cnn:     conn,
-		id:      uuid.Must(uuid.NewV1()),
-		tp:      time.Now(),
-		status:  WAIT,
-		dbSeq:   0,
-		exit:    make(chan struct{}, 1),
-		res:     make(chan resp.RedisData, 100),
-		chs:     make(map[string]struct{}),
-		msg:     make(chan []byte, 100),
-		inTx:    false,
-		tx:      make([][][]byte, 0),
-		txRaw:   make([][]byte, 0),
-		watched: make(map[int][]string),
-		revised: false,
+		cnn:    conn,
+		id:     uuid.Must(uuid.NewV1()),
+		tp:     time.Now(),
+		status: WAIT,
+		dbSeq:  0,
+		exit:   make(chan struct{}, 1),
+		res:    make(chan resp.RedisData, 100),
 
 		blocked: false,
 	}
@@ -77,6 +69,12 @@ func (cli *Client) UpdateTimestamp() {
 }
 
 func (cli *Client) Subscribe(chs *db.Channels, channel string) int {
+
+	if cli.chs == nil {
+		cli.chs = make(map[string]struct{})
+		cli.msg = make(chan []byte, 100)
+	}
+
 	chs.Subscribe(channel, cli.id.String(), &cli.msg)
 	cli.chs[channel] = struct{}{}
 	return len(cli.chs)
@@ -93,6 +91,14 @@ func (cli *Client) UnSubscribeAll(chs *db.Channels) {
 		chs.UnSubscribe(channel, cli.id.String())
 	}
 	cli.chs = make(map[string]struct{})
+}
+
+func (cli *Client) InitTX() {
+	cli.inTx = false
+	cli.tx = make([][][]byte, 0, 20)
+	cli.txRaw = make([][]byte, 0, 20)
+	cli.watched = make(map[int][]string)
+	cli.revised = false
 }
 
 type ClientList struct {
