@@ -15,15 +15,48 @@ const (
 )
 
 type ReplicaStatus struct {
-	role          int
-	capacity      uint64
-	offset        uint64
-	rdbOffset     uint64 // 生成 rdb 时的 offset
-	runID         string // 集群 id
-	backLog       ring_buffer.RingBuffer
+	role      int
+	capacity  uint64
+	offset    uint64
+	rdbOffset uint64 // 生成 rdb 时的 offset
+	runID     string // 集群 id
+	backLog   ring_buffer.RingBuffer
+
+	// Master 需要的
 	onLineSlaves  map[*Client]struct{}
 	offLineSlaves map[*Client]struct{}
 	initSlaves    map[*Client]struct{}
+
+	// Slave 需要的
+	Master *Client
+}
+
+func (s *ReplicaStatus) updateReplicaStatus(cli *Client) {
+
+	switch s.role {
+
+	case StandAlone:
+		return
+
+	case Master:
+		s.appendBackLog(cli)
+
+	case Slave:
+		if cli == s.Master {
+			s.offset += uint64(len(cli.raw))
+		}
+	}
+}
+
+func (s *ReplicaStatus) handleReplicaEvents() {
+	switch s.role {
+	case StandAlone:
+		return
+	case Master:
+		s.sendBackLog()
+	case Slave:
+		s.sendOffsetToMaster()
+	}
 }
 
 // Master 接口
@@ -51,11 +84,6 @@ func (s *ReplicaStatus) registerSlave(cli *Client) {
 }
 
 func (s *ReplicaStatus) changeSlaveOnline(cli *Client, slaveOffset uint64) {
-
-	rdbWaitNum--
-	if rdbWaitNum == 0 {
-		rdbFileStatus = rdbNormal
-	}
 
 	cli.slaveStatus = slaveOnline
 	cli.offset = slaveOffset
@@ -89,11 +117,14 @@ func (s *ReplicaStatus) sendBackLog() {
 		}
 	}
 
+	// 选择存活 slave 发送 backlog
 	for cli := range s.onLineSlaves {
 
+		// 如果 slave 落后过多，设置为断线，停止发送 backlog
 		if cli.offset < s.minOffset() {
 			delete(s.onLineSlaves, cli)
 			s.offLineSlaves[cli] = struct{}{}
+			cli.slaveStatus = slaveOffline
 		}
 
 		// 更新时间戳
@@ -103,7 +134,7 @@ func (s *ReplicaStatus) sendBackLog() {
 
 		if len(bytes) == 0 {
 
-			//从服务器完成同步
+			//从服务器完成同步，发送 ping 命令
 			_, _ = cli.cnn.Write([]byte("*1\r\n$4\r\nping\r\n"))
 
 		} else {
@@ -125,21 +156,14 @@ func (s *ReplicaStatus) sendBackLog() {
 }
 
 func (s *ReplicaStatus) appendBackLog(cli *Client) {
-	if s.role != Master {
+	if s.role != Master || len(cli.raw) <= 0 {
 		return
 	}
-
-	if len(cli.raw) <= 0 {
-		return
-	}
-
 	// 只有写命令需要持久化
 
-	if cli.dbSeq != 0 {
-		// 多数据库场景需要加入数据库选择语句
-		dbStr := strconv.Itoa(cli.dbSeq)
-		s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-	}
+	// 多数据库场景需要加入数据库选择语句
+	dbStr := strconv.Itoa(cli.dbSeq)
+	s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 
 	s.offset = s.backLog.Append(cli.raw)
 
@@ -148,7 +172,7 @@ func (s *ReplicaStatus) appendBackLog(cli *Client) {
 func (s *Server) rdbForReplica() uint64 {
 
 	// 不需要进行复制
-	if s.offset-s.rdbOffset < s.capacity {
+	if s.rdbOffset > 0 && s.offset-s.rdbOffset < s.capacity {
 		return s.rdbOffset
 	}
 
@@ -159,8 +183,6 @@ func (s *Server) rdbForReplica() uint64 {
 		s.waitForRDBFinished()
 	}
 
-	rdbWaitNum++
-	rdbFileStatus = rdbWaitForSync
 	s.rdbOffset = s.offset
 
 	return s.rdbOffset
@@ -169,10 +191,28 @@ func (s *Server) rdbForReplica() uint64 {
 
 // Slaves 接口
 
-func (s *ReplicaStatus) standAloneToSlave(runId string) {
+func (s *ReplicaStatus) standAloneToSlave(client *Client, runId string, offset uint64) {
+	s.Master = client
 	s.role = Slave
 	s.runID = runId
-	s.offset = 0
+	s.offset = offset
+}
+
+func (s *ReplicaStatus) sendOffsetToMaster() {
+
+	if s.role != Slave || s.Master == nil {
+		logger.Error("Replica Not Slave Node Try Runs sendOffsetToMaster")
+	}
+
+	offsetStr := strconv.Itoa(int(s.offset))
+	replconfCMD := fmt.Sprintf("*3\r\n$8\r\nreplconf\r\n$3\r\nack\r\n$%d\r\n%s\r\n", len(offsetStr), offsetStr)
+
+	_, _ = s.Master.cnn.Write([]byte(replconfCMD))
+}
+
+func (s *ReplicaStatus) slaveToStandAlone() {
+	s.role = StandAlone
+	s.Master = nil
 }
 
 const (

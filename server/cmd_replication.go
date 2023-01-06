@@ -4,10 +4,10 @@ import (
 	"MemTable/logger"
 	"MemTable/resp"
 	"io"
-	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
@@ -24,6 +24,8 @@ func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	go func() {
 
 		offset := server.rdbForReplica()
+
+		server.waitForRDBFinished()
 
 		rdbFile, err := os.Open("dump.rdb")
 		if err != nil {
@@ -75,6 +77,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		go func() {
 
 			offset := server.rdbForReplica()
+			server.waitForRDBFinished()
 
 			rdbFile, err := os.Open("dump.rdb")
 			if err != nil {
@@ -159,32 +162,22 @@ func slaveof(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
+	if strings.ToLower(string(cmd[1])) == "no" && strings.ToLower(string(cmd[2])) == "one" {
+		// slaveof no one
+
+		server.slaveToStandAlone()
+		return resp.MakeStringData("OK")
+	}
+
 	// 检查地址并且连接，如果连接完成
 
 	// 创建一个客户端并且连接到对方
 
-	conn, err := net.Dial("tcp", "")
-	if err != nil {
-		return resp.MakeErrorData("ERR connect to master failed")
-	}
+	server.tl.AddTimeEvent(NewSingleTimeEvent(func() {
 
-	client := NewClient(conn)
-	server.clis.AddClientIfNotExist(client)
+		server.sendSyncToMaster()
 
-	// 禁止从 event loop 中向客户端恢复消息
-
-	go func() {
-
-		ch := resp.ParseStream(conn)
-
-		pingStr := "*1\r\n&4\r\nping\r\n"
-		client.cnn.Write([]byte(pingStr))
-		parsed := <-ch
-
-		parsed.Data.ToBytes()
-		client.blocked = true
-
-	}()
+	}, time.Now().Unix()))
 
 	return resp.MakeStringData("OK")
 }
@@ -193,4 +186,6 @@ func RegisterReplicationCommands() {
 	RegisterCommand("sync", syncCMD, RD)
 	RegisterCommand("psync", psync, RD)
 	RegisterCommand("replconf", replconf, RD)
+
+	RegisterCommand("slaveof", slaveof, RD)
 }

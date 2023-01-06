@@ -17,3 +17,4 @@
 - 错误信息，int 提示有问题
 - scan 命令
 - rdb 可重入的问题
+- recover from rdb

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"MemTable/db/cmd"
 	"MemTable/resp"
 	"fmt"
 	"strconv"
@@ -23,9 +22,9 @@ func multi(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func exec(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
+func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmds, "exec", 1)
+	e, ok := CheckCommandAndLength(&cmds, "execTX", 1)
 	if !ok {
 		return e
 	}
@@ -62,11 +61,6 @@ func exec(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 		// 执行服务命令
 		res, isWriteCommand := ExecCommand(server, cli, c)
 
-		if res == nil {
-			// 执行数据库命令
-			res, isWriteCommand = cmd.ExecCommand(server.dbs[cli.dbSeq], c)
-		}
-
 		// 写命令需要完成aof持久化
 		if isWriteCommand {
 
@@ -92,7 +86,7 @@ func exec(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 func watch(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "exec", 2)
+	e, ok := CheckCommandAndLength(&cmd, "execTX", 2)
 	if !ok {
 		return e
 	}
@@ -130,6 +124,6 @@ func discard(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func RegisterTransactionCommand() {
 	RegisterCommand("multi", multi, RD)
-	RegisterCommand("exec", exec, RD)
+	RegisterCommand("execTX", execTX, RD)
 	RegisterCommand("discard", discard, RD)
 }

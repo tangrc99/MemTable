@@ -1,6 +1,7 @@
 package server
 
 import (
+	"MemTable/db/cmd"
 	"MemTable/resp"
 	"fmt"
 	"strings"
@@ -33,29 +34,35 @@ func init() {
 	RegisterReplicationCommands()
 }
 
-func ExecCommand(server *Server, cli *Client, cmd [][]byte) (resp.RedisData, bool) {
+func ExecCommand(server *Server, cli *Client, cmds [][]byte) (resp.RedisData, bool) {
 
-	if len(cmd) == 0 {
+	if len(cmds) == 0 {
 		return resp.MakeErrorData("error: empty command"), false
 	}
 
-	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmd[0]))]
+	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmds[0]))]
+
+	writeAllowed := !(server.role == Slave && cli != server.Master)
+
+	if isWriteCommand && !writeAllowed {
+		return resp.MakeErrorData("ERR READONLY You can't write against a read only slave"), false
+	}
 
 	// 如果正在事务中
-	if cli.inTx && NotTxCommand(strings.ToLower(string(cmd[0]))) {
+	if cli.inTx && NotTxCommand(strings.ToLower(string(cmds[0]))) {
 		cli.tx = append(cli.tx, cli.cmd)
 		cli.txRaw = append(cli.txRaw, cli.raw)
 		return resp.MakeStringData("QUEUED"), false
 	}
 
-	f, ok := CommandTable[strings.ToLower(string(cmd[0]))]
+	f, ok := CommandTable[strings.ToLower(string(cmds[0]))]
 
+	// 如果没有匹配命令，执行数据库命令
 	if !ok {
-
-		return nil, isWriteCommand
+		return cmd.ExecCommand(server.dbs[cli.dbSeq], cli.cmd, writeAllowed)
 	}
 
-	return f(server, cli, cmd), isWriteCommand
+	return f(server, cli, cmds), isWriteCommand
 }
 
 func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
@@ -72,5 +79,5 @@ func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.Redi
 }
 
 func NotTxCommand(cmd string) bool {
-	return cmd != "exec" && cmd != "discard" && cmd != "watch" && cmd != "multi"
+	return cmd != "execTX" && cmd != "discard" && cmd != "watch" && cmd != "multi"
 }

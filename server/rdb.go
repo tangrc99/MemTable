@@ -5,44 +5,60 @@ import (
 	"github.com/hdt3213/rdb/encoder"
 	"io"
 	"os"
+	"os/exec"
+	"strconv"
 	"sync"
 )
-
-// 禁止 RDB 重入锁
-var lock sync.Mutex
 
 const (
 	rdbNormal = iota
 	rdbWaitForSync
 )
 
-var rdbWaitNum int = 0
+type RDBStatus struct {
+	rdbLock sync.Mutex // 禁止 rdb 重入锁
 
-var rdbFileStatus int
+	rdbFileStatus int
+	rdbWaitNum    int
+}
 
-func (s *Server) RDB(file string) {
+func (s *Server) RDB(file string) bool {
 
-	//fixme : logs and error handler
-
-	rdbFile, err := os.Create(file)
-	if err != nil {
-		panic(err)
+	if !s.rdbLock.TryLock() {
+		logger.Warning("RDB: Try Do RDB When Another RDB Process Executing")
+		return false
 	}
+
+	defer s.rdbLock.Unlock()
+
+	rdbFile, err := os.Create(file + ".tmp")
+
+	if err != nil {
+		logger.Error("RDB: Create File Failed", err.Error())
+		return false
+	}
+
 	defer rdbFile.Close()
 	enc := encoder.NewEncoder(rdbFile).EnableCompress()
 	err = enc.WriteHeader()
 	if err != nil {
-		panic(err)
+		logger.Error("RDB: Write RDB Header Failed", err.Error())
+		return false
 	}
 	auxMap := map[string]string{
 		"redis-ver":    "4.0.6",
 		"redis-bits":   "64",
 		"aof-preamble": "0",
+		"repl-id":      s.runID,
+		"repl-offset":  strconv.FormatUint(s.offset, 10),
 	}
+	logger.Info("rdb runid", s.runID)
+
 	for k, v := range auxMap {
 		err = enc.WriteAux(k, v)
 		if err != nil {
-			panic(err)
+			logger.Error("RDB: Write RDB Aux Failed", err.Error())
+			return false
 		}
 	}
 
@@ -54,39 +70,37 @@ func (s *Server) RDB(file string) {
 
 		err = enc.WriteDBHeader(uint(index), uint64(db.Size()), uint64(db.TTLSize()))
 		if err != nil {
-			panic(err)
+			logger.Error("RDB: Write RDB DB Header Failed", err.Error())
+			return false
 		}
 		err = db.Encode(enc)
 		if err != nil {
-			panic(err)
+			logger.Error("RDB: Write RDB DB Content Failed", err.Error())
+			return false
 		}
 	}
 
-	if err != nil {
-		panic(err)
-	}
 	err = enc.WriteEnd()
 	if err != nil {
-		panic(err)
+		logger.Error("RDB: Write RDB End Failed", err.Error())
+		return false
 	}
+
+	_ = os.Rename(file+".tmp", file)
+
+	return true
 }
 
 func (s *Server) BGRDB() bool {
 
-	if !lock.TryLock() {
-		return false
-	}
-
 	// 复制 aof
 	file1, err := os.Open(s.aof.filename)
 	if err != nil {
-		lock.Unlock()
 		logger.Error("AOF Rewrite: Can't Load AOF File")
 		return false
 	}
 	file2, err := os.OpenFile(s.aof.filename+".tmp", os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		lock.Unlock()
 		logger.Error("AOF Rewrite: Can't Create Temporary AOF File")
 		return false
 	}
@@ -96,30 +110,56 @@ func (s *Server) BGRDB() bool {
 
 	_, err = io.Copy(file2, file1)
 	if err != nil {
-		lock.Unlock()
 		logger.Error("AOF Rewrite: AOF Copy Error")
 		return false
 	}
 
+	// aof 启动一个 server
+	ws := NewServer("")
+	ws.runID = s.runID
+	ws.offset = s.offset
+	ws.rdbOffset = s.rdbOffset
+
 	go func() {
-		// aof 启动一个 server
-		ws := NewServer("")
+
 		ws.recoverFromAOF(s.aof.filename + ".tmp")
 		// server 进行恢复后，保存 rdb
-		ws.RDB("dump1.rdb")
+		ok := ws.RDB("dump.rdb")
+
+		logger.Info("BGSave Finished")
+
+		if !ok {
+			logger.Error("BGSave Failed")
+		}
+
 		// 清理文件
 		_ = os.Remove(s.aof.filename + ".tmp")
-		_ = os.Rename("dump1.rdb", "dump.rdb")
-		lock.Unlock()
+
 	}()
 	return true
 }
 
 func (s *Server) waitForRDBFinished() {
-	lock.Lock()
-	defer lock.Unlock()
+	s.rdbLock.Lock()
+	defer s.rdbLock.Unlock()
+
 }
 
-func (s *Server) recoverFromRDB(file string) {
+func (s *Server) recoverFromRDB(aofFile, rdbFile string) {
+
+	arg := []string{"-c", "protocol", "-f", aofFile, rdbFile}
+	cmd := exec.Command("rdb", arg...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error("Read RDB:", err.Error())
+		return
+	}
+
+	if cmd.ProcessState.ExitCode() != 0 {
+		logger.Error("Load RDB:", string(output))
+		return
+	}
+
+	s.recoverFromAOF(aofFile)
 
 }

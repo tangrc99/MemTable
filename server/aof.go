@@ -1,7 +1,6 @@
 package server
 
 import (
-	"MemTable/db/cmd"
 	"MemTable/logger"
 	"MemTable/resp"
 	"fmt"
@@ -17,11 +16,11 @@ func (s *Server) appendAOF(cli *Client) {
 
 	// 只有写命令需要持久化
 
-	if cli.dbSeq != 0 {
-		// 多数据库场景需要加入数据库选择语句
-		dbStr := strconv.Itoa(cli.dbSeq)
-		s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-	}
+	//if cli.dbSeq != 0 {
+	// 多数据库场景需要加入数据库选择语句
+	dbStr := strconv.Itoa(cli.dbSeq)
+	s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+	//}
 
 	s.aof.Append(cli.raw)
 }
@@ -51,18 +50,14 @@ func (s *Server) recoverFromAOF(filename string) {
 		array, ok := parsedRes.Data.(*resp.ArrayData)
 		if !ok {
 			logger.Error("Client", client.id, "parse Command Error")
+			// aof 文件有损坏
 			os.Exit(-1)
 		}
 
 		client.cmd = array.ToCommand()
 
 		// 执行服务命令
-		res, _ := ExecCommand(s, client, client.cmd)
-
-		if res == nil {
-			// 执行数据库命令
-			res, _ = cmd.ExecCommand(s.dbs[client.dbSeq], client.cmd)
-		}
+		_, _ = ExecCommand(s, client, client.cmd)
 
 	}
 }

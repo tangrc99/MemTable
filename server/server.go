@@ -2,7 +2,6 @@ package server
 
 import (
 	"MemTable/db"
-	"MemTable/db/cmd"
 	"MemTable/logger"
 	"MemTable/resp"
 	"MemTable/utils/gopool"
@@ -31,6 +30,7 @@ type Server struct {
 
 	sts *Status
 
+	RDBStatus
 	ReplicaStatus
 }
 
@@ -198,18 +198,18 @@ func (s *Server) eventLoop() {
 			// 更新时间戳
 			cli.UpdateTimestamp()
 
-			// 执行服务命令
+			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, cli.cmd)
 
-			if res == nil {
-				// 执行数据库命令
-				res, isWriteCommand = cmd.ExecCommand(s.dbs[cli.dbSeq], cli.cmd)
-			}
+			//if res == nil {
+			//	// 执行数据库命令
+			//	res, isWriteCommand = cmd.ExecCommand(s.dbs[cli.dbSeq], cli.cmd)
+			//}
 
 			// 只有写命令需要完成aof持久化
 			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
 				s.appendAOF(cli)
-				s.appendBackLog(cli)
+				s.updateReplicaStatus(cli)
 			}
 
 			println(string(cli.raw))
@@ -314,13 +314,13 @@ func (s *Server) initTimeEvents() {
 	}, time.Now().Add(time.Second).Unix(), time.Second,
 	))
 
-	// 从服务器同步操作
+	// 主从复制相关操作
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
-		logger.Debug("Replication: Send BackLog")
+		logger.Debug("TimeEvent: Replication")
 
-		s.sendBackLog()
+		s.handleReplicaEvents()
 
-	}, time.Now().Add(time.Second).Unix(), time.Second,
+	}, time.Now().Add(200*time.Millisecond).Unix(), 200*time.Millisecond,
 	))
 }
 
@@ -330,7 +330,9 @@ func (s *Server) Start() {
 
 	logger.Info("Server: Listen at", s.url)
 
-	s.recoverFromAOF("/Users/tangrenchu/GolandProjects/MemTable/logs/aof")
+	//s.recoverFromAOF("/Users/tangrenchu/GolandProjects/MemTable/logs/aof")
+
+	//s.recoverFromRDB("received.aof", "dump.rdb")
 
 	go s.eventLoop()
 
@@ -354,4 +356,8 @@ func (s *Server) Start() {
 	<-s.quitFlag
 
 	logger.Info("Server Shutdown...")
+}
+
+func (s *Server) TryRecover() {
+
 }
