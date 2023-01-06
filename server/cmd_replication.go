@@ -172,10 +172,14 @@ func slaveof(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 检查地址并且连接，如果连接完成
 
 	// 创建一个客户端并且连接到对方
+	url := string(cmd[1]) + ":" + string(cmd[2])
 
 	server.tl.AddTimeEvent(NewSingleTimeEvent(func() {
 
-		server.sendSyncToMaster()
+		ok := server.sendSyncToMaster(url)
+		if !ok {
+			logger.Error("Sync: Failed")
+		}
 
 	}, time.Now().Unix()))
 

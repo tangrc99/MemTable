@@ -154,21 +154,23 @@ func (s *Server) handleRead(conn net.Conn) {
 		return
 	}
 
-	logger.Debug("Goroutine Exit")
+	logger.Info("Client Shutdown", conn.RemoteAddr().String())
 
 }
 
 func (s *Server) eventLoop() {
 
 	s.initTimeEvents()
+	timer := time.NewTimer(100 * time.Millisecond)
 
 	for !s.quit {
-
-		timer := time.NewTimer(100 * time.Millisecond)
 
 		select {
 
 		case <-timer.C:
+
+			timer.Reset(100 * time.Millisecond)
+
 			logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务
 			s.tl.ExecuteManyDuring(25 * time.Millisecond)

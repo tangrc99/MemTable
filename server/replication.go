@@ -28,7 +28,8 @@ type ReplicaStatus struct {
 	initSlaves    map[*Client]struct{}
 
 	// Slave 需要的
-	Master *Client
+	Master      *Client
+	masterAlive bool
 }
 
 func (s *ReplicaStatus) updateReplicaStatus(cli *Client) {
@@ -48,14 +49,18 @@ func (s *ReplicaStatus) updateReplicaStatus(cli *Client) {
 	}
 }
 
-func (s *ReplicaStatus) handleReplicaEvents() {
+func (s *Server) handleReplicaEvents() {
 	switch s.role {
 	case StandAlone:
 		return
 	case Master:
 		s.sendBackLog()
 	case Slave:
-		s.sendOffsetToMaster()
+		if s.masterAlive == true {
+			s.sendOffsetToMaster()
+		} else {
+			s.reconnectToMaster()
+		}
 	}
 }
 
@@ -192,6 +197,7 @@ func (s *Server) rdbForReplica() uint64 {
 // Slaves 接口
 
 func (s *ReplicaStatus) standAloneToSlave(client *Client, runId string, offset uint64) {
+	s.masterAlive = true
 	s.Master = client
 	s.role = Slave
 	s.runID = runId
