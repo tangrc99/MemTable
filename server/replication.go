@@ -6,6 +6,7 @@ import (
 	"MemTable/utils/ring_buffer"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 const (
@@ -154,7 +155,7 @@ func (s *ReplicaStatus) sendBackLog() {
 
 		}
 		// 成功写入会更新时间戳
-		cli.UpdateTimestamp()
+		cli.UpdateTimestamp(time.Now())
 
 	}
 

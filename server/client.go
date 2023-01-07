@@ -20,9 +20,9 @@ const (
 )
 
 type Client struct {
-	cmd [][]byte            // 当前命令
-	raw []byte              // 当前命令的 resp 格式
-	res chan resp.RedisData // 回包
+	cmd [][]byte             // 当前命令
+	raw []byte               // 当前命令的 resp 格式
+	res chan *resp.RedisData // 回包
 
 	cnn   net.Conn  // 连接实例
 	id    uuid.UUID // Cli 编号
@@ -31,6 +31,8 @@ type Client struct {
 
 	status ClientStatus  // 状态 0 等待连接 1 正常 -1 退出 -2 异常
 	exit   chan struct{} // 退出标志
+
+	pipelined bool
 
 	// 发布订阅
 	chs map[string]struct{} //订阅频道
@@ -58,14 +60,14 @@ func NewClient(conn net.Conn) *Client {
 		status: WAIT,
 		dbSeq:  0,
 		exit:   make(chan struct{}, 1),
-		res:    make(chan resp.RedisData, 100),
+		res:    make(chan *resp.RedisData, 100),
 
 		blocked: false,
 	}
 }
 
-func (cli *Client) UpdateTimestamp() {
-	cli.tp = time.Now()
+func (cli *Client) UpdateTimestamp(tp time.Time) {
+	cli.tp = tp
 }
 
 func (cli *Client) Subscribe(chs *db.Channels, channel string) int {

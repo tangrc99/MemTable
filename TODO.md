@@ -5,18 +5,15 @@
 - 服务器状态，已完成
 - 发布订阅（路径版本），已完成
 - 生成 RDB 文件，已完成
-- 直接从 RDB 恢复，未完成
-- 慢查询
 - stream 结构
 - 主从复制，完成了发送
 - cluster
 - watch 命令，完成实现，没有加接口
 - tx，完成
 - pipeline，完成
-- 新增配置内容
 - 错误信息，int 提示有问题
 - scan 命令
-- rdb 可重入的问题
 - 列表的阻塞等待命令
 - recover from rdb
 - 进行恢复时，要从 rdb 里面读取到 replid 还有 offset，然后再根据 aof 的偏移量相加
+- 注释

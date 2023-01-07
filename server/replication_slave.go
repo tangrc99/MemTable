@@ -342,6 +342,7 @@ func (s *Server) waitMasterNotification(client *Client) {
 
 				client.cmd = plain.ToCommand()
 				client.raw = parsed.Data.ToBytes()
+				client.pipelined = true
 
 			} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
 
@@ -356,10 +357,11 @@ func (s *Server) waitMasterNotification(client *Client) {
 			}
 
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
-			s.commands <- client
+			s.events <- client
 
 			// 等待执行完毕并且丢弃，不回复主节点
 			<-client.res
+			client.pipelined = false
 
 		case <-client.exit:
 			running = false

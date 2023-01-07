@@ -88,7 +88,7 @@ func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 }
 
 // ExecuteOneIfExpire 执行一个任务，如果无可执行任务返回 false
-func (events *TimeEventList) ExecuteOneIfExpire() bool {
+func (events *TimeEventList) ExecuteOneIfExpire(now time.Time) bool {
 
 	// 无任务状态
 	if events.list.Empty() {
@@ -110,7 +110,7 @@ func (events *TimeEventList) ExecuteOneIfExpire() bool {
 		return false
 	}
 
-	if front.tp > time.Now().Unix() {
+	if front.tp > now.Unix() {
 		return false
 	}
 
@@ -121,7 +121,7 @@ func (events *TimeEventList) ExecuteOneIfExpire() bool {
 
 	// 如果是周期性任务，需要再次定时
 	if front.event == PERIOD {
-		front.tp = time.Now().Add(front.period).Unix()
+		front.tp = now.Add(front.period).Unix()
 		events.AddTimeEvent(front)
 	}
 
@@ -132,12 +132,12 @@ func (events *TimeEventList) Size() int {
 	return events.list.Size()
 }
 
-func (events *TimeEventList) ExecuteManyDuring(duration time.Duration) {
-	expired := time.Now().Add(duration).Unix()
+func (events *TimeEventList) ExecuteManyDuring(now time.Time, duration time.Duration) {
+	expired := now.Add(duration).Unix()
 
 	finished := 0
 
-	for expired > time.Now().Unix() && events.ExecuteOneIfExpire() {
+	for expired > now.Unix() && events.ExecuteOneIfExpire(now) {
 		finished++
 	}
 

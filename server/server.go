@@ -16,35 +16,41 @@ import (
 )
 
 type Server struct {
-	dbs      []*db.DataBase // 多个可以用于切换的数据库
-	Chs      *db.Channels   // 订阅发布频道
-	dbNum    int            //数据库数量
-	clis     *ClientList    // 客户端列表
-	tl       *TimeEventList // 事件链表
-	commands chan *Client   // 用于解析完毕的协程同步
+	url      string       // 监听 url
+	listener net.Listener // listener
+	dir      string       // 工作目录
 
-	url      string // 监听 url
-	listener net.Listener
+	// 数据库部分
+	dbs   []*db.DataBase // 多个可以用于切换的数据库
+	Chs   *db.Channels   // 订阅发布频道
+	dbNum int            //数据库数量
+
+	// 客户端部分
+	clis       *ClientList  // 客户端列表
+	cliTimeout int          // 客户端失效时间
+	maxClients int          // 最大客户端数量
+	events     chan *Client // 用于解析完毕的协程同步
+
+	tl *TimeEventList // 时间事件链表
+
+	// 退出控制
 	quit     bool
 	quitFlag chan struct{}
 
-	cliTimeout int
-	maxClients int
+	// 持久化
+	rdbFile    string     // rdb 文件名
+	dirty      int        // 脏数据计数器
+	checkPoint int64      // rdb 时间
+	RDBStatus             // rdb 文件状态
+	aofFile    string     // aof 文件名
+	aof        *AOFBuffer // aof 缓冲区
+	aofEnabled bool       // 是否开启 aof
 
-	dir     string
-	rdbFile string
-
-	aofFile    string
-	aof        *AOFBuffer
-	aofEnabled bool
-
+	// 协程池
 	gopool *gopool.Pool // 用于客户端启动的协程池
 	sts    *Status
 
-	dirty      int // 脏数据计数器
-	checkPoint int64
-
-	RDBStatus
+	// 主从复制
 	ReplicaStatus
 }
 
@@ -62,7 +68,7 @@ func NewServer(url string) *Server {
 		clis:       NewClientList(),
 		tl:         NewTimeEventList(),
 		url:        url,
-		commands:   make(chan *Client, 10000),
+		events:     make(chan *Client, 10000),
 		quit:       false,
 		quitFlag:   make(chan struct{}),
 		rdbFile:    config.Conf.RDBFile,
@@ -120,7 +126,7 @@ func (s *Server) handleRead(conn net.Conn) {
 
 			if plain, ok := parsed.Data.(*resp.PlainData); ok {
 
-				//pipelined++
+				client.pipelined = true
 				client.cmd = plain.ToCommand()
 				client.raw = parsed.Data.ToBytes()
 
@@ -137,7 +143,7 @@ func (s *Server) handleRead(conn net.Conn) {
 			}
 
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
-			s.commands <- client
+			s.events <- client
 
 			// 使用 select 防止协程无法释放
 			select {
@@ -148,7 +154,7 @@ func (s *Server) handleRead(conn net.Conn) {
 			case r := <-client.res:
 
 				// 将主线程的返回值写入到 socket 中
-				_, err := conn.Write(r.ToBytes())
+				_, err := conn.Write((*r).ToBytes())
 
 				if err != nil {
 					logger.Warning("Client", client.id, "Write Error")
@@ -156,6 +162,8 @@ func (s *Server) handleRead(conn net.Conn) {
 					break
 				}
 			}
+
+			client.pipelined = false
 
 		case <-client.exit:
 			running = false
@@ -179,7 +187,7 @@ func (s *Server) handleRead(conn net.Conn) {
 		client.cmd = nil
 
 		// 通知顶层
-		s.commands <- client
+		s.events <- client
 	}
 
 	err := conn.Close()
@@ -206,10 +214,10 @@ func (s *Server) eventLoop() {
 
 			logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务
-			s.tl.ExecuteManyDuring(25 * time.Millisecond)
+			s.tl.ExecuteManyDuring(s.sts.Now, 25*time.Millisecond)
 			//s.tl.ExecuteOneIfExpire()
 
-		case cli := <-s.commands:
+		case cli := <-s.events:
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
 			// todo:  关闭使用定时队列来实现
@@ -231,13 +239,18 @@ func (s *Server) eventLoop() {
 			}
 
 			// 更新时间戳
-			cli.UpdateTimestamp()
+			cli.UpdateTimestamp(s.sts.Now)
 
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, cli.cmd)
 
 			// 只有写命令需要完成aof持久化
 			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
+
+				if cli.pipelined {
+					cli.raw = resp.PlainDataToResp(cli.cmd).ToBytes()
+				}
+
 				s.appendAOF(cli)
 				s.updateReplicaStatus(cli)
 				s.dirty++
@@ -245,7 +258,7 @@ func (s *Server) eventLoop() {
 
 			// 非阻塞状态的客户端写入回包
 			if !cli.blocked {
-				cli.res <- res
+				cli.res <- &res
 			}
 
 		}
@@ -351,7 +364,7 @@ func (s *Server) initTimeEvents() {
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: RDB Check")
 
-		if !s.aofEnabled && (s.dirty > 100 || time.Now().Unix()-s.checkPoint > 10) {
+		if !s.aofEnabled && (s.dirty > 100 || s.sts.Now.Unix()-s.checkPoint > 10) {
 			s.BGRDB()
 		}
 
