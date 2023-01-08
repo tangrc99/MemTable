@@ -1,8 +1,8 @@
 package server
 
 import (
-	"MemTable/db/structure"
-	"MemTable/logger"
+	"github.com/tangrc99/MemTable/db/structure"
+	"github.com/tangrc99/MemTable/logger"
 	"time"
 )
 
@@ -13,8 +13,6 @@ const (
 	PERIOD EventType = iota
 	// SINGLE 代表单次定时事件
 	SINGLE
-	// IO 代表 IO 事件
-	IO
 )
 
 type TimeEvent struct {

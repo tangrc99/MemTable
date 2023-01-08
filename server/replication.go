@@ -1,10 +1,10 @@
 package server
 
 import (
-	"MemTable/logger"
-	"MemTable/utils/rand_str"
-	"MemTable/utils/ring_buffer"
 	"fmt"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/utils/rand_str"
+	"github.com/tangrc99/MemTable/utils/ring_buffer"
 	"strconv"
 	"time"
 )

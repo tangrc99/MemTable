@@ -1,7 +1,7 @@
 package structure
 
 import (
-	"MemTable/logger"
+	"github.com/tangrc99/MemTable/logger"
 	"hash/fnv"
 	"math/rand"
 	"regexp"
@@ -334,7 +334,7 @@ func (dict *Dict) RandomKeys(num int) map[string]struct{} {
 	for len(selected) < num {
 
 		for i := 0; i < dict.size && len(selected) < num; i++ {
-			for k, _ := range dict.shards[i] {
+			for k := range dict.shards[i] {
 				// 使用概率选择法，每一个 key 被选择的概率都是 1/n
 				n := rand.Int() % dict.count
 				if n == 0 {

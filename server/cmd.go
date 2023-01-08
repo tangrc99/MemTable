@@ -1,9 +1,9 @@
 package server
 
 import (
-	"MemTable/db/cmd"
-	"MemTable/resp"
 	"fmt"
+	"github.com/tangrc99/MemTable/db/cmd"
+	"github.com/tangrc99/MemTable/resp"
 	"strings"
 )
 

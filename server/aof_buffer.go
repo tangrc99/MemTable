@@ -1,7 +1,7 @@
 package server
 
 import (
-	"MemTable/logger"
+	"github.com/tangrc99/MemTable/logger"
 	"os"
 	"sync/atomic"
 )

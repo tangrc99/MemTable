@@ -1,7 +1,7 @@
 package server
 
 import (
-	"MemTable/resp"
+	"github.com/tangrc99/MemTable/resp"
 )
 
 func publish(server *Server, _ *Client, cmd [][]byte) resp.RedisData {

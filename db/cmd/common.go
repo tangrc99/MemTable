@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"MemTable/db/structure"
-	"MemTable/resp"
 	"fmt"
+	"github.com/tangrc99/MemTable/db/structure"
+	"github.com/tangrc99/MemTable/resp"
 	"strings"
 )
 

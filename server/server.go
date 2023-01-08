@@ -1,12 +1,12 @@
 package server
 
 import (
-	"MemTable/config"
-	"MemTable/db"
-	"MemTable/logger"
-	"MemTable/resp"
-	"MemTable/utils/gopool"
 	"fmt"
+	"github.com/tangrc99/MemTable/config"
+	"github.com/tangrc99/MemTable/db"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/utils/gopool"
 	"net"
 	"os"
 	"os/signal"
@@ -282,11 +282,6 @@ func (s *Server) eventLoop() {
 
 	// 通知
 	s.quitFlag <- struct{}{}
-}
-
-func backgroundLoop() {
-
-	// 完成后台的任务
 }
 
 func (s *Server) acceptLoop() {

@@ -1,8 +1,8 @@
 package server
 
 import (
-	"MemTable/logger"
-	"MemTable/resp"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/resp"
 	"io"
 	"os"
 	"path"

@@ -125,6 +125,7 @@ func (cfg *Config) parseFile() error {
 					return err
 				}
 				cfg.MaxClients = maxclients
+
 			} else if cfgName == "maxmemory" {
 				maxmemory, err := strconv.Atoi(fields[1])
 				if err != nil {

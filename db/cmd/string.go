@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"MemTable/db"
-	"MemTable/resp"
+	"github.com/tangrc99/MemTable/db"
+	"github.com/tangrc99/MemTable/resp"
 	"strconv"
 )
 

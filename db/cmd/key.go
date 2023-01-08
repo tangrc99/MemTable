@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"MemTable/db"
-	"MemTable/db/structure"
-	"MemTable/logger"
-	"MemTable/resp"
 	"fmt"
+	"github.com/tangrc99/MemTable/db"
+	"github.com/tangrc99/MemTable/db/structure"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/resp"
 	"strconv"
 	"time"
 )

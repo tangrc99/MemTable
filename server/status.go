@@ -1,7 +1,7 @@
 package server
 
 import (
-	"MemTable/utils/sys_status"
+	"github.com/tangrc99/MemTable/utils/sys_status"
 )
 
 type Status struct {

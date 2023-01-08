@@ -1,8 +1,8 @@
 package server
 
 import (
-	"MemTable/resp"
 	"fmt"
+	"github.com/tangrc99/MemTable/resp"
 	"strconv"
 )
 

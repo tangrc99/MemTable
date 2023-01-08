@@ -1,4 +1,4 @@
-module MemTable
+module github.com/tangrc99/MemTable
 
 go 1.19
 

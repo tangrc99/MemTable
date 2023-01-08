@@ -1,12 +1,12 @@
 package db
 
 import (
-	"MemTable/db/structure"
 	"errors"
 	"fmt"
 	"github.com/hdt3213/rdb/core"
 	"github.com/hdt3213/rdb/encoder"
 	"github.com/hdt3213/rdb/model"
+	"github.com/tangrc99/MemTable/db/structure"
 )
 
 func (db_ *DataBase) Encode(enc *core.Encoder) error {

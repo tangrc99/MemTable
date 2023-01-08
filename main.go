@@ -1,11 +1,12 @@
 package main
 
 import (
-	"MemTable/config"
-	"MemTable/logger"
-	"MemTable/server"
 	"fmt"
+	"github.com/tangrc99/MemTable/config"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/server"
 	_ "net/http/pprof"
+	_ "runtime/trace"
 	_ "time"
 )
 
@@ -38,6 +39,11 @@ func TrieTreeTest(s *[]string) {
 }
 
 func main() {
+
+	//go func() {
+	//	fmt.Println("pprof started...")
+	//	panic(http.ListenAndServe("localhost:8080", nil))
+	//}()
 
 	err := logger.Init(config.Conf.LogDir, "bin.log", logger.StringToLogLevel(config.Conf.LogLevel))
 	if err != nil {

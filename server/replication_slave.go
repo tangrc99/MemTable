@@ -1,9 +1,9 @@
 package server
 
 import (
-	"MemTable/logger"
-	"MemTable/resp"
 	"fmt"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/resp"
 	"net"
 	"os"
 	"path"
@@ -38,7 +38,6 @@ func (s *Server) sendSyncToMaster(url string) bool {
 		PING = iota
 		SYNC
 		WAITRDB
-		FINISHED
 	)
 	shakeStatus := PING
 
@@ -149,7 +148,6 @@ func (s *Server) SendPSyncToMaster(url string) bool {
 		PSYNC
 		FULLSYNC
 		CONTINUE
-		FINISHED
 	)
 	shakeStatus := PING
 

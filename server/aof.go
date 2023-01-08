@@ -1,9 +1,9 @@
 package server
 
 import (
-	"MemTable/logger"
-	"MemTable/resp"
 	"fmt"
+	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/resp"
 	"os"
 	"strconv"
 )

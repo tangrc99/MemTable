@@ -1,7 +1,7 @@
 package db
 
 import (
-	"MemTable/db/structure"
+	"github.com/tangrc99/MemTable/db/structure"
 	"strings"
 )
 

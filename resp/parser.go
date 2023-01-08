@@ -1,10 +1,10 @@
 package resp
 
 import (
-	"MemTable/logger"
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/tangrc99/MemTable/logger"
 	"io"
 	"strconv"
 )
