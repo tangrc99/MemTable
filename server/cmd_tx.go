@@ -124,6 +124,6 @@ func discard(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func RegisterTransactionCommand() {
 	RegisterCommand("multi", multi, RD)
-	RegisterCommand("execTX", execTX, RD)
+	RegisterCommand("exec", execTX, RD)
 	RegisterCommand("discard", discard, RD)
 }

@@ -219,6 +219,8 @@ func (s *ReplicaStatus) sendOffsetToMaster() {
 
 func (s *ReplicaStatus) slaveToStandAlone() {
 	s.role = StandAlone
+	s.masterAlive = false
+	s.Master.exit <- struct{}{}
 	s.Master = nil
 }
 

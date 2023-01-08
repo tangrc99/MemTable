@@ -547,6 +547,6 @@ func RegisterZSetCommands() {
 	RegisterCommand("zrange", zRange, RD)
 	RegisterCommand("zrevrange", zRevRange, RD)
 	RegisterCommand("zrangebyscore", zRangeByScore, RD)
-	RegisterCommand("zrevrangebyscire", zRevRangeByScore, RD)
+	RegisterCommand("zrevrangebyscore", zRevRangeByScore, RD)
 
 }

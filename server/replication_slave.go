@@ -369,7 +369,7 @@ func (s *Server) waitMasterNotification(client *Client) {
 	}
 
 	// 如果是读写发生错误，需要通知事件循环来关闭连接
-	if client.status != EXIT {
+	if client.status != EXIT || s.role == Slave {
 		// 说明这是异常退出的
 		logger.Error("Replication: Connection with master lost.")
 		s.masterAlive = false

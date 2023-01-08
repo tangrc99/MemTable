@@ -214,7 +214,7 @@ func (s *Server) eventLoop() {
 
 			logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务
-			s.tl.ExecuteManyDuring(s.sts.Now, 25*time.Millisecond)
+			s.tl.ExecuteManyDuring(time.Now(), 25*time.Millisecond)
 			//s.tl.ExecuteOneIfExpire()
 
 		case cli := <-s.events:
