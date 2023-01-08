@@ -60,24 +60,21 @@ MemTable 基于单事件循环与多 IO 循环模型，Accept Loop 接受客户�
 func EventLoop() {
 
   for !quit{
-    
-		select {
-      
-		case <-timer.C:
-
-			// 执行时间事件
+      select {
+      case <-timer.C: 
+      // 执行时间事件
       execTimeEvent()
 
-		case cli := <-events:
+      case cli := <-events:
 			
       // 执行 IO 时间
       eventRes := executeIOEvent(cli.event)
       
       // 通知阻塞的客户端
-			cli.res <- eventRes
+      cli.res <- eventRes
 
-		}
-	}
+      }
+  }
   // 执行退出事件
   executeShutdownEvents()
 }
