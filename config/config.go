@@ -230,7 +230,7 @@ func init() {
 		Conf.ConfFile = os.Args[1]
 		err := Conf.parseFile()
 		if err != nil {
-			panic(err)
+			Conf.ConfFile = ""
 		}
 	}
 

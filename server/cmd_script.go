@@ -1,11 +1,13 @@
 package server
 
 import (
+	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
 	"strconv"
+	"time"
 )
 
-func evalCommand(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func eval(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	e, ok := CheckCommandAndLength(&cmd, "eval", 3)
 	if !ok {
@@ -17,6 +19,7 @@ func evalCommand(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	body := string(cmd[1])
 
 	keyNum, err := strconv.Atoi(string(cmd[2]))
+
 	if err != nil {
 		return resp.MakeErrorData("ERR numkeys is not an integer or out of range")
 	} else if keyNum > len(cmd) {
@@ -25,10 +28,33 @@ func evalCommand(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR Number of keys can't be negative")
 	}
 
-	return evalGenericCommand(env.l, body, "", cmd[3:3+keyNum], cmd[3+keyNum:])
+	cli.blocked = true
+	done := make(chan struct{}, 1)
+
+	go func() {
+
+		ret := evalGenericCommand(env.l, body, "", cmd[3:3+keyNum], cmd[3+keyNum:])
+
+		cli.blocked = false
+		env.caller = nil
+		// 直接将结果发送给客户端
+		cli.res <- &ret
+		done <- struct{}{}
+
+		// TODO: lua 命令的传播不会经过主线程，需要进行额外处理
+	}()
+
+	select {
+	case <-done:
+
+	case <-time.Tick(slowScriptTime):
+		logger.Info("Lua Script: Slow Script Blocked Server")
+	}
+
+	return nil
 }
 
-func evalShaCommand(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func evalSha(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	e, ok := CheckCommandAndLength(&cmd, "evalsha", 3)
 	if !ok {
@@ -47,12 +73,44 @@ func evalShaCommand(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR Number of keys can't be negative")
 	}
 
-	// 这里需要更改 client 的命令，变为 eval 形式
+	cli.blocked = true
+	done := make(chan struct{}, 1)
 
-	return evalGenericCommand(env.l, "", sha, cmd[3:3+keyNum], cmd[3+keyNum:])
+	go func() {
+
+		ret := evalGenericCommand(env.l, "", sha, cmd[3:3+keyNum], cmd[3+keyNum:])
+
+		cli.blocked = false
+		env.caller = nil
+		// 直接将结果发送给客户端
+		cli.res <- &ret
+		done <- struct{}{}
+
+		// TODO: lua 命令的传播不会经过主线程，需要进行额外处理
+	}()
+
+	select {
+	case <-done:
+
+	case <-time.Tick(slowScriptTime):
+		logger.Info("Lua Script: Slow Script Blocked Server")
+	}
+
+	return nil
+}
+
+func script(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
+
+	e, ok := CheckCommandAndLength(&cmd, "script", 2)
+	if !ok {
+		return e
+	}
+
+	return scriptCommand(cmd)
 }
 
 func RegisterScriptCommands() {
-	RegisterCommand("eval", evalCommand, WR)
-	RegisterCommand("eval", evalShaCommand, WR)
+	RegisterCommand("eval", eval, WR)
+	RegisterCommand("eval", evalSha, WR)
+	RegisterCommand("script", script, WR)
 }

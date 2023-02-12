@@ -60,3 +60,12 @@ func ExecCommand(base *db.DataBase, cmd [][]byte, enableWrite bool) (res resp.Re
 
 	return f(base, cmd), isWriteCommand
 }
+
+func IsWriteCommand(cmd string) bool {
+	_, ok := writeCommands[cmd]
+	return ok
+}
+
+func IsRandCommand(cmd string) bool {
+	return cmd == "randomkey" || cmd == "srandmember"
+}

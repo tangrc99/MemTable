@@ -32,12 +32,17 @@ func init() {
 	RegisterServerCommand()
 	RegisterTransactionCommand()
 	RegisterReplicationCommands()
+	RegisterScriptCommands()
 }
 
-func ExecCommand(server *Server, cli *Client, cmds [][]byte) (resp.RedisData, bool) {
+func ExecCommand(server *Server, cli *Client, cmds [][]byte) (ret resp.RedisData, isWrite bool) {
 
 	if len(cmds) == 0 {
 		return resp.MakeErrorData("error: empty command"), false
+	}
+
+	if allowed := CheckCommandRunnableNow(cmds, cli); allowed == false {
+		return resp.MakeErrorData("BUSY running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE"), false
 	}
 
 	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmds[0]))]
@@ -82,12 +87,15 @@ func NotTxCommand(cmd string) bool {
 	return cmd != "execTX" && cmd != "discard" && cmd != "watch" && cmd != "multi"
 }
 
-func IsWriteCommand(cmd string) bool {
+func IsWriteCommand(cmdName string) bool {
 
-	return false
+	if _, ok := WriteCommands[cmdName]; ok {
+		return true
+	}
+	return cmd.IsWriteCommand(cmdName)
 }
 
-func IsRandCommand(cmd string) bool {
+func IsRandCommand(cmdName string) bool {
 
-	return false
+	return cmd.IsRandCommand(cmdName)
 }

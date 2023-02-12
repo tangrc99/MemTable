@@ -230,6 +230,10 @@ func (s *Server) eventLoop() {
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, cli.cmd)
 
+			if res == nil {
+				continue
+			}
+
 			// 只有写命令需要完成aof持久化
 			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
 
