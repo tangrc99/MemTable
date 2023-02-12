@@ -15,7 +15,7 @@ import (
 func (s *Server) sendSyncToMaster(url string) bool {
 	conn, err := net.Dial("tcp", url)
 	if err != nil {
-		logger.Error("Sync: Dial Failed", err.Error())
+		logger.Error("syncToDisk: Dial Failed", err.Error())
 		return false
 	}
 
@@ -30,7 +30,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 	_, err = client.cnn.Write([]byte(pingStr))
 
 	if err != nil {
-		logger.Error("Sync: Ping Failed", err.Error())
+		logger.Error("syncToDisk: Ping Failed", err.Error())
 		return false
 	}
 
@@ -65,7 +65,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 
 			_, err = client.cnn.Write([]byte("*1\r\n$4\r\nsync\r\n"))
 			if err != nil {
-				logger.Error("Sync: Write SYNC Command Failed", err.Error())
+				logger.Error("syncToDisk: Write SYNC Command Failed", err.Error())
 				return false
 			}
 			shakeStatus = SYNC
@@ -85,7 +85,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 				}
 			} else {
 
-				logger.Error("Sync: Master Don't Understand Sync With Wrong Reply", string(handshakeBuff[parsedPos:rdLen]))
+				logger.Error("syncToDisk: Master Don't Understand syncToDisk With Wrong Reply", string(handshakeBuff[parsedPos:rdLen]))
 				return false
 
 			}
@@ -95,7 +95,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 				rdbFile, _ := os.Create("received.rdb")
 				_, err = rdbFile.Write(handshakeBuff[parsedPos : parsedPos+rdbSize])
 				if err != nil {
-					logger.Error("Sync: Write RDBFile Failed", err.Error())
+					logger.Error("syncToDisk: Write RDBFile Failed", err.Error())
 				}
 
 				// 这里需要设置 repl-id 和 repl-offset 吗
@@ -309,19 +309,16 @@ func (s *Server) SendPSyncToMaster(url string) bool {
 }
 
 func (s *Server) waitMasterNotification(client *Client) {
-	logger.Info("Replica: Sync Finished with success")
+	logger.Info("Replica: syncToDisk Finished with success")
 
-	ch := resp.ParseStream(client.cnn)
-
-	// 这里会阻塞等待有数据到达
+	parser := resp.NewParser(client.cnn) // 这里会阻塞等待有数据到达
 	running := true
 
 	for running && !s.quit {
 
-		select {
-		// 等待是否有新消息到达
-		case parsed := <-ch:
-
+		for {
+			parsed := parser.Parse()
+			// 等待是否有新消息到达
 			if parsed.Err != nil {
 
 				if e := parsed.Err.Error(); e == "EOF" {
@@ -361,15 +358,12 @@ func (s *Server) waitMasterNotification(client *Client) {
 			<-client.res
 			client.pipelined = false
 
-		case <-client.exit:
-			running = false
-
 		}
 
 	}
 
 	// 如果是读写发生错误，需要通知事件循环来关闭连接
-	if client.status != EXIT || s.role == Slave {
+	if client.status != EXIT && s.role == Slave {
 		// 说明这是异常退出的
 		logger.Error("Replication: Connection with master lost.")
 		s.masterAlive = false

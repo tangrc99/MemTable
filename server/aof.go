@@ -23,10 +23,10 @@ func (s *Server) appendAOF(cli *Client) {
 	//if cli.dbSeq != 0 {
 	// 多数据库场景需要加入数据库选择语句
 	dbStr := strconv.Itoa(cli.dbSeq)
-	s.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+	s.aof.append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 	//}
 
-	s.aof.Append(cli.raw)
+	s.aof.append(cli.raw)
 }
 
 func (s *Server) recoverFromAOF(filename string) {
@@ -39,9 +39,11 @@ func (s *Server) recoverFromAOF(filename string) {
 
 	client := NewClient(nil)
 
-	ch := resp.ParseStream(reader)
+	parser := resp.NewParser(reader)
 
-	for parsedRes := range ch {
+	for {
+
+		parsedRes := parser.Parse()
 
 		if parsedRes.Err != nil {
 

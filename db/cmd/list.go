@@ -10,7 +10,7 @@ import (
 
 func lLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "llen", 2)
+	e, ok := checkCommandAndLength(&cmd, "llen", 2)
 	if !ok {
 		return e
 	}
@@ -20,7 +20,7 @@ func lLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	err := CheckType(value, LIST)
+	err := checkType(value, LIST)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func lLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "lpush", 3)
+	e, ok := checkCommandAndLength(&cmd, "lpush", 3)
 	if !ok {
 		return e
 	}
@@ -43,7 +43,7 @@ func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		db.SetKey(string(cmd[1]), value)
 	}
 
-	err := CheckType(value, LIST)
+	err := checkType(value, LIST)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "rpush", 3)
+	e, ok := checkCommandAndLength(&cmd, "rpush", 3)
 	if !ok {
 		return e
 	}
@@ -72,7 +72,7 @@ func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型
 		db.SetKey(string(cmd[1]), value)
 	}
 
-	err := CheckType(value, LIST)
+	err := checkType(value, LIST)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型
 }
 
 func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "lpop", 2)
+	e, ok := checkCommandAndLength(&cmd, "lpop", 2)
 	if !ok {
 		return e
 	}
@@ -100,7 +100,7 @@ func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -134,7 +134,7 @@ func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "rpop", 2)
+	e, ok := checkCommandAndLength(&cmd, "rpop", 2)
 	if !ok {
 		return e
 	}
@@ -144,7 +144,7 @@ func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -178,7 +178,7 @@ func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func lIndex(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "lindex", 3)
+	e, ok := checkCommandAndLength(&cmd, "lindex", 3)
 	if !ok {
 		return e
 	}
@@ -188,7 +188,7 @@ func lIndex(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -209,7 +209,7 @@ func lIndex(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "lpos", 3)
+	e, ok := checkCommandAndLength(&cmd, "lpos", 3)
 	if !ok {
 		return e
 	}
@@ -219,7 +219,7 @@ func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -240,7 +240,7 @@ func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "lset", 4)
+	e, ok := checkCommandAndLength(&cmd, "lset", 4)
 	if !ok {
 		return e
 	}
@@ -250,7 +250,7 @@ func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR no such key")
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -272,7 +272,7 @@ func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
-	e, ok := CheckCommandAndLength(&cmd, "lrem", 4)
+	e, ok := checkCommandAndLength(&cmd, "lrem", 4)
 	if !ok {
 		return e
 	}
@@ -282,7 +282,7 @@ func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -313,7 +313,7 @@ func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "lrange", 4)
+	e, ok := checkCommandAndLength(&cmd, "lrange", 4)
 	if !ok {
 		return e
 	}
@@ -323,7 +323,7 @@ func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -354,7 +354,7 @@ func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 // lTrim 删除指定范围外的所有元素
 func lTrim(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "ltrim", 4)
+	e, ok := checkCommandAndLength(&cmd, "ltrim", 4)
 	if !ok {
 		return e
 	}
@@ -364,7 +364,7 @@ func lTrim(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("OK")
 	}
 
-	e = CheckType(value, LIST)
+	e = checkType(value, LIST)
 	if e != nil {
 		return e
 	}
@@ -387,7 +387,7 @@ func lTrim(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "lmove", 5)
+	e, ok := checkCommandAndLength(&cmd, "lmove", 5)
 	if !ok {
 		return e
 	}
@@ -397,7 +397,7 @@ func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	e = CheckType(value1, LIST)
+	e = checkType(value1, LIST)
 	if e != nil {
 		return e
 	}
@@ -410,7 +410,7 @@ func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		db.SetKey(string(cmd[2]), value2)
 	}
 
-	e = CheckType(value2, LIST)
+	e = checkType(value2, LIST)
 	if e != nil {
 		return e
 	}
@@ -463,17 +463,17 @@ func bLPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
 func bRPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
 */
 
-func RegisterListCommands() {
-	RegisterCommand("llen", lLen, RD)
-	RegisterCommand("lpush", lPush, WR)
-	RegisterCommand("lpop", lPop, WR)
-	RegisterCommand("rpush", rPush, WR)
-	RegisterCommand("rpop", rPop, WR)
-	RegisterCommand("lindex", lIndex, RD)
-	RegisterCommand("lpos", lPos, RD)
-	RegisterCommand("lset", lSet, WR)
-	RegisterCommand("lrem", lRem, WR)
-	RegisterCommand("lrange", lRange, RD)
-	RegisterCommand("ltrim", lTrim, WR)
-	RegisterCommand("lmove", lMove, WR)
+func registerListCommands() {
+	registerCommand("llen", lLen, RD)
+	registerCommand("lpush", lPush, WR)
+	registerCommand("lpop", lPop, WR)
+	registerCommand("rpush", rPush, WR)
+	registerCommand("rpop", rPop, WR)
+	registerCommand("lindex", lIndex, RD)
+	registerCommand("lpos", lPos, RD)
+	registerCommand("lset", lSet, WR)
+	registerCommand("lrem", lRem, WR)
+	registerCommand("lrange", lRange, RD)
+	registerCommand("ltrim", lTrim, WR)
+	registerCommand("lmove", lMove, WR)
 }

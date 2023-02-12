@@ -14,7 +14,7 @@ import (
 func del(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "del", 2)
+	e, ok := checkCommandAndLength(&cmd, "del", 2)
 	if !ok {
 		return e
 	}
@@ -39,7 +39,7 @@ func dump(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func exists(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "exists", 2)
+	e, ok := checkCommandAndLength(&cmd, "exists", 2)
 	if !ok {
 		return e
 	}
@@ -59,7 +59,7 @@ func exists(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func expire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "expire", 3)
+	e, ok := checkCommandAndLength(&cmd, "expire", 3)
 	if !ok {
 		return e
 	}
@@ -83,7 +83,7 @@ func expire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func expireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "expireat", 3)
+	e, ok := checkCommandAndLength(&cmd, "expireat", 3)
 	if !ok {
 		return e
 	}
@@ -105,7 +105,7 @@ func expireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "pexpire", 3)
+	e, ok := checkCommandAndLength(&cmd, "pexpire", 3)
 	if !ok {
 		return e
 	}
@@ -129,7 +129,7 @@ func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func pExpireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "pexpireat", 3)
+	e, ok := checkCommandAndLength(&cmd, "pexpireat", 3)
 	if !ok {
 		return e
 	}
@@ -152,7 +152,7 @@ func pExpireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func keys(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	err, ok := CheckCommandAndLength(&cmd, "keys", 1)
+	err, ok := checkCommandAndLength(&cmd, "keys", 1)
 	if !ok {
 		return err
 	}
@@ -177,7 +177,7 @@ func keys(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func ttl(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	err, ok := CheckCommandAndLength(&cmd, "ttl", 2)
+	err, ok := checkCommandAndLength(&cmd, "ttl", 2)
 	if !ok {
 		return err
 	}
@@ -189,7 +189,7 @@ func ttl(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func randomKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	err, ok := CheckCommandAndLength(&cmd, "randomkey", 1)
+	err, ok := checkCommandAndLength(&cmd, "randomkey", 1)
 	if !ok {
 		return err
 	}
@@ -204,7 +204,7 @@ func randomKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func rename(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	err, ok := CheckCommandAndLength(&cmd, "rename", 3)
+	err, ok := checkCommandAndLength(&cmd, "rename", 3)
 	if !ok {
 		return err
 	}
@@ -227,7 +227,7 @@ func renameNX(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func typeKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	err, ok := CheckCommandAndLength(&cmd, "type", 2)
+	err, ok := checkCommandAndLength(&cmd, "type", 2)
 	if !ok {
 		return err
 	}
@@ -256,17 +256,17 @@ func typeKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData(typeName)
 }
 
-func RegisterKeyCommands() {
+func registerKeyCommands() {
 
-	RegisterCommand("del", del, WR)
-	RegisterCommand("exists", exists, RD)
-	RegisterCommand("keys", keys, RD)
-	RegisterCommand("ttl", ttl, RD)
-	RegisterCommand("expire", expire, WR)
-	//RegisterCommand("expireat", expireAt)
-	RegisterCommand("pexpire", pExpire, WR)
-	//RegisterCommand("pexpireat", pExpireAt)
-	RegisterCommand("rename", rename, WR)
-	RegisterCommand("type", typeKey, RD)
-	RegisterCommand("randomkey", randomKey, RD)
+	registerCommand("del", del, WR)
+	registerCommand("exists", exists, RD)
+	registerCommand("keys", keys, RD)
+	registerCommand("ttl", ttl, RD)
+	registerCommand("expire", expire, WR)
+	//registerCommand("expireat", expireAt)
+	registerCommand("pexpire", pExpire, WR)
+	//registerCommand("pexpireat", pExpireAt)
+	registerCommand("rename", rename, WR)
+	registerCommand("type", typeKey, RD)
+	registerCommand("randomkey", randomKey, RD)
 }

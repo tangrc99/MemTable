@@ -1,30 +1,32 @@
 package structure
 
-type TrieTreeNode struct {
+type trieTreeNode struct {
 	Key      string                   // 键
 	Value    any                      // 值
 	isLeaf   bool                     // 判别是否为叶子节点
-	parent   *TrieTreeNode            // 父结点
-	children map[string]*TrieTreeNode // 子节点链表
+	parent   *trieTreeNode            // 父结点
+	children map[string]*trieTreeNode // 子节点链表
 	tree     *TrieTree                // 所属的树
 }
 
-func newTrieTreeNode(key string, value any, leaf bool, parent *TrieTreeNode, owner *TrieTree) *TrieTreeNode {
-	return &TrieTreeNode{
+func newTrieTreeNode(key string, value any, leaf bool, parent *trieTreeNode, owner *TrieTree) *trieTreeNode {
+	return &trieTreeNode{
 		Key:      key,
 		Value:    value,
 		isLeaf:   leaf,
 		parent:   parent,
-		children: make(map[string]*TrieTreeNode),
+		children: make(map[string]*trieTreeNode),
 		tree:     owner,
 	}
 }
 
+// TrieTree 是一个前缀树容器
 type TrieTree struct {
-	root  *TrieTreeNode // 根节点
+	root  *trieTreeNode // 根节点
 	count int           // 叶节点数量
 }
 
+// NewTrieTree 创建一个前缀树 TrieTree 并返回指针
 func NewTrieTree() *TrieTree {
 	tree := TrieTree{
 		root: newTrieTreeNode("", nil, false, nil, nil),
@@ -33,7 +35,8 @@ func NewTrieTree() *TrieTree {
 	return &tree
 }
 
-func (tree *TrieTree) AddNode(paths []string, value any) *TrieTreeNode {
+// AddNode 将值插入到指定路径，该操作可能会覆盖旧值
+func (tree *TrieTree) AddNode(paths []string, value any) *trieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
@@ -45,13 +48,16 @@ func (tree *TrieTree) AddNode(paths []string, value any) *TrieTreeNode {
 		cur = node
 	}
 
+	if !cur.isLeaf {
+		tree.count++
+	}
 	cur.isLeaf = true
 	cur.Value = value
-	tree.count++
 	return cur
 }
 
-func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value any) (*TrieTreeNode, bool) {
+// AddNodeIfNotLeaf 将值插入到指定路径，若路径已经为叶子节点，该操作不会覆盖旧值，返回 nil,false。
+func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value any) (*trieTreeNode, bool) {
 
 	cur := tree.root
 
@@ -74,7 +80,8 @@ func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value any) (*TrieTreeNode
 	return cur, true
 }
 
-func (tree *TrieTree) DeleteLeafNode(node *TrieTreeNode) bool {
+// DeleteLeafNode 删除前缀树节点，如果节点不是叶节点，返回 false
+func (tree *TrieTree) DeleteLeafNode(node *trieTreeNode) bool {
 	if node == nil || !node.isLeaf || node.tree != tree {
 		return false
 	}
@@ -93,6 +100,7 @@ func (tree *TrieTree) DeleteLeafNode(node *TrieTreeNode) bool {
 	return true
 }
 
+// DeletePath 删除前缀树中的路径，如果路径不是叶节点，返回 false
 func (tree *TrieTree) DeletePath(paths []string) bool {
 	cur := tree.root
 
@@ -108,6 +116,7 @@ func (tree *TrieTree) DeletePath(paths []string) bool {
 	return tree.DeleteLeafNode(cur)
 }
 
+// IsPathExist 判断给定路径是否为前缀树中的叶节点
 func (tree *TrieTree) IsPathExist(paths []string) bool {
 
 	cur := tree.root
@@ -122,6 +131,7 @@ func (tree *TrieTree) IsPathExist(paths []string) bool {
 	return cur.isLeaf
 }
 
+// GetValue 获取给定路径的值，若路径不存在或不为叶节点，返回 nil,false
 func (tree *TrieTree) GetValue(paths []string) (any, bool) {
 	cur := tree.root
 
@@ -135,7 +145,8 @@ func (tree *TrieTree) GetValue(paths []string) (any, bool) {
 	return cur.Value, cur.isLeaf
 }
 
-func (tree *TrieTree) GetLeafNode(paths []string) (*TrieTreeNode, bool) {
+// GetLeafNode 获取路径对应的叶节点指针，若路径不存在或不为叶节点，返回 nil,false
+func (tree *TrieTree) GetLeafNode(paths []string) (*trieTreeNode, bool) {
 	cur := tree.root
 
 	for _, path := range paths {
@@ -154,7 +165,7 @@ func (tree *TrieTree) GetLeafNode(paths []string) (*TrieTreeNode, bool) {
 }
 
 // AllLeafNodeInPath 返回当前路径以及路径下的叶子节点（非递归）
-func (tree *TrieTree) AllLeafNodeInPath(paths []string) []*TrieTreeNode {
+func (tree *TrieTree) AllLeafNodeInPath(paths []string) []*trieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
@@ -164,7 +175,7 @@ func (tree *TrieTree) AllLeafNodeInPath(paths []string) []*TrieTreeNode {
 		}
 		cur = node
 	}
-	r := make([]*TrieTreeNode, 0)
+	r := make([]*trieTreeNode, 0)
 
 	// 判断当前节点
 	if cur.isLeaf {
@@ -181,7 +192,7 @@ func (tree *TrieTree) AllLeafNodeInPath(paths []string) []*TrieTreeNode {
 }
 
 // dfsGetLeafNodes 返回当前路径以及路径下的叶子节点（递归）
-func (tree *TrieTree) dfsGetLeafNodes(node *TrieTreeNode, r *[]*TrieTreeNode) {
+func (tree *TrieTree) dfsGetLeafNodes(node *trieTreeNode, r *[]*trieTreeNode) {
 
 	if node == nil || node.tree != tree {
 		return
@@ -198,7 +209,7 @@ func (tree *TrieTree) dfsGetLeafNodes(node *TrieTreeNode, r *[]*TrieTreeNode) {
 }
 
 // AllLeafNodeInPathRecursive 返回当前路径以及路径下的叶子节点（递归）
-func (tree *TrieTree) AllLeafNodeInPathRecursive(paths []string) []*TrieTreeNode {
+func (tree *TrieTree) AllLeafNodeInPathRecursive(paths []string) []*trieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
@@ -208,7 +219,7 @@ func (tree *TrieTree) AllLeafNodeInPathRecursive(paths []string) []*TrieTreeNode
 		}
 		cur = node
 	}
-	r := make([]*TrieTreeNode, 0)
+	r := make([]*trieTreeNode, 0)
 
 	tree.dfsGetLeafNodes(cur, &r)
 

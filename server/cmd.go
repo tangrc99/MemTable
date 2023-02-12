@@ -81,3 +81,13 @@ func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.Redi
 func NotTxCommand(cmd string) bool {
 	return cmd != "execTX" && cmd != "discard" && cmd != "watch" && cmd != "multi"
 }
+
+func IsWriteCommand(cmd string) bool {
+
+	return false
+}
+
+func IsRandCommand(cmd string) bool {
+
+	return false
+}

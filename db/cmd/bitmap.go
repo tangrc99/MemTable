@@ -9,7 +9,7 @@ import (
 
 func setbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "setbit", 4)
+	e, ok := checkCommandAndLength(&cmd, "setbit", 4)
 	if !ok {
 		return e
 	}
@@ -21,7 +21,7 @@ func setbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		byteVal = make([]byte, 0)
 	} else {
 		// 进行类型检查，会自动检查过期选项
-		if err := CheckType(value, STRING); err != nil {
+		if err := checkType(value, STRING); err != nil {
 			return err
 		}
 		byteVal = value.([]byte)
@@ -50,7 +50,7 @@ func setbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func getbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "getbit", 3)
+	e, ok := checkCommandAndLength(&cmd, "getbit", 3)
 	if !ok {
 		return e
 	}
@@ -60,7 +60,7 @@ func getbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, STRING); err != nil {
+	if err := checkType(value, STRING); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func getbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func bitcount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "bitcount", 2)
+	e, ok := checkCommandAndLength(&cmd, "bitcount", 2)
 	if !ok {
 		return e
 	}
@@ -89,7 +89,7 @@ func bitcount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, STRING); err != nil {
+	if err := checkType(value, STRING); err != nil {
 		return err
 	}
 
@@ -124,7 +124,7 @@ func bitcount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func bitpos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "bitpos", 3)
+	e, ok := checkCommandAndLength(&cmd, "bitpos", 3)
 	if !ok {
 		return e
 	}
@@ -135,7 +135,7 @@ func bitpos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, STRING); err != nil {
+	if err := checkType(value, STRING); err != nil {
 		return err
 	}
 
@@ -171,18 +171,18 @@ func bitpos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(int64(pos))
 }
 
-func RegisterBitMapCommands() {
-	RegisterCommand("setbit", setbit, WR)
-	RegisterCommand("getbit", getbit, RD)
-	RegisterCommand("bitcount", bitcount, RD)
-	RegisterCommand("bitpos", bitpos, RD)
+func registerBitMapCommands() {
+	registerCommand("setbit", setbit, WR)
+	registerCommand("getbit", getbit, RD)
+	registerCommand("bitcount", bitcount, RD)
+	registerCommand("bitpos", bitpos, RD)
 }
 
 /*
 func bitfield(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "bitfield", 3)
+	e, ok := checkCommandAndLength(&cmd, "bitfield", 3)
 	if !ok {
 		return e
 	}
@@ -193,7 +193,7 @@ func bitfield(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, STRING); err != nil {
+	if err := checkType(value, STRING); err != nil {
 		return err
 	}
 

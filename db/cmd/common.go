@@ -7,17 +7,17 @@ import (
 	"strings"
 )
 
-type ValueType int
+type valueType int
 
 const (
-	STRING ValueType = iota
+	STRING valueType = iota
 	HASH
 	SET
 	ZSET
 	LIST
 )
 
-func CheckType(value any, vt ValueType) resp.RedisData {
+func checkType(value any, vt valueType) resp.RedisData {
 
 	// check if the value is string
 	var typeOk bool
@@ -53,7 +53,7 @@ func CheckType(value any, vt ValueType) resp.RedisData {
 	return nil
 }
 
-func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
+func checkCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
 
 	if len(*cmd) == 0 {
 		return resp.MakeErrorData("ERR empty command"), false

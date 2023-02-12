@@ -1,13 +1,23 @@
 package ring_buffer
 
-// RingBuffer 维护一个环装缓冲区
+// RingBuffer 维护一个环形缓冲区，非线程安全
 type RingBuffer struct {
 	buffer   []byte
 	offset   uint64
 	capacity uint64
+	ringed   bool
 }
 
+// Init 将 RingBuffer 缓冲区大小初始化为 2^capacity
 func (b *RingBuffer) Init(capacity uint64) {
+	if capacity&(capacity-1) != 0 {
+		capacity |= capacity >> 1
+		capacity |= capacity >> 2
+		capacity |= capacity >> 4
+		capacity |= capacity >> 8
+		capacity |= capacity >> 16
+		capacity += 1
+	}
 	b.capacity = capacity
 	b.buffer = make([]byte, capacity, capacity)
 	b.offset = 0
@@ -15,7 +25,7 @@ func (b *RingBuffer) Init(capacity uint64) {
 
 // LowWaterLevel 返回环形缓冲区中保留的最小序列号
 func (b *RingBuffer) LowWaterLevel() uint64 {
-	if b.offset < b.capacity {
+	if !b.ringed && b.offset < b.capacity {
 		return 0
 	}
 	return b.offset - b.capacity
@@ -26,6 +36,7 @@ func (b *RingBuffer) HighWaterLevel() uint64 {
 	return b.offset
 }
 
+// Append 将内容拷贝到 RingBuffer 中，并返回拷贝后的 offset
 func (b *RingBuffer) Append(content []byte) uint64 {
 
 	if uint64(len(content)) >= b.capacity {
@@ -34,7 +45,7 @@ func (b *RingBuffer) Append(content []byte) uint64 {
 
 	Len := uint64(len(content))
 
-	insertPos := b.offset % b.capacity
+	insertPos := b.offset & (b.capacity - 1)
 	size := b.capacity - insertPos
 	if size < Len {
 		copy(b.buffer[insertPos:], content[0:size])
@@ -44,10 +55,14 @@ func (b *RingBuffer) Append(content []byte) uint64 {
 	}
 
 	b.offset += Len
+	if b.offset-Len > b.offset {
+		b.ringed = true
+	}
 
 	return b.offset
 }
 
+// Read 从 offset 开始读取最大 max 大小的内容，如果 offset 小于 LowWaterLevel 或大于 HighWaterLevel，返回[]byte{}
 func (b *RingBuffer) Read(offset, max uint64) []byte {
 
 	if offset < b.LowWaterLevel() || offset >= b.HighWaterLevel() {
@@ -59,7 +74,7 @@ func (b *RingBuffer) Read(offset, max uint64) []byte {
 
 	content := make([]byte, max)
 
-	readPos := offset % b.capacity
+	readPos := b.offset & (b.capacity - 1)
 	size := b.capacity - readPos
 
 	if max > size {
@@ -74,6 +89,7 @@ func (b *RingBuffer) Read(offset, max uint64) []byte {
 	return content
 }
 
+// ReadSince 从 offset 开始读取缓冲区所有内容，如果 offset 小于 LowWaterLevel 或大于 HighWaterLevel，返回[]byte{}
 func (b *RingBuffer) ReadSince(offset uint64) []byte {
 
 	if offset < b.LowWaterLevel() || offset >= b.HighWaterLevel() {
@@ -83,7 +99,7 @@ func (b *RingBuffer) ReadSince(offset uint64) []byte {
 	Len := b.offset - offset
 	content := make([]byte, Len)
 
-	readPos := offset % b.capacity
+	readPos := b.offset & (b.capacity - 1)
 	size := b.capacity - readPos
 
 	if Len > size {

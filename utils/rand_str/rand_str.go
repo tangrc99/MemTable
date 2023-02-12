@@ -7,7 +7,7 @@ import (
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-// RandString create a random string no longer than n
+// RandString 生成一个长度不小于 n 的随机字符串
 func RandString(n int) string {
 	nR := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]rune, n)
@@ -19,6 +19,7 @@ func RandString(n int) string {
 
 var hexLetters = []rune("0123456789abcdef")
 
+// RandHexString 生成一个长度不小于 n 的随机十六进制字符串
 func RandHexString(n int) string {
 	b := make([]rune, n)
 	for i := range b {

@@ -43,7 +43,7 @@ type Server struct {
 	checkPoint int64      // rdb 时间
 	RDBStatus             // rdb 文件状态
 	aofFile    string     // aof 文件名
-	aof        *AOFBuffer // aof 缓冲区
+	aof        *aofBuffer // aof 缓冲区
 	aofEnabled bool       // 是否开启 aof
 
 	// 协程池
@@ -79,6 +79,9 @@ func NewServer(url string) *Server {
 		aofEnabled: config.Conf.AppendOnly,
 		aofFile:    "appendonly.aof",
 	}
+
+	env = initLuaEnv(s)
+
 	return s
 }
 
@@ -86,7 +89,7 @@ func (s *Server) InitModules() {
 	// aof 开关
 	if config.Conf.AppendOnly {
 		logger.Debug("Config: AppendOnly Enabled")
-		s.aof = NewAOFBuffer(config.Conf.Dir + "appendonly.aof")
+		s.aof = newAOFBuffer(config.Conf.Dir + "appendonly.aof")
 
 	}
 
@@ -100,8 +103,6 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	client := NewClient(conn)
 
-	ch := resp.ParseStream(conn)
-
 	//pipelined := 0
 
 	// 这里会阻塞等待有数据到达
@@ -109,75 +110,60 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	for running && !s.quit {
 
-		select {
-		// 等待是否有新消息到达
-		case parsed := <-ch:
+		parsed := client.ParseStream()
 
-			if parsed.Err != nil {
+		if parsed.Err != nil {
 
-				if e := parsed.Err.Error(); e == "EOF" {
-					logger.Debug("Client", client.id, "Peer ShutDown Connection")
-				} else {
-					logger.Debug("Client", client.id, "Read Error:", e)
-				}
-				running = false
-				break
-			}
-
-			if plain, ok := parsed.Data.(*resp.PlainData); ok {
-
-				client.pipelined = true
-				client.cmd = plain.ToCommand()
-				client.raw = parsed.Data.ToBytes()
-
-			} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
-
-				client.cmd = array.ToCommand()
-				client.raw = parsed.Data.ToBytes()
-
+			e := parsed.Err.Error()
+			if e == "AGAIN" {
+				continue
+			} else if e == "EOF" {
+				logger.Debug("Client", client.id, "Peer ShutDown Connection")
 			} else {
-
-				logger.Warning("Client", client.id, "parse Command Error")
-				running = false
-				break
+				logger.Error("Client", client.id, "Read Error:", e)
 			}
-
-			// 如果解析完毕有可以执行的命令，则发送给主线程执行
-			s.events <- client
-
-			// 使用 select 防止协程无法释放
-			select {
-
-			case <-client.exit:
-				running = false
-
-			case r := <-client.res:
-
-				// 将主线程的返回值写入到 socket 中
-				_, err := conn.Write((*r).ToBytes())
-
-				if err != nil {
-					logger.Warning("Client", client.id, "Write Error")
-					running = false
-					break
-				}
-			}
-
-			client.pipelined = false
-
-		case <-client.exit:
 			running = false
-
-		case msg := <-client.msg:
-			// 写入发布订阅消息
-			_, err := conn.Write(msg)
-
-			if err != nil {
-				logger.Warning("Client", client.id, "Write Error")
-				running = false
-				break
-			}
+			break
 		}
+
+		if plain, ok := parsed.Data.(*resp.PlainData); ok {
+
+			client.pipelined = true
+			client.cmd = plain.ToCommand()
+			client.raw = parsed.Data.ToBytes()
+
+		} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
+
+			client.cmd = array.ToCommand()
+			client.raw = parsed.Data.ToBytes()
+
+		} else {
+
+			fmt.Printf(string(parsed.Data.ByteData()))
+
+			logger.Warning("Client", client.id, "parse Command Error")
+			running = false
+			break
+		}
+
+		// 如果解析完毕有可以执行的命令，则发送给主线程执行
+		s.events <- client
+
+		// 使用 select 防止协程无法释放
+
+		r := <-client.res
+
+		// 将主线程的返回值写入到 socket 中
+		_, err := conn.Write((*r).ToBytes())
+
+		if err != nil {
+			logger.Warning("Client", client.id, "Write Error")
+			running = false
+			break
+		}
+
+		client.pipelined = false
+
 	}
 
 	// 如果是读写发生错误，需要通知事件循环来关闭连接
@@ -260,6 +246,8 @@ func (s *Server) eventLoop() {
 			if !cli.blocked {
 				cli.res <- &res
 			}
+
+		default:
 
 		}
 	}
@@ -348,9 +336,9 @@ func (s *Server) initTimeEvents() {
 		logger.Debug("TimeEvent: AOF FLUSH")
 
 		if s.aofEnabled {
-			s.aof.Flush()
+			s.aof.flush()
 		}
-		//s.aof.Sync()
+		//s.aof.syncToDisk()
 
 	}, time.Now().Add(time.Second).Unix(), time.Second,
 	))
@@ -435,15 +423,15 @@ func (s *Server) saveData() {
 	// 优先使用 aof 进行存储
 	if s.aofEnabled && s.aof != nil {
 
-		s.aof.Quit()
+		s.aof.quit()
 
 	} else {
 
 		ok := s.RDB(path.Join(s.dir, s.rdbFile))
 		if !ok {
-			logger.Error("Quit: Generate RDB File Failed")
+			logger.Error("quit: Generate RDB File Failed")
 		} else {
-			logger.Info("Quit: Generated RDB File")
+			logger.Info("quit: Generated RDB File")
 		}
 	}
 }

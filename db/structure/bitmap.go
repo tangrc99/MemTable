@@ -1,21 +1,26 @@
 package structure
 
+// BitMap 提供了 bit 层级的操作
 type BitMap []byte
 
+// NewBitMap 创建一个空的 BitMap
 func NewBitMap() *BitMap {
 	a := make([]byte, 0)
 	return (*BitMap)(&a)
 }
 
+// NewBitMapFromBytes 使用指定 bytes 创建 BitMap
 func NewBitMapFromBytes(bytes []byte) *BitMap {
 	a := BitMap(bytes)
 	return &a
 }
 
+// ByteLen 返回 BitMap 的字节大小
 func (b *BitMap) ByteLen() int {
 	return len(*b)
 }
 
+// Get 获取指定位置上的 bit 值
 func (b *BitMap) Get(pos int) byte {
 	// 第几个 byte
 	byteSeq := pos / 8
@@ -29,6 +34,7 @@ func (b *BitMap) Get(pos int) byte {
 	return ((*b)[byteSeq] >> bitSeq) & 0x01
 }
 
+// Set 修改指定位置上的 bit 值
 func (b *BitMap) Set(pos int, val byte) {
 
 	// 第几个 byte
@@ -48,13 +54,14 @@ func (b *BitMap) Set(pos int, val byte) {
 	}
 }
 
+// GetSet 修改指定位置上的 bit 值，并返回旧值
 func (b *BitMap) GetSet(pos int, val byte) byte {
 	old := b.Get(pos)
 	b.Set(pos, val)
 	return old
 }
 
-// Count 中 start 和 end 都是 byte 的位置，而不是 bit 位置
+// Count 返回 byte 范围内 bit 值为 1 的 bit 数量； start 和 end 都是 byte 的位置，而不是 bit 位置
 func (b *BitMap) Count(start, end int) int {
 	// 位置检查
 	maxLen := b.ByteLen()
@@ -87,6 +94,7 @@ func (b *BitMap) Count(start, end int) int {
 	return count
 }
 
+// Pos 返回 bit 范围内 bit 值为 val 的数量，start 和 end 是 bit 位置，而不是 byte 位置
 func (b *BitMap) Pos(val byte, start, end int) int {
 	// 位置检查
 	maxLen := b.ByteLen()
@@ -124,6 +132,3 @@ func (b *BitMap) Pos(val byte, start, end int) int {
 	}
 	return -1
 }
-
-//
-//func (b *BitMap)

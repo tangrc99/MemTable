@@ -30,7 +30,7 @@ func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 		rdbFile, err := os.Open("dump.rdb")
 		if err != nil {
-			logger.Error("Sync: No RDBFile:", err.Error())
+			logger.Error("syncToDisk: No RDBFile:", err.Error())
 			return
 		}
 
@@ -40,13 +40,13 @@ func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 		_, err = cli.cnn.Write([]byte(rdbHeader))
 		if err != nil {
-			logger.Error("Sync: Send RDBHead Failed:", err.Error())
+			logger.Error("syncToDisk: Send RDBHead Failed:", err.Error())
 			return
 		}
 
 		_, err = io.Copy(cli.cnn, rdbFile)
 		if err != nil {
-			logger.Error("Sync: Send RDBFile Failed:", err.Error())
+			logger.Error("syncToDisk: Send RDBFile Failed:", err.Error())
 			return
 		}
 
@@ -82,7 +82,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 			rdbFile, err := os.Open(path.Join(server.dir, server.rdbFile))
 			if err != nil {
-				logger.Error("Sync: No RDBFile:", err.Error())
+				logger.Error("syncToDisk: No RDBFile:", err.Error())
 				return
 			}
 
@@ -91,7 +91,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 			_, err = cli.cnn.Write([]byte(header))
 			if err != nil {
-				logger.Error("Sync: Send Header Failed:", err.Error())
+				logger.Error("syncToDisk: Send Header Failed:", err.Error())
 				return
 			}
 
@@ -101,13 +101,13 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 			_, err = cli.cnn.Write([]byte(rdbHeader))
 			if err != nil {
-				logger.Error("Sync: Send RDBHead Failed:", err.Error())
+				logger.Error("syncToDisk: Send RDBHead Failed:", err.Error())
 				return
 			}
 
 			_, err = io.Copy(cli.cnn, rdbFile)
 			if err != nil {
-				logger.Error("Sync: Send RDBFile Failed:", err.Error())
+				logger.Error("syncToDisk: Send RDBFile Failed:", err.Error())
 				return
 			}
 
@@ -120,7 +120,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		header := "+CONTINUE " + server.runID + resp.CRLF
 		_, err = cli.cnn.Write([]byte(header))
 		if err != nil {
-			logger.Error("Sync: Send Header Failed:", err.Error())
+			logger.Error("syncToDisk: Send Header Failed:", err.Error())
 			return resp.MakeEmptyArrayData()
 
 		}
@@ -179,7 +179,7 @@ func slaveof(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 		ok := server.sendSyncToMaster(url)
 		if !ok {
-			logger.Error("Sync: Failed")
+			logger.Error("syncToDisk: Failed")
 		}
 
 	}, time.Now().Unix()))

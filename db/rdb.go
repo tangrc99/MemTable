@@ -9,6 +9,7 @@ import (
 	"github.com/tangrc99/MemTable/db/structure"
 )
 
+// Encode 将阻塞地将 DataBase 中的全部键值对写入到 rdb 文件中，如果写入过程发生错误将返回 error
 func (db_ *DataBase) Encode(enc *core.Encoder) error {
 
 	var err error = nil

@@ -1,6 +1,9 @@
 package structure
 
-func SkipListTest() {
+import "testing"
+
+func TestSkipList(t *testing.T) {
+
 	skipList := NewSkipList(3)
 	skipList.Insert(0.0, "1")
 	skipList.InsertIfNotExist(1.1, 1)
@@ -8,18 +11,16 @@ func SkipListTest() {
 
 	skipList.Delete(1.1)
 
-	v, ok := skipList.Get(3.6)
-	if ok {
-		println(v)
-	} else {
-		println("not found")
+	if _, ok := skipList.Get(3.6); ok {
+		t.Error("Get Failed")
 	}
 
-	values, size := skipList.Range(99, 100)
-	for i := 0; i < size; i++ {
-		println(values[i])
+	if _, size := skipList.Range(99, 100); size != 0 {
+		t.Error("Range Failed")
 	}
 
-	println(skipList.GetPosByKey(35))
+	if skipList.GetPosByKey(35) != -1 {
+		t.Error("GetPosByKey Failed")
+	}
 
 }

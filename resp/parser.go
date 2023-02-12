@@ -17,6 +17,23 @@ type ParsedRes struct {
 	Err  error
 }
 
+type Parser struct {
+	bufReader *bufio.Reader
+	state     *readState
+}
+
+func NewParser(reader io.Reader) *Parser {
+	return &Parser{
+		bufReader: bufio.NewReader(reader),
+		state:     new(readState),
+	}
+}
+
+func (parser *Parser) Parse() *ParsedRes {
+
+	return ParseStream(parser.bufReader, parser.state)
+}
+
 type readState struct {
 	bulkLen   int64
 	arrayLen  int
@@ -25,15 +42,8 @@ type readState struct {
 	inArray   bool
 }
 
-func ParseStream(reader io.Reader) <-chan *ParsedRes {
-	ch := make(chan *ParsedRes)
-	go parse(reader, ch)
-	return ch
-}
+func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 
-func parse(reader io.Reader, ch chan<- *ParsedRes) {
-	bufReader := bufio.NewReader(reader)
-	state := new(readState)
 	for {
 		var res RedisData
 		var err error
@@ -42,22 +52,19 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 		if err != nil {
 			// read ended, stop reading.
 			if err == io.EOF {
-				ch <- &ParsedRes{
+				return &ParsedRes{
 					Err: err,
 				}
-				close(ch)
-				return
 			} else {
 
 				// Protocol error
 				logger.Error(err)
+				*state = readState{}
 
-				ch <- &ParsedRes{
+				return &ParsedRes{
 					Err: err,
 				}
-				*state = readState{}
 			}
-			continue
 		}
 		// parse the read messages
 		// if msg is an array or a bulk string, then parse their header first.
@@ -69,23 +76,24 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 				err := parseArrayHeader(msg, state)
 				if err != nil {
 					logger.Error(err)
-					ch <- &ParsedRes{
+					*state = readState{}
+
+					return &ParsedRes{
 						Err: err,
 					}
-					*state = readState{}
 				} else {
 					if state.arrayLen == -1 {
 						// null array
-						ch <- &ParsedRes{
+						*state = readState{}
+						return &ParsedRes{
 							Data: MakeArrayData(nil),
 						}
-						*state = readState{}
 					} else if state.arrayLen == 0 {
 						// empty array
-						ch <- &ParsedRes{
+						*state = readState{}
+						return &ParsedRes{
 							Data: MakeArrayData([]RedisData{}),
 						}
-						*state = readState{}
 					}
 				}
 				continue
@@ -95,10 +103,11 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 				err := parseBulkHeader(msg, state)
 				if err != nil {
 					logger.Error(err)
-					ch <- &ParsedRes{
+					*state = readState{}
+
+					return &ParsedRes{
 						Err: err,
 					}
-					*state = readState{}
 				} else {
 					if state.bulkLen == -1 {
 						// null bulk string
@@ -108,14 +117,15 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 						if state.inArray {
 							state.arrayData.data = append(state.arrayData.data, res)
 							if len(state.arrayData.data) == state.arrayLen {
-								ch <- &ParsedRes{
+
+								defer func() { *state = readState{} }()
+								return &ParsedRes{
 									Data: state.arrayData,
 									Err:  nil,
 								}
-								*state = readState{}
 							}
 						} else {
-							ch <- &ParsedRes{
+							return &ParsedRes{
 								Data: res,
 							}
 						}
@@ -134,31 +144,34 @@ func parse(reader io.Reader, ch chan<- *ParsedRes) {
 
 		if err != nil {
 			logger.Error(err)
-			ch <- &ParsedRes{
+			*state = readState{}
+
+			return &ParsedRes{
 				Err: err,
 			}
-			*state = readState{}
-			continue
+
 		}
 
 		// Struct parsed data as an array or a single data, and put it into channel.
 		if state.inArray {
 			state.arrayData.data = append(state.arrayData.data, res)
 			if len(state.arrayData.data) == state.arrayLen {
-				ch <- &ParsedRes{
+				defer func() { *state = readState{} }()
+				return &ParsedRes{
 					Data: state.arrayData,
 					Err:  nil,
 				}
-				*state = readState{}
 			}
 		} else {
-			ch <- &ParsedRes{
+			return &ParsedRes{
 				Data: res,
 				Err:  err,
 			}
 		}
-
 	}
+	//return &ParsedRes{
+	//	Err: errors.New("AGAIN"),
+	//}
 }
 
 // Read a line or bulk line end of "\r\n" from a reader.

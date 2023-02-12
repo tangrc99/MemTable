@@ -9,7 +9,7 @@ import (
 
 func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sadd", 3)
+	e, ok := checkCommandAndLength(&cmd, "sadd", 3)
 	if !ok {
 		return e
 	}
@@ -32,7 +32,7 @@ func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "srem", 3)
+	e, ok := checkCommandAndLength(&cmd, "srem", 3)
 	if !ok {
 		return e
 	}
@@ -62,7 +62,7 @@ func sRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -80,7 +80,7 @@ func sRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func scard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "scard", 2)
+	e, ok := checkCommandAndLength(&cmd, "scard", 2)
 	if !ok {
 		return e
 	}
@@ -91,7 +91,7 @@ func scard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -100,7 +100,7 @@ func scard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sismember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sismember", 2)
+	e, ok := checkCommandAndLength(&cmd, "sismember", 2)
 	if !ok {
 		return e
 	}
@@ -114,7 +114,7 @@ func sismember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -129,7 +129,7 @@ func sismember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sMembers(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "smembers", 2)
+	e, ok := checkCommandAndLength(&cmd, "smembers", 2)
 	if !ok {
 		return e
 	}
@@ -140,7 +140,7 @@ func sMembers(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -160,7 +160,7 @@ func sMembers(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "spop", 3)
+	e, ok := checkCommandAndLength(&cmd, "spop", 3)
 	if !ok {
 		return e
 	}
@@ -171,7 +171,7 @@ func sPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -196,7 +196,7 @@ func sPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sRandMember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "spop", 3)
+	e, ok := checkCommandAndLength(&cmd, "spop", 3)
 	if !ok {
 		return e
 	}
@@ -207,7 +207,7 @@ func sRandMember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	if err := CheckType(value, SET); err != nil {
+	if err := checkType(value, SET); err != nil {
 		return err
 	}
 
@@ -232,7 +232,7 @@ func sRandMember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "smove", 4)
+	e, ok := checkCommandAndLength(&cmd, "smove", 4)
 	if !ok {
 		return e
 	}
@@ -243,7 +243,7 @@ func sMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	if err := CheckType(value1, SET); err != nil {
+	if err := checkType(value1, SET); err != nil {
 		return err
 	}
 
@@ -255,7 +255,7 @@ func sMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	if err := CheckType(value2, SET); err != nil {
+	if err := checkType(value2, SET); err != nil {
 		return err
 	}
 
@@ -271,7 +271,7 @@ func sMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 // sDiff 返回第一个集合中特有元素
 func sDiff(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sdiff", 2)
+	e, ok := checkCommandAndLength(&cmd, "sdiff", 2)
 	if !ok {
 		return e
 	}
@@ -286,7 +286,7 @@ func sDiff(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			continue
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			sets[i] = nil
 			continue
 		}
@@ -323,7 +323,7 @@ func sDiff(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sDiffStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sdiffstore", 3)
+	e, ok := checkCommandAndLength(&cmd, "sdiffstore", 3)
 	if !ok {
 		return e
 	}
@@ -338,7 +338,7 @@ func sDiffStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			continue
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			sets[i] = nil
 			continue
 		}
@@ -378,7 +378,7 @@ func sDiffStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 // sInter 返回所有集合的交集，使用哈希表记录每个元素出现的次数，只有次数等于集合总数的元素才为交集
 func sInter(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sinter", 2)
+	e, ok := checkCommandAndLength(&cmd, "sinter", 2)
 	if !ok {
 		return e
 	}
@@ -403,7 +403,7 @@ func sInter(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			continue
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			continue
 		}
 
@@ -424,7 +424,7 @@ func sInter(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sinterstore", 3)
+	e, ok := checkCommandAndLength(&cmd, "sinterstore", 3)
 	if !ok {
 		return e
 	}
@@ -437,7 +437,7 @@ func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			return resp.MakeIntData(0)
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			return resp.MakeIntData(0)
 		}
 
@@ -461,7 +461,7 @@ func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			continue
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			continue
 		}
 
@@ -489,7 +489,7 @@ func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 // sInter 返回所有集合的并集
 func sUnion(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sunion", 2)
+	e, ok := checkCommandAndLength(&cmd, "sunion", 2)
 	if !ok {
 		return e
 	}
@@ -505,7 +505,7 @@ func sUnion(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			continue
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			continue
 		}
 
@@ -544,7 +544,7 @@ func sUnion(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func sUnionStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sunionstore", 3)
+	e, ok := checkCommandAndLength(&cmd, "sunionstore", 3)
 	if !ok {
 		return e
 	}
@@ -558,7 +558,7 @@ func sUnionStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			continue
 		}
 
-		if err := CheckType(value, SET); err != nil {
+		if err := checkType(value, SET); err != nil {
 			continue
 		}
 
@@ -585,20 +585,20 @@ func sScan(db *db.DataBase, cmd [][]byte) resp.RedisData {}
 
 */
 
-func RegisterSetCommands() {
-	RegisterCommand("sadd", sadd, WR)
-	RegisterCommand("scard", scard, RD)
-	RegisterCommand("sismember", sismember, RD)
-	RegisterCommand("srem", sRem, WR)
-	RegisterCommand("smembers", sMembers, RD)
-	RegisterCommand("spop", sPop, RD)
-	RegisterCommand("srandmember", sRandMember, RD)
-	RegisterCommand("smove", sMove, WR)
+func registerSetCommands() {
+	registerCommand("sadd", sadd, WR)
+	registerCommand("scard", scard, RD)
+	registerCommand("sismember", sismember, RD)
+	registerCommand("srem", sRem, WR)
+	registerCommand("smembers", sMembers, RD)
+	registerCommand("spop", sPop, RD)
+	registerCommand("srandmember", sRandMember, RD)
+	registerCommand("smove", sMove, WR)
 
-	RegisterCommand("sdiff", sDiff, RD)
-	RegisterCommand("sdiffstore", sDiffStore, WR)
-	RegisterCommand("sinter", sInter, RD)
-	RegisterCommand("sinterstore", sInterStore, WR)
-	RegisterCommand("sunion", sUnion, RD)
-	RegisterCommand("sunionstore", sUnionStore, WR)
+	registerCommand("sdiff", sDiff, RD)
+	registerCommand("sdiffstore", sDiffStore, WR)
+	registerCommand("sinter", sInter, RD)
+	registerCommand("sinterstore", sInterStore, WR)
+	registerCommand("sunion", sUnion, RD)
+	registerCommand("sunionstore", sUnionStore, WR)
 }

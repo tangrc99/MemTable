@@ -1,3 +1,4 @@
+// Package config 主要负责读取配置文件内容
 package config
 
 import (
@@ -10,6 +11,7 @@ import (
 	"strings"
 )
 
+// Config 包含了配置文件中的所有选项
 type Config struct {
 	ConfFile string
 	Host     string
@@ -31,17 +33,20 @@ type Config struct {
 	RDBFile     string
 }
 
+// Conf 变量存储从配置文件读取到的配置，如果配置不存在则使用默认配置
 var Conf Config
 
+// Error 代表了解析配置文件过程中的错误
 type Error struct {
 	message string
 }
 
+// Error 返回错误的具体内容
 func (e *Error) Error() string {
 	return e.message
 }
 
-// parseFile is used to parse the config file and return error
+// parseFile 用于解析配置文件，如配置文件有错误则返回 error
 func (cfg *Config) parseFile() error {
 	fl, err := os.Open(cfg.ConfFile)
 	if err != nil {
@@ -198,6 +203,7 @@ func (cfg *Config) parseFile() error {
 	return nil
 }
 
+// init 函数会在包初始化阶段将配置文件内容读取到 Conf 变量中
 func init() {
 	// 默认的配置
 	Conf = Config{

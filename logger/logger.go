@@ -12,12 +12,8 @@ import (
 	"sync"
 )
 
+// LogLevel 代表日志等级
 type LogLevel int
-type LogConfig struct {
-	Path  string
-	Name  string
-	Level LogLevel
-}
 
 const (
 	DEBUG LogLevel = iota
@@ -26,6 +22,13 @@ const (
 	ERROR
 	PANIC
 )
+
+// LogConfig 存储日志的运行配置
+type LogConfig struct {
+	Path  string
+	Name  string
+	Level LogLevel
+}
 
 var (
 	logFile            *os.File
@@ -56,6 +59,7 @@ func StringToLogLevel(level string) LogLevel {
 	return INFO
 }
 
+// Init 用于初始化日志运行配置
 func Init(dir string, filename string, level LogLevel) error {
 	var err error
 	logcfg = &LogConfig{
@@ -83,6 +87,7 @@ func Init(dir string, filename string, level LogLevel) error {
 	return nil
 }
 
+// Disable 用于禁止日志输出
 func Disable() {
 	logger.SetOutput(io.Discard)
 }
@@ -97,6 +102,7 @@ func setPrefix(level LogLevel) {
 	logger.SetPrefix(logPrefix)
 }
 
+// Debug 写入 DEBUG 等级日志
 func Debug(v ...any) {
 	if logcfg.Level > DEBUG {
 		return
@@ -107,6 +113,7 @@ func Debug(v ...any) {
 	logger.Println(v)
 }
 
+// Info 写入 INFO 等级日志
 func Info(v ...any) {
 	if logcfg.Level > INFO {
 		return
@@ -117,6 +124,7 @@ func Info(v ...any) {
 	logger.Println(v)
 }
 
+// Warning 写入 WARNING 等级日志
 func Warning(v ...any) {
 	if logcfg.Level > WARNING {
 		return
@@ -127,6 +135,7 @@ func Warning(v ...any) {
 	logger.Println(v)
 }
 
+// Error 写入 ERROR 等级日志
 func Error(v ...any) {
 	if logcfg.Level > ERROR {
 		return
@@ -137,6 +146,7 @@ func Error(v ...any) {
 	logger.Println(v)
 }
 
+// Panic 写入 PANIC 等级日志
 func Panic(v ...any) {
 	if logcfg.Level > PANIC {
 		return
@@ -144,5 +154,15 @@ func Panic(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(PANIC)
+	logger.Println(v)
+}
+
+func Write(level LogLevel, v ...any) {
+	if logcfg.Level > level {
+		return
+	}
+	logMu.Lock()
+	defer logMu.Unlock()
+	setPrefix(level)
 	logger.Println(v)
 }

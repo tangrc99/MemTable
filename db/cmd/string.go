@@ -8,7 +8,7 @@ import (
 
 func set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "set", 3)
+	e, ok := checkCommandAndLength(&cmd, "set", 3)
 	if !ok {
 		return e
 	}
@@ -16,7 +16,7 @@ func set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	value, ok := db.GetKey(string(cmd[1]))
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, STRING); err != nil {
+	if err := checkType(value, STRING); err != nil {
 		return err
 	}
 
@@ -31,7 +31,7 @@ func set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func get(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "get", 2)
+	e, ok := checkCommandAndLength(&cmd, "get", 2)
 	if !ok {
 		return e
 	}
@@ -51,7 +51,7 @@ func get(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func getset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "getset", 3)
+	e, ok := checkCommandAndLength(&cmd, "getset", 3)
 	if !ok {
 		return e
 	}
@@ -61,7 +61,7 @@ func getset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	err := CheckType(value, STRING)
+	err := checkType(value, STRING)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func getset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func strlen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "strlen", 2)
+	e, ok := checkCommandAndLength(&cmd, "strlen", 2)
 	if !ok {
 		return e
 	}
@@ -86,7 +86,7 @@ func strlen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(-1)
 	}
 
-	if err := CheckType(value, STRING); err != nil {
+	if err := checkType(value, STRING); err != nil {
 		return err
 	}
 
@@ -100,7 +100,7 @@ func strlen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func getRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "getrange", 4)
+	e, ok := checkCommandAndLength(&cmd, "getrange", 4)
 	if !ok {
 		return e
 	}
@@ -139,7 +139,7 @@ func getRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func setRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "setrange", 4)
+	e, ok := checkCommandAndLength(&cmd, "setrange", 4)
 	if !ok {
 		return e
 	}
@@ -181,7 +181,7 @@ func setRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 // mget 如果有对应的键值，但是类型不匹配，会返回 nil
 func mget(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "mget", 2)
+	e, ok := checkCommandAndLength(&cmd, "mget", 2)
 	if !ok {
 		return e
 	}
@@ -212,7 +212,7 @@ func mget(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func mset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "mset", 3)
+	e, ok := checkCommandAndLength(&cmd, "mset", 3)
 	if !ok {
 		return e
 	}
@@ -232,7 +232,7 @@ func mset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func incr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "incr", 2)
+	e, ok := checkCommandAndLength(&cmd, "incr", 2)
 	if !ok {
 		return e
 	}
@@ -259,7 +259,7 @@ func incr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func incrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "incrby", 3)
+	e, ok := checkCommandAndLength(&cmd, "incrby", 3)
 	if !ok {
 		return e
 	}
@@ -291,7 +291,7 @@ func incrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func decr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "decr", 2)
+	e, ok := checkCommandAndLength(&cmd, "decr", 2)
 	if !ok {
 		return e
 	}
@@ -319,7 +319,7 @@ func decr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func decrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "decrby", 3)
+	e, ok := checkCommandAndLength(&cmd, "decrby", 3)
 	if !ok {
 		return e
 	}
@@ -353,7 +353,7 @@ func decrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 func appendStr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "append", 3)
+	e, ok := checkCommandAndLength(&cmd, "append", 3)
 	if !ok {
 		return e
 	}
@@ -375,20 +375,20 @@ func appendStr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(int64(len(byteVal)))
 }
 
-func RegisterStringCommands() {
+func registerStringCommands() {
 
-	RegisterCommand("set", set, WR)
-	RegisterCommand("get", get, RD)
-	RegisterCommand("getset", getset, WR)
-	RegisterCommand("strlen", strlen, RD)
-	RegisterCommand("getrange", getRange, RD)
-	RegisterCommand("setrange", setRange, WR)
-	RegisterCommand("mget", mget, RD)
-	RegisterCommand("mset", mset, WR)
-	RegisterCommand("incr", incr, WR)
-	RegisterCommand("incrby", incrby, WR)
-	RegisterCommand("decr", decr, WR)
-	RegisterCommand("decrby", decrby, WR)
-	RegisterCommand("append", appendStr, WR)
+	registerCommand("set", set, WR)
+	registerCommand("get", get, RD)
+	registerCommand("getset", getset, WR)
+	registerCommand("strlen", strlen, RD)
+	registerCommand("getrange", getRange, RD)
+	registerCommand("setrange", setRange, WR)
+	registerCommand("mget", mget, RD)
+	registerCommand("mset", mset, WR)
+	registerCommand("incr", incr, WR)
+	registerCommand("incrby", incrby, WR)
+	registerCommand("decr", decr, WR)
+	registerCommand("decrby", decrby, WR)
+	registerCommand("append", appendStr, WR)
 
 }

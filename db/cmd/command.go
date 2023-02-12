@@ -6,50 +6,54 @@ import (
 	"strings"
 )
 
+// ExecStatus 标识一个 command 是否为写操作
 type ExecStatus int
 
 const (
+	// RD 标识 command 为只读操作
 	RD ExecStatus = iota
+	// WR 标识 command 为写操作
 	WR
 )
 
-type Command = func(base *db.DataBase, cmd [][]byte) resp.RedisData
+type command = func(base *db.DataBase, cmd [][]byte) resp.RedisData
 
-var CommandTable = make(map[string]Command)
-var WriteCommands = make(map[string]struct{})
+var commandTable = make(map[string]command)
+var writeCommands = make(map[string]struct{})
 
-func RegisterCommand(name string, cmd Command, status ExecStatus) {
+func registerCommand(name string, cmd command, status ExecStatus) {
 
-	CommandTable[name] = cmd
+	commandTable[name] = cmd
 
 	if status == WR {
-		WriteCommands[name] = struct{}{}
+		writeCommands[name] = struct{}{}
 	}
 }
 
 func init() {
-	RegisterKeyCommands()
-	RegisterStringCommands()
-	RegisterSetCommands()
-	RegisterListCommands()
-	RegisterHashCommands()
-	RegisterZSetCommands()
-	RegisterBitMapCommands()
+	registerKeyCommands()
+	registerStringCommands()
+	registerSetCommands()
+	registerListCommands()
+	registerHashCommands()
+	registerZSetCommands()
+	registerBitMapCommands()
 }
 
-func ExecCommand(base *db.DataBase, cmd [][]byte, enableWrite bool) (resp.RedisData, bool) {
+// ExecCommand 在指定的数据库中执行命令, enableWrite 参数用于控制是否允许写操作执行，函数将返回 command 执行结果以及 command 类型
+func ExecCommand(base *db.DataBase, cmd [][]byte, enableWrite bool) (res resp.RedisData, isWriteCommand bool) {
 
 	if len(cmd) == 0 {
 		return resp.MakeErrorData("error: empty command"), false
 	}
 
-	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmd[0]))]
+	_, isWriteCommand = writeCommands[strings.ToLower(string(cmd[0]))]
 
 	if isWriteCommand && !enableWrite {
 		return resp.MakeErrorData("ERR READONLY You can't write against a read only slave"), false
 	}
 
-	f, ok := CommandTable[strings.ToLower(string(cmd[0]))]
+	f, ok := commandTable[strings.ToLower(string(cmd[0]))]
 	if !ok {
 		return resp.MakeErrorData("error: unsupported command"), isWriteCommand
 	}

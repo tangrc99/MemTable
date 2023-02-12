@@ -59,30 +59,30 @@ func (buff *bufferPage) flush(writer *os.File) bool {
 	return true
 }
 
-type AOFBuffer struct {
+type aofBuffer struct {
 	writer *os.File
 
-	flush    int64 // 当前刷盘序列号
-	appends  int64 // 当前写入序列号
-	pages    []*bufferPage
-	pageSize int64
+	flushSeq  int64 // 当前刷盘序列号
+	appendSeq int64 // 当前写入序列号
+	pages     []*bufferPage
+	pageSize  int64
 
 	writing      int32         // 是否正在写入
 	notification chan struct{} // 刷盘通知标志
 	quitFlag     chan struct{}
 }
 
-func NewAOFBuffer(filename string) *AOFBuffer {
+func newAOFBuffer(filename string) *aofBuffer {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Error("Aof:", err.Error())
 	}
 
-	buffers := &AOFBuffer{
+	buffers := &aofBuffer{
 		writer:       file,
 		pages:        make([]*bufferPage, 3),
-		flush:        0,
-		appends:      0,
+		flushSeq:     0,
+		appendSeq:    0,
 		pageSize:     3,
 		writing:      0,
 		notification: make(chan struct{}),
@@ -104,7 +104,7 @@ func NewAOFBuffer(filename string) *AOFBuffer {
 
 				// os 缓冲区写入硬盘
 				atomic.StoreInt32(&buffers.writing, 2)
-				buffers.Sync()
+				buffers.syncToDisk()
 
 				atomic.StoreInt32(&buffers.writing, 0)
 
@@ -118,20 +118,20 @@ func NewAOFBuffer(filename string) *AOFBuffer {
 	return buffers
 }
 
-func (buff *AOFBuffer) flushBuffer() {
+func (buff *aofBuffer) flushBuffer() {
 
 	if buff.writer == nil {
 		return
 	}
 
-	buff.pages[buff.flush%buff.pageSize].flush(buff.writer)
-	if buff.flush == buff.appends {
+	buff.pages[buff.flushSeq%buff.pageSize].flush(buff.writer)
+	if buff.flushSeq == buff.appendSeq {
 		return
 	}
-	buff.flush++
+	buff.flushSeq++
 }
 
-func (buff *AOFBuffer) Sync() {
+func (buff *aofBuffer) syncToDisk() {
 
 	err := buff.writer.Sync()
 	if err != nil {
@@ -139,14 +139,14 @@ func (buff *AOFBuffer) Sync() {
 	}
 }
 
-// Quit 会阻塞并清空所有的缓冲区
-func (buff *AOFBuffer) Quit() {
+// quit 会阻塞并清空所有的缓冲区
+func (buff *aofBuffer) quit() {
 
 	if buff.writer == nil {
 		return
 	}
 
-	for buff.flush < buff.appends {
+	for buff.flushSeq < buff.appendSeq {
 		// 通知协程进行写入操作
 		buff.notification <- struct{}{}
 	}
@@ -157,8 +157,8 @@ func (buff *AOFBuffer) Quit() {
 	buff.quitFlag <- struct{}{}
 }
 
-// Flush 通知协程进行持久化操作
-func (buff *AOFBuffer) Flush() {
+// flush 通知协程进行持久化操作
+func (buff *aofBuffer) flush() {
 
 	writingStatus := atomic.LoadInt32(&buff.writing)
 
@@ -172,21 +172,21 @@ func (buff *AOFBuffer) Flush() {
 
 }
 
-func (buff *AOFBuffer) Append(bytes []byte) {
+func (buff *aofBuffer) append(bytes []byte) {
 
 	if buff.writer == nil {
 		return
 	}
 
-	ok := buff.pages[buff.appends%buff.pageSize].append(bytes)
+	ok := buff.pages[buff.appendSeq%buff.pageSize].append(bytes)
 	if !ok {
-		buff.appends++
+		buff.appendSeq++
 
 		// 如果自加后追赶上刷盘
-		if buff.appends-buff.flush == buff.pageSize {
+		if buff.appendSeq-buff.flushSeq == buff.pageSize {
 			buff.flushBuffer()
 		}
 
-		buff.pages[buff.appends%buff.pageSize].append(bytes)
+		buff.pages[buff.appendSeq%buff.pageSize].append(bytes)
 	}
 }

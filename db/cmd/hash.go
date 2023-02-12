@@ -8,7 +8,7 @@ import (
 )
 
 func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hset", 4)
+	e, ok := checkCommandAndLength(&cmd, "hset", 4)
 	if !ok {
 		return e
 	}
@@ -19,7 +19,7 @@ func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		db.SetKey(string(cmd[1]), value)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -42,7 +42,7 @@ func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hmset", 4)
+	e, ok := checkCommandAndLength(&cmd, "hmset", 4)
 	if !ok {
 		return e
 	}
@@ -53,7 +53,7 @@ func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		db.SetKey(string(cmd[1]), value)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -76,7 +76,7 @@ func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hget", 3)
+	e, ok := checkCommandAndLength(&cmd, "hget", 3)
 	if !ok {
 		return e
 	}
@@ -86,7 +86,7 @@ func hGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -102,7 +102,7 @@ func hGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hMGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hmget", 3)
+	e, ok := checkCommandAndLength(&cmd, "hmget", 3)
 	if !ok {
 		return e
 	}
@@ -112,7 +112,7 @@ func hMGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -133,7 +133,7 @@ func hMGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hExists(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hexists", 3)
+	e, ok := checkCommandAndLength(&cmd, "hexists", 3)
 	if !ok {
 		return e
 	}
@@ -143,7 +143,7 @@ func hExists(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -159,7 +159,7 @@ func hExists(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hDel(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hdel", 3)
+	e, ok := checkCommandAndLength(&cmd, "hdel", 3)
 	if !ok {
 		return e
 	}
@@ -169,7 +169,7 @@ func hDel(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -188,7 +188,7 @@ func hDel(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hGetAll(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hgetall", 2)
+	e, ok := checkCommandAndLength(&cmd, "hgetall", 2)
 	if !ok {
 		return e
 	}
@@ -198,7 +198,7 @@ func hGetAll(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -221,7 +221,7 @@ func hGetAll(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hKeys(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hkeys", 2)
+	e, ok := checkCommandAndLength(&cmd, "hkeys", 2)
 	if !ok {
 		return e
 	}
@@ -231,7 +231,7 @@ func hKeys(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -250,7 +250,7 @@ func hKeys(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func hVals(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
-	e, ok := CheckCommandAndLength(&cmd, "hvals", 2)
+	e, ok := checkCommandAndLength(&cmd, "hvals", 2)
 	if !ok {
 		return e
 	}
@@ -260,7 +260,7 @@ func hVals(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -282,7 +282,7 @@ func hVals(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hincrby", 4)
+	e, ok := checkCommandAndLength(&cmd, "hincrby", 4)
 	if !ok {
 		return e
 	}
@@ -293,7 +293,7 @@ func hIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		db.SetKey(string(cmd[1]), value)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -325,7 +325,7 @@ func hIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 // func hIncrByFloat(db *db.DataBase, cmd [][]byte) resp.RedisData {}
 func hLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hlen", 2)
+	e, ok := checkCommandAndLength(&cmd, "hlen", 2)
 	if !ok {
 		return e
 	}
@@ -335,7 +335,7 @@ func hLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -348,7 +348,7 @@ func hLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hStrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hstrlen", 3)
+	e, ok := checkCommandAndLength(&cmd, "hstrlen", 3)
 	if !ok {
 		return e
 	}
@@ -358,7 +358,7 @@ func hStrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -376,7 +376,7 @@ func hStrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func hRandField(db *db.DataBase, cmd [][]byte) resp.RedisData {
-	e, ok := CheckCommandAndLength(&cmd, "hrandfield", 2)
+	e, ok := checkCommandAndLength(&cmd, "hrandfield", 2)
 	if !ok {
 		return e
 	}
@@ -386,7 +386,7 @@ func hRandField(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeArrayData(nil)
 	}
 
-	e = CheckType(value, HASH)
+	e = checkType(value, HASH)
 	if e != nil {
 		return e
 	}
@@ -414,18 +414,18 @@ func hRandField(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeArrayData(res)
 }
 
-func RegisterHashCommands() {
-	RegisterCommand("hset", hSet, WR)
-	RegisterCommand("hget", hGet, RD)
-	RegisterCommand("hexists", hExists, RD)
-	RegisterCommand("hdel", hDel, WR)
-	RegisterCommand("hmset", hMSet, WR)
-	RegisterCommand("hmget", hMGet, RD)
-	RegisterCommand("hgetall", hGetAll, RD)
-	RegisterCommand("hkeys", hKeys, RD)
-	RegisterCommand("hvals", hVals, RD)
-	RegisterCommand("hincrby", hIncrBy, WR)
-	RegisterCommand("hlen", hLen, RD)
-	RegisterCommand("hstrlen", hStrLen, RD)
-	RegisterCommand("hrandfield", hRandField, RD)
+func registerHashCommands() {
+	registerCommand("hset", hSet, WR)
+	registerCommand("hget", hGet, RD)
+	registerCommand("hexists", hExists, RD)
+	registerCommand("hdel", hDel, WR)
+	registerCommand("hmset", hMSet, WR)
+	registerCommand("hmget", hMGet, RD)
+	registerCommand("hgetall", hGetAll, RD)
+	registerCommand("hkeys", hKeys, RD)
+	registerCommand("hvals", hVals, RD)
+	registerCommand("hincrby", hIncrBy, WR)
+	registerCommand("hlen", hLen, RD)
+	registerCommand("hstrlen", hStrLen, RD)
+	registerCommand("hrandfield", hRandField, RD)
 }

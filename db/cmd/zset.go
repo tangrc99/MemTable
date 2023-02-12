@@ -10,7 +10,7 @@ import (
 
 func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zadd", 4)
+	e, ok := checkCommandAndLength(&cmd, "zadd", 4)
 	if !ok {
 		return e
 	}
@@ -45,7 +45,7 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -81,7 +81,7 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zCount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zcount", 4)
+	e, ok := checkCommandAndLength(&cmd, "zcount", 4)
 	if !ok {
 		return e
 	}
@@ -93,7 +93,7 @@ func zCount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -114,7 +114,7 @@ func zCount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zCard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zcard", 2)
+	e, ok := checkCommandAndLength(&cmd, "zcard", 2)
 	if !ok {
 		return e
 	}
@@ -126,7 +126,7 @@ func zCard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -139,7 +139,7 @@ func zCard(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrem", 3)
+	e, ok := checkCommandAndLength(&cmd, "zrem", 3)
 	if !ok {
 		return e
 	}
@@ -151,7 +151,7 @@ func zRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -169,7 +169,7 @@ func zRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zincrby", 4)
+	e, ok := checkCommandAndLength(&cmd, "zincrby", 4)
 	if !ok {
 		return e
 	}
@@ -193,7 +193,7 @@ func zIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -219,7 +219,7 @@ func zIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 // zRange : zrange salary 0 -1 WITHSCORES
 func zRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrange", 4)
+	e, ok := checkCommandAndLength(&cmd, "zrange", 4)
 	if !ok {
 		return e
 	}
@@ -231,7 +231,7 @@ func zRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -257,7 +257,7 @@ func zRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 }
 
 func zRevRange(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrevrange", 4)
+	e, ok := checkCommandAndLength(&cmd, "zrevrange", 4)
 	if !ok {
 		return e
 	}
@@ -269,7 +269,7 @@ func zRevRange(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入�
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -297,7 +297,7 @@ func zRevRange(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入�
 // zRank 显示 key 的 score 的排名，从小到大
 func zRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrank", 3)
+	e, ok := checkCommandAndLength(&cmd, "zrank", 3)
 	if !ok {
 		return e
 	}
@@ -309,7 +309,7 @@ func zRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -328,7 +328,7 @@ func zRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 // zRank 显示 key 的 score 的排名，从大到小
 func zRevRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrevrank", 3)
+	e, ok := checkCommandAndLength(&cmd, "zrevrank", 3)
 	if !ok {
 		return e
 	}
@@ -340,7 +340,7 @@ func zRevRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -358,7 +358,7 @@ func zRevRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zscore", 3)
+	e, ok := checkCommandAndLength(&cmd, "zscore", 3)
 	if !ok {
 		return e
 	}
@@ -370,7 +370,7 @@ func zScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -385,7 +385,7 @@ func zScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zRemRangeByRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zremrangebyrank", 4)
+	e, ok := checkCommandAndLength(&cmd, "zremrangebyrank", 4)
 	if !ok {
 		return e
 	}
@@ -397,7 +397,7 @@ func zRemRangeByRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -419,7 +419,7 @@ func zRemRangeByRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zRemRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zremrangebyscore", 4)
+	e, ok := checkCommandAndLength(&cmd, "zremrangebyscore", 4)
 	if !ok {
 		return e
 	}
@@ -431,7 +431,7 @@ func zRemRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -452,7 +452,7 @@ func zRemRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrangebyscore", 4)
+	e, ok := checkCommandAndLength(&cmd, "zrangebyscore", 4)
 	if !ok {
 		return e
 	}
@@ -464,7 +464,7 @@ func zRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -491,7 +491,7 @@ func zRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func zRevRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "zrevrangebyscore", 4)
+	e, ok := checkCommandAndLength(&cmd, "zrevrangebyscore", 4)
 	if !ok {
 		return e
 	}
@@ -503,7 +503,7 @@ func zRevRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := CheckType(value, ZSET); err != nil {
+	if err := checkType(value, ZSET); err != nil {
 		return err
 	}
 
@@ -533,20 +533,20 @@ func zRevRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 //func zUnion(db *db.DataBase, cmd [][]byte) resp.RedisData             {}
 //func zUnionStore(db *db.DataBase, cmd [][]byte) resp.RedisData             {}
 
-func RegisterZSetCommands() {
-	RegisterCommand("zadd", zADD, WR)
-	RegisterCommand("zcount", zCount, RD)
-	RegisterCommand("zcard", zCard, RD)
-	RegisterCommand("zrem", zRem, WR)
-	RegisterCommand("zincrby", zIncrBy, WR)
-	RegisterCommand("zscore", zScore, RD)
-	RegisterCommand("zrank", zRank, RD)
-	RegisterCommand("zrevrank", zRevRank, RD)
-	RegisterCommand("zremrangebyscore", zRemRangeByScore, WR)
-	RegisterCommand("zremrangebyrank", zRemRangeByRank, WR)
-	RegisterCommand("zrange", zRange, RD)
-	RegisterCommand("zrevrange", zRevRange, RD)
-	RegisterCommand("zrangebyscore", zRangeByScore, RD)
-	RegisterCommand("zrevrangebyscore", zRevRangeByScore, RD)
+func registerZSetCommands() {
+	registerCommand("zadd", zADD, WR)
+	registerCommand("zcount", zCount, RD)
+	registerCommand("zcard", zCard, RD)
+	registerCommand("zrem", zRem, WR)
+	registerCommand("zincrby", zIncrBy, WR)
+	registerCommand("zscore", zScore, RD)
+	registerCommand("zrank", zRank, RD)
+	registerCommand("zrevrank", zRevRank, RD)
+	registerCommand("zremrangebyscore", zRemRangeByScore, WR)
+	registerCommand("zremrangebyrank", zRemRangeByRank, WR)
+	registerCommand("zrange", zRange, RD)
+	registerCommand("zrevrange", zRevRange, RD)
+	registerCommand("zrangebyscore", zRangeByScore, RD)
+	registerCommand("zrevrangebyscore", zRevRangeByScore, RD)
 
 }

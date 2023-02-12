@@ -20,6 +20,8 @@ const (
 )
 
 type Client struct {
+	parser *resp.Parser
+
 	cmd [][]byte             // 当前命令
 	raw []byte               // 当前命令的 resp 格式
 	res chan *resp.RedisData // 回包
@@ -29,8 +31,7 @@ type Client struct {
 	tp    time.Time // 通信时间戳
 	dbSeq int
 
-	status ClientStatus  // 状态 0 等待连接 1 正常 -1 退出 -2 异常
-	exit   chan struct{} // 退出标志
+	status ClientStatus // 状态 0 等待连接 1 正常 -1 退出 -2 异常
 
 	pipelined bool
 
@@ -54,16 +55,20 @@ type Client struct {
 
 func NewClient(conn net.Conn) *Client {
 	return &Client{
+		parser: resp.NewParser(conn),
 		cnn:    conn,
 		id:     uuid.Must(uuid.NewV1()),
 		tp:     time.Now(),
 		status: WAIT,
 		dbSeq:  0,
-		exit:   make(chan struct{}, 1),
 		res:    make(chan *resp.RedisData, 100),
 
 		blocked: false,
 	}
+}
+
+func (cli *Client) ParseStream() *resp.ParsedRes {
+	return cli.parser.Parse()
 }
 
 func (cli *Client) UpdateTimestamp(tp time.Time) {
@@ -140,7 +145,7 @@ func (clients *ClientList) removeClientWithPosition(cli *Client, node *structure
 	cli.status = EXIT
 	clients.list.RemoveNode(node)
 	delete(clients.UUIDSet, cli.id)
-	cli.exit <- struct{}{}
+	_ = cli.cnn.Close()
 }
 
 // RemoveClient 不知道具体位置时，需要遍历

@@ -1,3 +1,4 @@
+// Package db 包含了 MemTable 中数据库的主要数据结构和算法
 package db
 
 import (
@@ -5,13 +6,15 @@ import (
 	"time"
 )
 
+// DataBase 代表一个内存数据库，包含键值对，ttl，watch等信息。同一个 DataBase 实例中键值不能重复，
+// 不同的实例键值可以重复。
 type DataBase struct {
 	dict    *structure.Dict // 存储键值对
 	ttlKeys *structure.Dict // 存储过期键
 	watches *structure.Dict // 存储监视键
 }
 
-// NewDataBase Create a new database impl
+// NewDataBase 创建一个新 DataBase 实例，并返回指针
 func NewDataBase() *DataBase {
 	return &DataBase{
 		dict:    structure.NewDict(12),
@@ -20,7 +23,7 @@ func NewDataBase() *DataBase {
 	}
 }
 
-// CheckNotExpired 没有过期返回 true
+// CheckNotExpired 检查键是否过期，如果过期则会自动删除键值对并返回 false
 func (db_ *DataBase) CheckNotExpired(key string) bool {
 
 	ttl, exist := db_.ttlKeys.Get(key)
@@ -38,10 +41,13 @@ func (db_ *DataBase) CheckNotExpired(key string) bool {
 	return false
 }
 
+// RemoveTTL 删除键的 TTL 信息，如果 TTL 则返回 false
 func (db_ *DataBase) RemoveTTL(key string) bool {
 	return db_.ttlKeys.Delete(key)
 }
 
+// GetTTL 得到一个键的 TTL 信息，如果 TTL 存在会返回一个 timestamp；如果 TTL 不存在则会返回-1；
+// 如果 TTL 已经过期则会删除 TTL 信息并返回-2
 func (db_ *DataBase) GetTTL(key string) int64 {
 
 	ttl, exist := db_.ttlKeys.Get(key)
@@ -65,6 +71,7 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 	return -1
 }
 
+// GetKey 查询数据库中是否存在该键值，如果键值存在且为过期，返回键对应的值；若键已经过期，将会删除该键值对，并返回 nil
 func (db_ *DataBase) GetKey(key string) (any, bool) {
 	ok := db_.CheckNotExpired(key)
 	if !ok {
@@ -73,12 +80,14 @@ func (db_ *DataBase) GetKey(key string) (any, bool) {
 	return db_.dict.Get(key)
 }
 
+// SetKey 将键值对插入到 DataBase 中，该操作可能会覆盖旧键。
 func (db_ *DataBase) SetKey(key string, value any) bool {
 
 	db_.dict.Set(key, value)
 	return true
 }
 
+// SetTTL 设置键值对的 TTL 信息，ttl 为 unix 时间戳。若键值对不存在，将会返回 false
 func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 	if !db_.dict.Exist(key) {
 		return false
@@ -87,6 +96,7 @@ func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 	return true
 }
 
+// SetKeyWithTTL 将键值对插入到 DataBase 中，并设置 TTL 信息，该操作可能会覆盖旧键。
 func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 
 	db_.dict.Set(key, value)
@@ -95,6 +105,7 @@ func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 	return true
 }
 
+// DeleteKey 将会删除 DataBase 中对应的键值对，若键不存在，返回 false
 func (db_ *DataBase) DeleteKey(key string) bool {
 
 	db_.ttlKeys.Delete(key)
@@ -102,6 +113,7 @@ func (db_ *DataBase) DeleteKey(key string) bool {
 	return db_.dict.Delete(key)
 }
 
+// RenameKey 将键值对的键重命名，同时转移 TTL 信息，该操作可能会覆盖旧键值对
 func (db_ *DataBase) RenameKey(old, new string) bool {
 
 	// 顺带检查 ttl 是否过期
@@ -119,6 +131,7 @@ func (db_ *DataBase) RenameKey(old, new string) bool {
 	return true
 }
 
+// ExistKey 用于判断键是否存在
 func (db_ *DataBase) ExistKey(key string) bool {
 
 	ok := db_.CheckNotExpired(key)
@@ -129,14 +142,17 @@ func (db_ *DataBase) ExistKey(key string) bool {
 	return db_.dict.Exist(key)
 }
 
-func (db_ *DataBase) Keys(pattern string) ([]string, int) {
+// Keys 返回 DataBase 中通过正则表达式匹配的所有键
+func (db_ *DataBase) Keys(pattern string) (keys []string, nums int) {
 	return db_.dict.KeysWithTTL(db_.ttlKeys, pattern)
 }
 
-func (db_ *DataBase) KeysByte(pattern string) ([][]byte, int) {
+// KeysByte 返回 DataBase 中通过正则表达式匹配的所有键，键以 []byte 类型存储
+func (db_ *DataBase) KeysByte(pattern string) (keys [][]byte, nums int) {
 	return db_.dict.KeysWithTTLByte(db_.ttlKeys, pattern)
 }
 
+// RandomKey 随机返回一个键，如果 DataBase 不存在键值对，将会返回空字符串
 func (db_ *DataBase) RandomKey() (string, bool) {
 	keys := db_.dict.Random(1)
 	for k := range keys {
@@ -162,22 +178,23 @@ func (db_ *DataBase) CleanTTLKeys(samples int) int {
 	return deleted
 }
 
+// Clear 用于情况 DataBase 中的所有信息
 func (db_ *DataBase) Clear() {
 	db_.dict = structure.NewDict(12)
 	db_.ttlKeys = structure.NewDict(1)
 }
 
+// Size 返回数据库中键值对数量，函数不会检查键值对的过期情况。
 func (db_ *DataBase) Size() int {
 	return db_.dict.Size()
 }
 
+// TTLSize 返回数据库中具有 TTL 信息的键值对数量，函数不会检查键值对的过期情况。
 func (db_ *DataBase) TTLSize() int {
 	return db_.ttlKeys.Size()
 }
 
-// 事务实现
-
-// Watch 监控一个键
+// Watch 监控一个键是否被修改，如果键值被修改 flag 变量将会被设置为 false
 func (db_ *DataBase) Watch(key string, flag *bool) {
 
 	v, ok := db_.watches.Get(key)
@@ -192,7 +209,7 @@ func (db_ *DataBase) Watch(key string, flag *bool) {
 	(*flags)[flag] = struct{}{}
 }
 
-// UnWatch 取消监控
+// UnWatch 取消对键的监控
 func (db_ *DataBase) UnWatch(key string, flag *bool) {
 	v, ok := db_.watches.Get(key)
 	if !ok {
@@ -219,8 +236,8 @@ func (db_ *DataBase) ReviseNotify(key string) {
 	}
 }
 
-// ReviveNotifyAll 通知所有键修改，用于 flushdb 和 flushall 命令
-func (db_ *DataBase) ReviveNotifyAll() {
+// ReviseNotifyAll 通知所有被 watch 的键修改，用于 flushdb 和 flushall 命令
+func (db_ *DataBase) ReviseNotifyAll() {
 
 	dicts, _ := db_.watches.GetAll()
 
@@ -234,6 +251,7 @@ func (db_ *DataBase) ReviveNotifyAll() {
 	}
 }
 
+// WatchSize 返回数据库中被监控的键值对数目
 func (db_ *DataBase) WatchSize() int {
 	return db_.watches.Size()
 }

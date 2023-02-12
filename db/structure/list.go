@@ -1,11 +1,13 @@
 package structure
 
+// ListNode 是一个双向链表节点
 type ListNode struct {
 	next, prev *ListNode
 	list       *List
 	Value      any
 }
 
+// Next 返回 ListNode 的下一个节点指针，若当前 ListNode 为链表尾，返回 nil
 func (node *ListNode) Next() *ListNode {
 	if node.next == node.list.head {
 		return nil
@@ -13,6 +15,7 @@ func (node *ListNode) Next() *ListNode {
 	return node.next
 }
 
+// Prev 返回 ListNode 的上一个节点指针，若当前 ListNode 为链表头，返回 nil
 func (node *ListNode) Prev() *ListNode {
 	if node.prev == node.list.head {
 		return nil
@@ -20,11 +23,13 @@ func (node *ListNode) Prev() *ListNode {
 	return node.prev
 }
 
+// List 是一个双向链表
 type List struct {
 	head *ListNode
 	size int
 }
 
+// NewList 创建一个双向链表并返回指针
 func NewList() *List {
 	l := List{
 		head: nil,
@@ -39,6 +44,7 @@ func NewList() *List {
 	return &l
 }
 
+// FrontNode 返回链表中首个结点的指针，若链表为空，返回 nil
 func (list *List) FrontNode() *ListNode {
 	if list.head.next == list.head {
 		return nil
@@ -46,6 +52,7 @@ func (list *List) FrontNode() *ListNode {
 	return list.head.next
 }
 
+// BackNode 返回链表中最后一个节点的指针，若链表为空，返回 nil
 func (list *List) BackNode() *ListNode {
 	if list.head.prev == list.head {
 		return nil
@@ -53,16 +60,17 @@ func (list *List) BackNode() *ListNode {
 	return list.head.prev
 }
 
-// Front 如果不存在值会返回 nil
+// Front 返回链表第一个节点存储的值，如果不存在值会返回 nil
 func (list *List) Front() any {
 	return list.head.next.Value
 }
 
-// Back 如果不存在值会返回 nil
+// Back 返回链表最后一个节点存储的值，如果不存在值会返回 nil
 func (list *List) Back() any {
 	return list.head.prev.Value
 }
 
+// InsertAfterNode 创建一个 ListNode 对象，并插入到 at 之前
 func (list *List) InsertAfterNode(value any, at *ListNode) *ListNode {
 	if at == nil {
 		return nil
@@ -85,6 +93,7 @@ func (list *List) InsertAfterNode(value any, at *ListNode) *ListNode {
 	return &node
 }
 
+// InsertBeforeNode 创建一个 ListNode 对象，并插入到 at 之后
 func (list *List) InsertBeforeNode(value any, at *ListNode) *ListNode {
 	if at == nil {
 		return nil
@@ -107,6 +116,7 @@ func (list *List) InsertBeforeNode(value any, at *ListNode) *ListNode {
 	return &node
 }
 
+// RemoveNode 删除 at 节点，并返回其存储的值
 func (list *List) RemoveNode(at *ListNode) any {
 
 	if at.list != list {
@@ -125,14 +135,17 @@ func (list *List) RemoveNode(at *ListNode) any {
 	return at.Value
 }
 
+// PushFront 创建一个 ListNode 对象，并插入到链表头
 func (list *List) PushFront(value any) {
 	list.InsertAfterNode(value, list.head)
 }
 
+// PushBack 创建一个 ListNode 对象，并插入到链表尾
 func (list *List) PushBack(value any) {
 	list.InsertBeforeNode(value, list.head)
 }
 
+// PopFront 删除链表头，并返回值
 func (list *List) PopFront() any {
 	if list.Size() == 0 {
 		return nil
@@ -141,6 +154,7 @@ func (list *List) PopFront() any {
 	return list.RemoveNode(list.head.next)
 }
 
+// PopBack 删除链表尾，并返回值
 func (list *List) PopBack() any {
 	if list.Size() == 0 {
 		return nil
@@ -148,15 +162,17 @@ func (list *List) PopBack() any {
 	return list.RemoveNode(list.head.prev)
 }
 
+// Size 返回链表节点数量
 func (list *List) Size() int {
 	return list.size
 }
 
+// Empty 返回链表是否为空链表
 func (list *List) Empty() bool {
 	return list.size == 0
 }
 
-// InsertAfter 将元素插入到给定位置后面,pos > 0
+// InsertAfter 将元素插入到给定位置后面，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
 func (list *List) InsertAfter(value any, pos int) bool {
 	if pos >= list.Size() || pos < 0 {
 		return false
@@ -183,7 +199,7 @@ func (list *List) InsertAfter(value any, pos int) bool {
 	return nil != list.InsertAfterNode(value, p)
 }
 
-// InsertBefore 将元素插入到给定位置后面,pos > 0
+// InsertBefore 将元素插入到给定位置后面，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
 func (list *List) InsertBefore(value any, pos int) bool {
 
 	if pos >= list.Size() || pos < 0 {
@@ -212,7 +228,7 @@ func (list *List) InsertBefore(value any, pos int) bool {
 
 }
 
-// Pos 大于 0 正向遍历，小于 0 反向遍历
+// Pos 返回指定位置的值，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾。如果位置不存在，返回 nil
 func (list *List) Pos(pos int) (any, bool) {
 	if pos < 0 {
 		pos += list.Size()
@@ -242,6 +258,7 @@ func (list *List) Pos(pos int) (any, bool) {
 	return p.Value, true
 }
 
+// PosNode 返回指定位置的 ListNode 指针，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾。如果位置不存在，返回 nil
 func (list *List) PosNode(pos int) (*ListNode, bool) {
 	if pos < 0 {
 		pos += list.Size()
@@ -271,7 +288,12 @@ func (list *List) PosNode(pos int) (*ListNode, bool) {
 	return p, true
 }
 
+// Range 返回范围之间的链表值，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
 func (list *List) Range(start, end int) ([]any, int) {
+
+	if start < 0 {
+		start += list.Size()
+	}
 
 	// 先处理倒序然后判断 start 和 end 的关系
 	if end < 0 {
@@ -286,8 +308,11 @@ func (list *List) Range(start, end int) ([]any, int) {
 		}
 	}
 
-	if start >= list.Size() || start < 0 {
+	if start >= list.Size() || end < 0 {
 		return nil, 0
+	}
+	if start < 0 {
+		start = 0
 	}
 
 	p := list.head.next
@@ -356,27 +381,7 @@ func (list *List) Trim(start, end int) bool {
 	return true
 }
 
-func (list *List) RemoveValue(value any, nums int) int {
-	deleted := 0
-
-	for cur := list.FrontNode(); cur != list.BackNode(); {
-
-		if cur.Value == value {
-			node := cur
-			cur = cur.next
-			list.RemoveNode(node)
-			if deleted++; deleted >= nums {
-				break
-			}
-		} else {
-			cur = cur.next
-		}
-
-	}
-	return deleted
-}
-
-// Set 大于 0 正向遍历，小于 0 反向遍历
+// Set 更新指定位置的链表值，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
 func (list *List) Set(value any, pos int) bool {
 	if pos < 0 {
 		pos += list.Size()
@@ -407,6 +412,7 @@ func (list *List) Set(value any, pos int) bool {
 	return true
 }
 
+// Clear 删除链表的所有节点
 func (list *List) Clear() {
 	list.head.prev = list.head
 	list.head.next = list.head

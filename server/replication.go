@@ -74,7 +74,7 @@ func (s *ReplicaStatus) minOffset() uint64 {
 func (s *ReplicaStatus) registerSlave(cli *Client) {
 
 	if s.role == Slave {
-		logger.Error("Replica: Slave Received Sync Request")
+		logger.Error("Replica: Slave Received syncToDisk Request")
 		return
 	}
 
@@ -220,7 +220,7 @@ func (s *ReplicaStatus) sendOffsetToMaster() {
 func (s *ReplicaStatus) slaveToStandAlone() {
 	s.role = StandAlone
 	s.masterAlive = false
-	s.Master.exit <- struct{}{}
+	_ = s.Master.cnn.Close()
 	s.Master = nil
 }
 

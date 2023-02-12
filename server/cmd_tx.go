@@ -67,9 +67,9 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 			if cli.dbSeq != 0 {
 				// 多数据库场景需要加入数据库选择语句
 				dbStr := strconv.Itoa(cli.dbSeq)
-				server.aof.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+				server.aof.append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 			}
-			server.aof.Append(cli.txRaw[i])
+			server.aof.append(cli.txRaw[i])
 		}
 
 		reses[i] = res
