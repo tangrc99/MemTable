@@ -22,9 +22,11 @@ func main() {
 		println(err.Error())
 		return
 	}
-	server.LuaTest()
 
-	return
+	//watcher := server.ETCDWatcherInit()
+	//
+	//watcher.GetClusterConfig()
+
 	s := server.NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
 	s.TryRecover()
 	s.InitModules()

@@ -68,7 +68,7 @@ func flushdb(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	//FIXME: 异步操作
 	server.dbs[cli.dbSeq].ReviseNotifyAll()
-	server.dbs[cli.dbSeq] = db.NewDataBase()
+	server.dbs[cli.dbSeq] = db.NewDataBase(slotNum)
 
 	return resp.MakeStringData("OK")
 }
@@ -82,7 +82,7 @@ func flushall(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 	for i := 0; i < server.dbNum; i++ {
 		server.dbs[i].ReviseNotifyAll()
-		server.dbs[i] = db.NewDataBase()
+		server.dbs[i] = db.NewDataBase(slotNum)
 	}
 
 	return resp.MakeStringData("OK")

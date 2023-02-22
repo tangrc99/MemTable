@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func eval(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func eval(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	e, ok := CheckCommandAndLength(&cmd, "eval", 3)
 	if !ok {
@@ -26,6 +26,10 @@ func eval(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR Number of keys can't be greater than number of args")
 	} else if keyNum < 0 {
 		return resp.MakeErrorData("ERR Number of keys can't be negative")
+	}
+
+	if ok := checkAllScriptKeysLocal(s, cmd[3:3+keyNum], keyNum); !ok {
+		return resp.MakeErrorData("ERR script try to access non local key")
 	}
 
 	cli.blocked = true
@@ -54,7 +58,7 @@ func eval(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return nil
 }
 
-func evalSha(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
+func evalSha(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	e, ok := CheckCommandAndLength(&cmd, "evalsha", 3)
 	if !ok {
@@ -71,6 +75,10 @@ func evalSha(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR Number of keys can't be greater than number of args")
 	} else if keyNum < 0 {
 		return resp.MakeErrorData("ERR Number of keys can't be negative")
+	}
+
+	if ok := checkAllScriptKeysLocal(s, cmd[3:3+keyNum], keyNum); !ok {
+		return resp.MakeErrorData("ERR script try to access non local key")
 	}
 
 	cli.blocked = true
@@ -113,4 +121,17 @@ func RegisterScriptCommands() {
 	RegisterCommand("eval", eval, WR)
 	RegisterCommand("eval", evalSha, WR)
 	RegisterCommand("script", script, WR)
+}
+
+func checkAllScriptKeysLocal(s *Server, keys [][]byte, num int) bool {
+
+	for i := 0; i < num; i++ {
+
+		moved, _, _ := s.isKeyNeedMove(string(keys[i]))
+		if moved {
+			return false
+		}
+
+	}
+	return true
 }

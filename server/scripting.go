@@ -196,6 +196,8 @@ func evalGenericCommand(L *lua.LState, body, sha string, keys, argv [][]byte) re
 
 	// 如果 Lua 环境中没有脚本，需要编译
 	if L.GetGlobal(fName) == lua.LNil {
+
+		// 进行 lua 脚本的编译
 		err := L.DoString("function f_" + sha + "() " + body + "\nend")
 		if err != nil {
 			fmtErr := formatErrorFromLuaEnv(err.Error())

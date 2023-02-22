@@ -18,6 +18,7 @@ func TestScriptingGlobal(t *testing.T) {
 	if string(r.ToBytes()) != "*2\r\n$2\r\nk1\r\n$5\r\nargv1\r\n" {
 		t.Error("Result is wrong, your result is: \n", string(r.ToBytes()))
 	}
+
 }
 
 func TestScriptingAbort(t *testing.T) {

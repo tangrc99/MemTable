@@ -61,6 +61,11 @@ func ExecCommand(base *db.DataBase, cmd [][]byte, enableWrite bool) (res resp.Re
 	return f(base, cmd), isWriteCommand
 }
 
+func IsCommandExist(cmd string) bool {
+	_, exist := commandTable[strings.ToLower(string(cmd[0]))]
+	return exist
+}
+
 func IsWriteCommand(cmd string) bool {
 	_, ok := writeCommands[cmd]
 	return ok

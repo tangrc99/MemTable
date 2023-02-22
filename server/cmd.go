@@ -33,6 +33,7 @@ func init() {
 	RegisterTransactionCommand()
 	RegisterReplicationCommands()
 	RegisterScriptCommands()
+	RegisterClusterCommand()
 }
 
 func ExecCommand(server *Server, cli *Client, cmds [][]byte) (ret resp.RedisData, isWrite bool) {
@@ -41,6 +42,12 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte) (ret resp.RedisData
 		return resp.MakeErrorData("error: empty command"), false
 	}
 
+	// 判断是否需要转移错误
+	if allowed, err := checkCommandRunnableInCluster(server, cmds); !allowed {
+		return err, false
+	}
+
+	// 判断是否允许在脚本环境下运行
 	if allowed := CheckCommandRunnableNow(cmds, cli); allowed == false {
 		return resp.MakeErrorData("BUSY running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE"), false
 	}

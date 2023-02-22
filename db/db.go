@@ -15,9 +15,9 @@ type DataBase struct {
 }
 
 // NewDataBase 创建一个新 DataBase 实例，并返回指针
-func NewDataBase() *DataBase {
+func NewDataBase(slot int) *DataBase {
 	return &DataBase{
-		dict:    structure.NewDict(12),
+		dict:    structure.NewDict(slot),
 		ttlKeys: structure.NewDict(1),
 		watches: structure.NewDict(1),
 	}

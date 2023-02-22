@@ -57,8 +57,11 @@ func (s *Server) handleReplicaEvents() {
 	case Master:
 		s.sendBackLog()
 	case Slave:
+
 		if s.masterAlive == true {
 			s.sendOffsetToMaster()
+		} else if s.clusterStatus.state == ClusterOK {
+			s.clusterStatus.state = ClusterDown
 		} else {
 			s.reconnectToMaster()
 		}

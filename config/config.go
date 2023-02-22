@@ -31,6 +31,10 @@ type Config struct {
 	GoPoolSize  int
 	GoPoolSpawn int
 	RDBFile     string
+
+	// 集群配置
+	ClusterEnable bool
+	ClusterName   string
 }
 
 // Conf 变量存储从配置文件读取到的配置，如果配置不存在则使用默认配置
@@ -194,6 +198,18 @@ func (cfg *Config) parseFile() error {
 					return &Error{"maxclients < 1000"}
 				}
 				cfg.MaxClients = maxclients
+
+			} else if cfgName == "clusterenable" {
+
+				enable, err := strconv.ParseBool(fields[1])
+				if err != nil {
+					return err
+				}
+				cfg.ClusterEnable = enable
+
+			} else if cfgName == "clustername" {
+
+				cfg.ClusterName = strings.ToLower(fields[1])
 			}
 		}
 		if ioErr == io.EOF {
@@ -224,6 +240,9 @@ func init() {
 		GoPoolSpawn: 2000,
 		RDBFile:     "dump.rdb",
 		MaxClients:  -1,
+
+		ClusterEnable: false,
+		ClusterName:   "",
 	}
 
 	if len(os.Args) > 1 {

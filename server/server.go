@@ -52,13 +52,16 @@ type Server struct {
 
 	// 主从复制
 	ReplicaStatus
+
+	// 集群
+	clusterStatus
 }
 
 func NewServer(url string) *Server {
 
 	d := make([]*db.DataBase, config.Conf.DataBases)
 	for i := 0; i < config.Conf.DataBases; i++ {
-		d[i] = db.NewDataBase()
+		d[i] = db.NewDataBase(slotNum)
 	}
 
 	s := &Server{
@@ -82,6 +85,10 @@ func NewServer(url string) *Server {
 
 	env = initLuaEnv(s)
 
+	if config.Conf.ClusterEnable {
+		s.initCluster(s)
+	}
+
 	return s
 }
 
@@ -102,8 +109,6 @@ func (s *Server) InitModules() {
 func (s *Server) handleRead(conn net.Conn) {
 
 	client := NewClient(conn)
-
-	//pipelined := 0
 
 	// 这里会阻塞等待有数据到达
 	running := true
@@ -372,6 +377,15 @@ func (s *Server) initTimeEvents() {
 		logger.Debug("TimeEvent: Replication")
 
 		s.handleReplicaEvents()
+
+	}, time.Now().Add(200*time.Millisecond).Unix(), 200*time.Millisecond,
+	))
+
+	// cluster 相关操作
+	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
+		logger.Debug("TimeEvent: Cluster")
+
+		s.handleClusterEvents()
 
 	}, time.Now().Add(200*time.Millisecond).Unix(), 200*time.Millisecond,
 	))
