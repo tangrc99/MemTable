@@ -197,6 +197,10 @@ func (e *EtcdWatcher) announce() {
 
 }
 
+/* ---------------------------------------------------------------------------
+* utils 函数
+* ------------------------------------------------------------------------- */
+
 func (e *EtcdWatcher) publishChannel() string {
 	return fmt.Sprintf("/%s/channel", e.clusterName)
 }

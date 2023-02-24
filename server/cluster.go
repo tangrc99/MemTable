@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/logger"
@@ -72,6 +73,17 @@ func (n *clusterNode) toString() string {
 		ret += "slaveof: " + n.slaveOf.name + "}"
 	}
 	return ret
+}
+
+func (n *clusterNode) toJson() []byte {
+
+	nj := newClusterNodeJson(n)
+
+	bytes, err := json.Marshal(nj)
+	if err != nil {
+		return nil
+	}
+	return bytes
 }
 
 /* ---------------------------------------------------------------------------
@@ -427,6 +439,21 @@ func updateShardMaster(old, new *clusterNode) {
 	// 清空自身的 slave of
 	new.slaveOf = new
 
+}
+
+func (c *clusterStatus) aliveNodesNum() int {
+	return c.configNodeNum
+}
+
+func (c *clusterStatus) toJson() []byte {
+
+	nj := newClusterJson(c)
+
+	bytes, err := json.Marshal(nj)
+	if err != nil {
+		return nil
+	}
+	return bytes
 }
 
 func (c *clusterStatus) allNodes() string {

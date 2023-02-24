@@ -21,6 +21,9 @@ func cluster(s *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 	switch strings.ToLower(string(cmd[1])) {
 
+	case "info":
+		return clusterInfo(s, cmd)
+
 	case "keyslot":
 		return clusterKeySlot(s, cmd)
 
@@ -29,6 +32,7 @@ func cluster(s *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 	case "getkeysinslot":
 		return clusterGetKeysInSlot(s, cmd)
+
 	case "nodes":
 		return clusterNodes(s, cmd)
 	}
@@ -46,15 +50,17 @@ var clusterForbiddenTable = map[string]struct{}{
 	"keys": {}, "select": {}, "mget": {}, "mset": {}, "randomkey": {},
 }
 
-func clusterInfo() {}
+func clusterInfo(s *Server, _ [][]byte) resp.RedisData {
+	return resp.MakeBulkData(s.toJson())
+}
 
-func clusterNodes(s *Server, cmd [][]byte) resp.RedisData {
+func clusterNodes(s *Server, _ [][]byte) resp.RedisData {
 
 	nodes := s.clusterStatus.nodes
 
 	ret := make([]resp.RedisData, 0, len(nodes))
-	for k := range nodes {
-		ret = append(ret, resp.MakeBulkData([]byte(k)))
+	for _, v := range nodes {
+		ret = append(ret, resp.MakeBulkData(v.toJson()))
 	}
 	return resp.MakeArrayData(ret)
 }
