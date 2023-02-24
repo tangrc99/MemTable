@@ -51,7 +51,11 @@ func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		}
 
 		server.changeSlaveOnline(cli, offset)
-		// 这里还需要发送 log
+
+		// Cluster 初始化阶段会自己建立客户端，不使用这里的连接
+		if server.state == ClusterOK {
+			server.upNodeAnnounce(cli.cnn.RemoteAddr().String())
+		}
 	}()
 
 	return resp.MakeEmptyArrayData()
@@ -126,6 +130,12 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		}
 		// 增量 sync
 		server.changeSlaveOnline(cli, uint64(replOffset))
+
+		// Cluster 初始化阶段会自己建立客户端，不使用这里的连接
+		if server.state == ClusterOK {
+			server.upNodeAnnounce(cli.cnn.RemoteAddr().String())
+		}
+
 	}
 
 	return resp.MakeEmptyArrayData()

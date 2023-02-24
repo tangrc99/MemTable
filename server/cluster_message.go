@@ -51,6 +51,8 @@ func newClusterJson(s *clusterStatus) *clusterJson {
 const (
 	MNewLeader = iota
 	MAnnounce
+	MNodeUp
+	MNodeDown
 )
 
 type clusterChangeMessage struct {
@@ -78,6 +80,36 @@ func generateAnnounceMessage(shard int, content string) string {
 	msg := clusterChangeMessage{
 		Shard:   shard,
 		EType:   MAnnounce,
+		Content: content,
+	}
+
+	marshal, err := json.Marshal(msg)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
+}
+
+func generateNodeDownMessage(shard int, content string) string {
+
+	msg := clusterChangeMessage{
+		Shard:   shard,
+		EType:   MNodeDown,
+		Content: content,
+	}
+
+	marshal, err := json.Marshal(msg)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
+}
+
+func generateNodeUpMessage(shard int, content string) string {
+
+	msg := clusterChangeMessage{
+		Shard:   shard,
+		EType:   MNodeUp,
 		Content: content,
 	}
 

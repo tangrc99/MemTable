@@ -8,22 +8,27 @@ import (
 	"github.com/tangrc99/MemTable/logger"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"strings"
 	"time"
 )
 
-type EtcdWatcher struct {
-	clusterName string
-	shard       int
-	shardName   string
-	host        string
+const announceInterval = 10
 
-	ele         *concurrency.Election
-	electionMsg <-chan clientv3.GetResponse
-	cli         *clientv3.Client
+type etcdWatcher struct {
+	clusterName string // 集群名称
+	shard       int    // 当前节点 shard
+	shardName   string // 当前节点 shard 名称
+	host        string // 当前节点 host
+
+	called uint64 // 用于控制 announce 间隔
+
+	ele *concurrency.Election
+	cli *clientv3.Client
+
 	clusterWatcher
 }
 
-func ETCDWatcherInit(clusterName string, host string) *EtcdWatcher {
+func initEtcdWatcher(clusterName string, host string) *etcdWatcher {
 
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"10.0.0.124:2379"},
@@ -33,14 +38,14 @@ func ETCDWatcherInit(clusterName string, host string) *EtcdWatcher {
 		logger.Error("Cluster etcd connection:", err.Error())
 	}
 
-	return &EtcdWatcher{
+	return &etcdWatcher{
 		clusterName: clusterName,
 		cli:         cli,
 		host:        host,
 	}
 }
 
-func (e *EtcdWatcher) getClusterConfig() clusterConfig {
+func (e *etcdWatcher) getClusterConfig() clusterConfig {
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
 	defer cancel()
@@ -66,7 +71,7 @@ func (e *EtcdWatcher) getClusterConfig() clusterConfig {
 }
 
 // initCampaign 如果失败，可能是由于该节点掉线后重连；这时候需要自动降级为副节点。
-func (e *EtcdWatcher) initCampaign(shardNum int, isMaster bool) bool {
+func (e *etcdWatcher) initCampaign(shardNum int, isMaster bool) bool {
 
 	e.shardName = fmt.Sprintf("shard_%d", shardNum)
 	e.shard = shardNum
@@ -99,7 +104,7 @@ func (e *EtcdWatcher) initCampaign(shardNum int, isMaster bool) bool {
 	return true
 }
 
-func (e *EtcdWatcher) watchClusterChanges() <-chan clusterChangeMessage {
+func (e *etcdWatcher) watchClusterChanges() <-chan clusterChangeMessage {
 
 	ntf := make(chan clusterChangeMessage, 20)
 
@@ -145,7 +150,7 @@ func (e *EtcdWatcher) watchClusterChanges() <-chan clusterChangeMessage {
 }
 
 // func (e *etcdWatcher) watchReplicaStatus() <-chan int {}
-func (e *EtcdWatcher) whoIsMaster() string {
+func (e *etcdWatcher) whoIsMaster() string {
 
 	ret, err := e.ele.Leader(context.TODO())
 	if err != nil {
@@ -156,7 +161,7 @@ func (e *EtcdWatcher) whoIsMaster() string {
 	return leader
 }
 
-func (e *EtcdWatcher) campaign() bool {
+func (e *etcdWatcher) campaign() bool {
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
 	defer cancel()
@@ -183,28 +188,64 @@ retry:
 	return true
 }
 
-func (e *EtcdWatcher) announce() {
+func (e *etcdWatcher) leaderAnnounce(downNodes []string) {
 
+	if e.called%announceInterval != 0 {
+		return
+	}
+
+	pCh := e.publishChannel()
+
+	tx := e.cli.Txn(context.TODO())
+	msg1 := generateAnnounceMessage(e.shard, e.host)
+	msg2 := generateNodeDownMessage(e.shard, strings.Join(downNodes, ","))
+
+	tx.Then(clientv3.OpPut(pCh, msg1))
+	if msg2 != "" {
+		tx.Then(clientv3.OpPut(pCh, msg2))
+	}
+
+	ret, err := tx.Commit()
+	if err != nil || !ret.Succeeded {
+		logger.Error("Cluster Publish Message Error, Info", err.Error())
+		e.called++
+	}
+
+	e.called++
+}
+
+func (e *etcdWatcher) downNodeAnnounce(nodes []string) {
 	// 如果成功了，需要在广播 channel 告知全部节点
 	pCh := e.publishChannel()
 
-	msg := generateAnnounceMessage(e.shard, e.host)
+	msg := generateNodeDownMessage(e.shard, strings.Join(nodes, ","))
 
 	_, err := e.cli.Put(context.TODO(), pCh, msg)
 	if err != nil {
 		logger.Error("Cluster Publish Message Error, Info", err.Error())
 	}
+}
 
+func (e *etcdWatcher) upNodeAnnounce(node string) {
+	// 如果成功了，需要在广播 channel 告知全部节点
+	pCh := e.publishChannel()
+
+	msg := generateNodeUpMessage(e.shard, node)
+
+	_, err := e.cli.Put(context.TODO(), pCh, msg)
+	if err != nil {
+		logger.Error("Cluster Publish Message Error, Info", err.Error())
+	}
 }
 
 /* ---------------------------------------------------------------------------
 * utils 函数
 * ------------------------------------------------------------------------- */
 
-func (e *EtcdWatcher) publishChannel() string {
+func (e *etcdWatcher) publishChannel() string {
 	return fmt.Sprintf("/%s/channel", e.clusterName)
 }
 
-func (e *EtcdWatcher) electionChannel() string {
+func (e *etcdWatcher) electionChannel() string {
 	return fmt.Sprintf("/%s/election/%s", e.clusterName, e.shardName)
 }

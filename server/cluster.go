@@ -13,8 +13,8 @@ import (
 const slotNum = 10 //1 << 14
 
 type clusterNode struct {
-	name string
-
+	name     string
+	alive    bool
 	peer     *Client   // 代表对端的 client
 	pingTime time.Time // 上次发送信息的时间
 	pongTime time.Time // 上次收到信息的时间
@@ -24,7 +24,7 @@ type clusterNode struct {
 
 func newSelfNode(name string) *clusterNode {
 	node :=
-		&clusterNode{name: name}
+		&clusterNode{name: name, alive: true}
 	node.slaveOf = node
 	return node
 }
@@ -32,6 +32,7 @@ func newSelfNode(name string) *clusterNode {
 func acceptNewClusterNode(conn net.Conn) *clusterNode {
 	node := &clusterNode{
 		name:     conn.RemoteAddr().String(),
+		alive:    true,
 		peer:     NewClient(conn),
 		pingTime: time.Now(),
 		pongTime: time.Now(),
@@ -110,15 +111,16 @@ const (
 * ------------------------------------------------------------------------- */
 
 type clusterStatus struct {
-	server *Server
+	server *Server // redis 服务器
 
-	self      *clusterNode
-	selfShard int
+	self      *clusterNode // 自指针
+	selfShard int          // 本地 shard 编号
 
-	state clusterState
-	slots []*clusterNode //
+	state clusterState   // 当前集群状态
+	slots []*clusterNode // 集群中所有槽
 
-	nodes map[string]*clusterNode
+	nodes     map[string]*clusterNode // 集群中所有节点
+	downNodes map[string]*clusterNode // 集群中下线的节点
 
 	configNodeNum int // 配置中的节点数量
 
@@ -136,7 +138,7 @@ func (c *clusterStatus) initCluster(self *Server) {
 	c.nodes = make(map[string]*clusterNode)
 	c.nodes[c.server.url] = c.self
 	c.state = ClusterInit
-	c.watcher = ETCDWatcherInit(config.Conf.ClusterName, c.server.url)
+	c.watcher = initEtcdWatcher(config.Conf.ClusterName, c.server.url)
 	c.config = c.watcher.getClusterConfig()
 	c.slots = make([]*clusterNode, slotNum)
 
@@ -199,11 +201,6 @@ func (c *clusterStatus) isKeyNeedMove(key string) (bool, int, *clusterNode) {
 
 }
 
-// clusterNodeNum 当前集群节点数量
-func (c *clusterStatus) clusterNodeNum() int {
-	return len(c.nodes)
-}
-
 // handleClusterEvents 负责完成 cluster 集群中的一些周期性任务，该函数被放入了时间链表中
 func (c *clusterStatus) handleClusterEvents() {
 
@@ -213,9 +210,9 @@ func (c *clusterStatus) handleClusterEvents() {
 	case ClusterInit:
 		c.initClusterConn()
 	case ClusterOK:
+
 		// 自身主从复制是正常的，处理所有到达的事务。由于集群事务很少，因此不会阻塞很久。
 		// 如果集群异常，也会被限制处理消息个数
-
 		for finished, singleHandle := 0, 5; finished < singleHandle; {
 			select {
 			case m := <-c.msg:
@@ -226,6 +223,8 @@ func (c *clusterStatus) handleClusterEvents() {
 				finished = singleHandle
 			}
 		}
+
+		c.announce()
 
 	case ClusterDown:
 		// 如果主从复制中发现主节点下线，那么集群状态会变更为 ClusterDown
@@ -366,6 +365,24 @@ func (c *clusterStatus) initClusterConn() {
 
 }
 
+func (c *clusterStatus) announce() {
+	if !c.self.isMaster() {
+		return
+	}
+
+	slaves := make([]string, 0, len(c.server.onLineSlaves))
+	for slave := range c.server.onLineSlaves {
+		slaves = append(slaves, slave.cnn.RemoteAddr().String())
+	}
+
+	c.watcher.leaderAnnounce(slaves)
+	//c.watcher.doSomething()
+}
+
+func (c *clusterStatus) upNodeAnnounce(node string) {
+	c.watcher.upNodeAnnounce(node)
+}
+
 // handleClusterChangeMessage 处理已经到达的集群事件，事件可能为发生了主变更
 func (c *clusterStatus) handleClusterChangeMessage(msg *clusterChangeMessage) {
 
@@ -398,6 +415,49 @@ func (c *clusterStatus) handleClusterChangeMessage(msg *clusterChangeMessage) {
 				c.state = ClusterOK
 			}
 		}
+	case MNodeUp:
+
+		if _, exist := c.nodes[msg.Content]; exist {
+			return
+		}
+
+		upNode, exist := c.downNodes[msg.Content]
+
+		if !exist {
+			logger.Error(fmt.Sprintf("Cluster nonexistent node up, shard %d node %s", msg.Shard, msg.Content))
+			return
+		}
+
+		c.nodes[msg.Content] = upNode
+		delete(c.downNodes, msg.Content)
+
+		upNode.alive = true
+
+		// 通过 shard 序号计算出 master
+		shardWidth := slotNum / c.config.ShardNum
+		master := c.slots[msg.Shard*shardWidth]
+		upNode.slaveOfNode(master)
+
+	case MNodeDown:
+
+		// 已经知道节点下线，无动作
+		if _, exist := c.downNodes[msg.Content]; exist {
+			return
+		}
+
+		downNode, exist := c.nodes[msg.Content]
+		if !exist {
+			logger.Error(fmt.Sprintf("Cluster nonexistent node down, shard %d node %s", msg.Shard, msg.Content))
+			return
+		}
+
+		// 转移到下线节点中
+		c.downNodes[msg.Content] = downNode
+		delete(c.nodes, msg.Content)
+
+		downNode.alive = false
+		downNode.slaveOfNone()
+		downNode.slaves = []*clusterNode{}
 
 	}
 }
@@ -434,7 +494,7 @@ func updateShardMaster(old, new *clusterNode) {
 		}
 	}
 	// 清空主节点的 slaves
-	old.slaves = nil
+	old.slaves = []*clusterNode{}
 	old.slaveOf = new
 	// 清空自身的 slave of
 	new.slaveOf = new
@@ -442,7 +502,7 @@ func updateShardMaster(old, new *clusterNode) {
 }
 
 func (c *clusterStatus) aliveNodesNum() int {
-	return c.configNodeNum
+	return len(c.nodes)
 }
 
 func (c *clusterStatus) toJson() []byte {
