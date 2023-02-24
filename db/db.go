@@ -255,3 +255,11 @@ func (db_ *DataBase) ReviseNotifyAll() {
 func (db_ *DataBase) WatchSize() int {
 	return db_.watches.Size()
 }
+
+func (db_ *DataBase) SlotCount(slotSeq int) int {
+	return db_.dict.ShardCount(slotSeq)
+}
+
+func (db_ *DataBase) KeysInSlot(slotSeq, count int) ([]string, int) {
+	return db_.dict.KeysInShard(slotSeq, count)
+}

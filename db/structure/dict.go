@@ -357,3 +357,24 @@ func (dict *Dict) RandomKeys(num int) map[string]struct{} {
 func (dict *Dict) GetAll() (*[]map[string]any, int) {
 	return &dict.shards, dict.count
 }
+
+// ShardCount 返回指定分片中的键值对数量
+func (dict *Dict) ShardCount(shardSeq int) int {
+	return len(dict.shards[shardSeq])
+}
+
+// KeysInShard 返回指定分片中的键值对
+func (dict *Dict) KeysInShard(shardSeq, count int) ([]string, int) {
+	keys := make([]string, count)
+	i := 0
+	for key := range dict.shards[shardSeq] {
+
+		if i == count {
+			break
+		}
+
+		keys[i] = key
+		i++
+	}
+	return keys, i
+}

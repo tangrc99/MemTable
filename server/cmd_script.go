@@ -28,7 +28,7 @@ func eval(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR Number of keys can't be negative")
 	}
 
-	if ok := checkAllScriptKeysLocal(s, cmd[3:3+keyNum], keyNum); !ok {
+	if ok := checkAllKeysLocal(s, cmd[3:3+keyNum], keyNum); !ok {
 		return resp.MakeErrorData("ERR script try to access non local key")
 	}
 
@@ -77,7 +77,7 @@ func evalSha(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR Number of keys can't be negative")
 	}
 
-	if ok := checkAllScriptKeysLocal(s, cmd[3:3+keyNum], keyNum); !ok {
+	if ok := checkAllKeysLocal(s, cmd[3:3+keyNum], keyNum); !ok {
 		return resp.MakeErrorData("ERR script try to access non local key")
 	}
 
@@ -121,17 +121,4 @@ func RegisterScriptCommands() {
 	RegisterCommand("eval", eval, WR)
 	RegisterCommand("eval", evalSha, WR)
 	RegisterCommand("script", script, WR)
-}
-
-func checkAllScriptKeysLocal(s *Server, keys [][]byte, num int) bool {
-
-	for i := 0; i < num; i++ {
-
-		moved, _, _ := s.isKeyNeedMove(string(keys[i]))
-		if moved {
-			return false
-		}
-
-	}
-	return true
 }
