@@ -397,7 +397,7 @@ func luaRedisCallImpl(L *lua.LState, protected bool) int {
 	}
 
 	// 执行命令
-	ret, _ := ExecCommand(env.server, env.fakeCli, env.fakeCli.cmd)
+	ret, _ := ExecCommand(env.server, env.fakeCli, env.fakeCli.cmd, env.fakeCli.raw)
 
 	// resp 协议转换为 lua table
 	lval := respDataToLua(ret)

@@ -59,7 +59,7 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 	for i, c := range cli.tx {
 
 		// 执行服务命令
-		res, isWriteCommand := ExecCommand(server, cli, c)
+		res, isWriteCommand := ExecCommand(server, cli, c, nil)
 
 		// 写命令需要完成aof持久化
 		if isWriteCommand {

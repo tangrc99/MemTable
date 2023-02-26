@@ -36,7 +36,7 @@ func init() {
 	RegisterClusterCommand()
 }
 
-func ExecCommand(server *Server, cli *Client, cmds [][]byte) (ret resp.RedisData, isWrite bool) {
+func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret resp.RedisData, isWrite bool) {
 
 	if len(cmds) == 0 {
 		return resp.MakeErrorData("error: empty command"), false
@@ -62,8 +62,8 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte) (ret resp.RedisData
 
 	// 如果正在事务中
 	if cli.inTx && NotTxCommand(strings.ToLower(string(cmds[0]))) {
-		cli.tx = append(cli.tx, cli.cmd)
-		cli.txRaw = append(cli.txRaw, cli.raw)
+		cli.tx = append(cli.tx, cmds)
+		cli.txRaw = append(cli.txRaw, raw)
 		return resp.MakeStringData("QUEUED"), false
 	}
 
@@ -71,7 +71,7 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte) (ret resp.RedisData
 
 	// 如果没有匹配命令，执行数据库命令
 	if !ok {
-		return cmd.ExecCommand(server.dbs[cli.dbSeq], cli.cmd, writeAllowed)
+		return cmd.ExecCommand(server.dbs[cli.dbSeq], cmds, writeAllowed)
 	}
 
 	return f(server, cli, cmds), isWriteCommand

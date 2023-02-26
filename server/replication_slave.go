@@ -351,8 +351,9 @@ func (s *Server) waitMasterNotification(client *Client) {
 				break
 			}
 
+			event := ePool.newEvent(client)
 			// 如果解析完毕有可以执行的命令，则发送给主线程执行
-			s.events <- client
+			s.events <- event
 
 			// 等待执行完毕并且丢弃，不回复主节点
 			<-client.res

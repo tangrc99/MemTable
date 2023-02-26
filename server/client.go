@@ -67,6 +67,16 @@ func NewClient(conn net.Conn) *Client {
 	}
 }
 
+func NewFakeClient() *Client {
+	return &Client{
+		id:      uuid.Must(uuid.NewV1()),
+		status:  WAIT,
+		dbSeq:   0,
+		res:     make(chan *resp.RedisData, 100),
+		blocked: false,
+	}
+}
+
 func (cli *Client) ParseStream() *resp.ParsedRes {
 	return cli.parser.Parse()
 }

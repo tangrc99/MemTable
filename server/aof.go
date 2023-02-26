@@ -8,13 +8,13 @@ import (
 	"strconv"
 )
 
-func (s *Server) appendAOF(cli *Client) {
+func (s *Server) appendAOF(event *Event) {
 
 	if s.aof == nil || !s.aofEnabled {
 		return
 	}
 
-	if len(cli.raw) <= 0 {
+	if len(event.raw) <= 0 {
 		return
 	}
 
@@ -22,11 +22,11 @@ func (s *Server) appendAOF(cli *Client) {
 
 	//if cli.dbSeq != 0 {
 	// 多数据库场景需要加入数据库选择语句
-	dbStr := strconv.Itoa(cli.dbSeq)
+	dbStr := strconv.Itoa(event.cli.dbSeq)
 	s.aof.append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 	//}
 
-	s.aof.append(cli.raw)
+	s.aof.append(event.raw)
 }
 
 func (s *Server) recoverFromAOF(filename string) {
@@ -63,7 +63,7 @@ func (s *Server) recoverFromAOF(filename string) {
 		client.cmd = array.ToCommand()
 
 		// 执行服务命令
-		_, _ = ExecCommand(s, client, client.cmd)
+		_, _ = ExecCommand(s, client, client.cmd, client.raw)
 
 	}
 }

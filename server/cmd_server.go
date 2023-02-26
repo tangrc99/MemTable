@@ -66,7 +66,7 @@ func flushdb(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
-	//FIXME: 异步操作
+	//TODO: 异步操作
 	server.dbs[cli.dbSeq].ReviseNotifyAll()
 	server.dbs[cli.dbSeq] = db.NewDataBase(slotNum)
 

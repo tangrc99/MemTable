@@ -54,11 +54,11 @@ func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 
 	// 类型检查
 	if event.tp < time.Now().Unix() {
-		logger.Warning("TimeEventList: add an expired time event")
+		logger.Warning("TimeEventList: add an expired time Event")
 	}
 
 	if event.event == PERIOD && event.tp <= 0 {
-		logger.Error("TimeEventList: period of a period event < 0")
+		logger.Error("TimeEventList: period of a period Event < 0")
 		return
 	}
 
@@ -140,6 +140,6 @@ func (events *TimeEventList) ExecuteManyDuring(now time.Time, duration time.Dura
 	}
 
 	if finished > 0 {
-		logger.Info("TimeEventList: Finished", finished, "Tasks")
+		logger.Debug("TimeEventList: Finished", finished, "Tasks")
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -26,10 +27,10 @@ type Server struct {
 	dbNum int            //数据库数量
 
 	// 客户端部分
-	clis       *ClientList  // 客户端列表
-	cliTimeout int          // 客户端失效时间
-	maxClients int          // 最大客户端数量
-	events     chan *Client // 用于解析完毕的协程同步
+	clis       *ClientList // 客户端列表
+	cliTimeout int         // 客户端失效时间
+	maxClients int         // 最大客户端数量
+	events     chan *Event // 用于解析完毕的协程同步
 
 	tl *TimeEventList // 时间事件链表
 
@@ -55,6 +56,8 @@ type Server struct {
 
 	// 集群
 	clusterStatus
+
+	msgPool sync.Pool
 }
 
 func NewServer(url string) *Server {
@@ -71,7 +74,7 @@ func NewServer(url string) *Server {
 		clis:       NewClientList(),
 		tl:         NewTimeEventList(),
 		url:        url,
-		events:     make(chan *Client, 10000),
+		events:     make(chan *Event, 10000),
 		quit:       false,
 		quitFlag:   make(chan struct{}),
 		rdbFile:    config.Conf.RDBFile,
@@ -113,61 +116,66 @@ func (s *Server) handleRead(conn net.Conn) {
 	// 这里会阻塞等待有数据到达
 	running := true
 
+	req := make(chan *resp.ParsedRes, 10)
+
+	go func() {
+		for running && !s.quit {
+			req <- client.ParseStream()
+		}
+	}()
+
 	for running && !s.quit {
 
-		parsed := client.ParseStream()
+		select {
+		case parsed := <-req:
 
-		if parsed.Err != nil {
-
-			e := parsed.Err.Error()
-			if e == "AGAIN" {
-				continue
-			} else if e == "EOF" {
-				logger.Debug("Client", client.id, "Peer ShutDown Connection")
-			} else {
-				logger.Error("Client", client.id, "Read Error:", e)
+			if parsed.Err != nil {
+				e := parsed.Err.Error()
+				if e == "AGAIN" {
+					continue
+				} else if e == "EOF" {
+					logger.Debug("Client Peer ShutDown Connection")
+				} else {
+					logger.Info("Client Read Error:", e)
+				}
+				running = false
+				break
 			}
-			running = false
-			break
-		}
 
-		if plain, ok := parsed.Data.(*resp.PlainData); ok {
+			if plain, ok := parsed.Data.(*resp.PlainData); ok {
 
-			client.pipelined = true
-			client.cmd = plain.ToCommand()
-			client.raw = parsed.Data.ToBytes()
+				client.pipelined = true
+				client.cmd = plain.ToCommand()
+				client.raw = parsed.Data.ToBytes()
 
-		} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
+			} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
 
-			client.cmd = array.ToCommand()
-			client.raw = parsed.Data.ToBytes()
+				client.cmd = array.ToCommand()
+				client.raw = parsed.Data.ToBytes()
 
-		} else {
+			} else {
+				logger.Warning("Client parse Command Error,raw:", string(parsed.Data.ByteData()))
+				running = false
+				break
+			}
 
-			fmt.Printf(string(parsed.Data.ByteData()))
+			// 如果解析完毕有可以执行的命令，则发送给主线程执行
+			s.events <- ePool.newEvent(client)
 
-			logger.Warning("Client", client.id, "parse Command Error")
-			running = false
-			break
-		}
-
-		// 如果解析完毕有可以执行的命令，则发送给主线程执行
-		s.events <- client
+			client.pipelined = false
 
 		// 使用 select 防止协程无法释放
+		case r := <-client.res:
 
-		r := <-client.res
+			// 将主线程的返回值写入到 socket 中
+			_, err := conn.Write((*r).ToBytes())
 
-		// 将主线程的返回值写入到 socket 中
-		_, err := conn.Write((*r).ToBytes())
-
-		if err != nil {
-			logger.Warning("Client", client.id, "Write Error")
-			running = false
-			break
+			if err != nil {
+				logger.Warning("Client", client.id, "Write Error")
+				running = false
+				break
+			}
 		}
-
-		client.pipelined = false
 
 	}
 
@@ -176,15 +184,32 @@ func (s *Server) handleRead(conn net.Conn) {
 		// 说明这是异常退出的
 		client.status = ERROR
 		client.cmd = nil
+		event := ePool.newEvent(client)
 
 		// 通知顶层
-		s.events <- client
+		s.events <- event
 	}
 
-	err := conn.Close()
-	if err != nil {
-		return
+	// 防止客户端中有剩余数据未发送
+sendFinish:
+	for {
+		select {
+		case r := <-client.res:
+
+			// 将主线程的返回值写入到 socket 中
+			_, err := conn.Write((*r).ToBytes())
+
+			if err != nil {
+				logger.Warning("Client", client.id, "Write Error")
+				break sendFinish
+			}
+		default:
+			break sendFinish
+		}
+
 	}
+
+	_ = conn.Close()
 
 	logger.Info("Client Shutdown", conn.RemoteAddr().String())
 
@@ -208,7 +233,8 @@ func (s *Server) eventLoop() {
 			s.tl.ExecuteManyDuring(time.Now(), 25*time.Millisecond)
 			//s.tl.ExecuteOneIfExpire()
 
-		case cli := <-s.events:
+		case event := <-s.events:
+			cli := event.cli
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
 			// todo:  关闭使用定时队列来实现
@@ -233,7 +259,7 @@ func (s *Server) eventLoop() {
 			cli.UpdateTimestamp(s.sts.Now)
 
 			// 执行命令
-			res, isWriteCommand := ExecCommand(s, cli, cli.cmd)
+			res, isWriteCommand := ExecCommand(s, cli, event.cmd, event.raw)
 
 			if res == nil {
 				continue
@@ -242,12 +268,12 @@ func (s *Server) eventLoop() {
 			// 只有写命令需要完成aof持久化
 			if isWriteCommand && fmt.Sprintf("%T", res) != "*resp.ErrorData" {
 
-				if cli.pipelined {
-					cli.raw = resp.PlainDataToResp(cli.cmd).ToBytes()
+				if event.pipelined {
+					event.raw = resp.PlainDataToResp(event.cmd).ToBytes()
 				}
 
-				s.appendAOF(cli)
-				s.updateReplicaStatus(cli)
+				s.appendAOF(event)
+				s.updateReplicaStatus(event)
 				s.dirty++
 			}
 
@@ -256,8 +282,16 @@ func (s *Server) eventLoop() {
 				cli.res <- &res
 			}
 
+			// 归还
+			ePool.putEvent(event)
+
 		default:
 
+			// TODO: 选择一些轻量级任务来做
+
+			//if s.aofEnabled {
+			//	s.aof.flush()
+			//}
 		}
 	}
 
@@ -452,4 +486,89 @@ func (s *Server) saveData() {
 			logger.Info("quit: Generated RDB File")
 		}
 	}
+}
+
+// handleReadWithoutGoroutine  不使用额外协程进行解析，在性能较差的机器上会表现较好
+func (s *Server) handleReadWithoutGoroutine(conn net.Conn) {
+
+	client := NewClient(conn)
+
+	// 这里会阻塞等待有数据到达
+	running := true
+
+	for running && !s.quit {
+
+		parsed := client.ParseStream()
+
+		if parsed.Err != nil {
+
+			e := parsed.Err.Error()
+			if e == "AGAIN" {
+				continue
+			} else if e == "EOF" {
+				logger.Debug("Client", client.id, "Peer ShutDown Connection")
+			} else {
+				logger.Error("Client", client.id, "Read Error:", e)
+			}
+			running = false
+			break
+		}
+
+		if plain, ok := parsed.Data.(*resp.PlainData); ok {
+
+			client.pipelined = true
+			client.cmd = plain.ToCommand()
+			client.raw = parsed.Data.ToBytes()
+
+		} else if array, ok := parsed.Data.(*resp.ArrayData); ok {
+
+			client.cmd = array.ToCommand()
+			client.raw = parsed.Data.ToBytes()
+
+		} else {
+
+			fmt.Printf(string(parsed.Data.ByteData()))
+
+			logger.Warning("Client", client.id, "parse Command Error")
+			running = false
+			break
+		}
+
+		// 如果解析完毕有可以执行的命令，则发送给主线程执行
+		s.events <- ePool.newEvent(client)
+
+		// 使用 select 防止协程无法释放
+
+		r := <-client.res
+
+		// 将主线程的返回值写入到 socket 中
+		_, err := conn.Write((*r).ToBytes())
+
+		if err != nil {
+			logger.Warning("Client", client.id, "Write Error")
+			running = false
+			break
+		}
+
+		client.pipelined = false
+
+	}
+
+	// 如果是读写发生错误，需要通知事件循环来关闭连接
+	if client.status != EXIT {
+		// 说明这是异常退出的
+		client.status = ERROR
+		client.cmd = nil
+
+		// 通知顶层
+		s.events <- ePool.newEvent(client)
+	}
+
+	err := conn.Close()
+	if err != nil {
+		return
+	}
+
+	logger.Info("Client Shutdown", conn.RemoteAddr().String())
+
 }

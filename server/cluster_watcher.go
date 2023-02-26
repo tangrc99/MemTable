@@ -28,5 +28,5 @@ type clusterWatcher interface {
 	upNodeAnnounce(node string)
 
 	// doSomething 将会被周期性地调用，如果集群需要额外做一些工作，可以在这里实现
-	doSomething(any)
+	doSomething()
 }

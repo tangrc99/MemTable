@@ -201,6 +201,5 @@ func RegisterReplicationCommands() {
 	RegisterCommand("sync", syncCMD, RD)
 	RegisterCommand("psync", psync, RD)
 	RegisterCommand("replconf", replconf, RD)
-
 	RegisterCommand("slaveof", slaveof, RD)
 }

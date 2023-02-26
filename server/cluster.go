@@ -376,7 +376,7 @@ func (c *clusterStatus) announce() {
 	}
 
 	c.watcher.leaderAnnounce(slaves)
-	//c.watcher.doSomething()
+	c.watcher.doSomething()
 }
 
 func (c *clusterStatus) upNodeAnnounce(node string) {

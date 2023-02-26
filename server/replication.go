@@ -33,7 +33,7 @@ type ReplicaStatus struct {
 	masterAlive bool
 }
 
-func (s *ReplicaStatus) updateReplicaStatus(cli *Client) {
+func (s *ReplicaStatus) updateReplicaStatus(event *Event) {
 
 	switch s.role {
 
@@ -41,11 +41,11 @@ func (s *ReplicaStatus) updateReplicaStatus(cli *Client) {
 		return
 
 	case Master:
-		s.appendBackLog(cli)
+		s.appendBackLog(event)
 
 	case Slave:
-		if cli == s.Master {
-			s.offset += uint64(len(cli.raw))
+		if event.cli == s.Master {
+			s.offset += uint64(len(event.raw))
 		}
 	}
 }
@@ -164,17 +164,17 @@ func (s *ReplicaStatus) sendBackLog() {
 
 }
 
-func (s *ReplicaStatus) appendBackLog(cli *Client) {
-	if s.role != Master || len(cli.raw) <= 0 {
+func (s *ReplicaStatus) appendBackLog(event *Event) {
+	if s.role != Master || len(event.raw) <= 0 {
 		return
 	}
 	// 只有写命令需要持久化
 
 	// 多数据库场景需要加入数据库选择语句
-	dbStr := strconv.Itoa(cli.dbSeq)
+	dbStr := strconv.Itoa(event.cli.dbSeq)
 	s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 
-	s.offset = s.backLog.Append(cli.raw)
+	s.offset = s.backLog.Append(event.raw)
 
 }
 
