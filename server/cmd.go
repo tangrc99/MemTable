@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/db/cmd"
 	"github.com/tangrc99/MemTable/resp"
+	"strconv"
 	"strings"
 )
 
@@ -71,6 +72,33 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 
 	// 如果没有匹配命令，执行数据库命令
 	if !ok {
+
+		// 数据库已经写满，检查数据库能否执行写命令
+		if server.full && cmd.IsWriteCommand(string(cmds[0])) {
+			selectedDB := server.dbs[cli.dbSeq]
+			victims, accpeted := selectedDB.Evict(cmds[1], 1)
+
+			// 如果有键逐出，需要持久化
+			if len(victims) > 0 {
+				dbStr := strconv.Itoa(cli.dbSeq)
+				dels := fmt.Sprintf("*%d\r\n$3\r\ndel\r\n", len(victims)+1)
+
+				for _, k := range victims {
+					dels += fmt.Sprintf("$%d\r\n%s\r\n", len(k), k)
+				}
+				// 写 aof
+				server.aof.append([]byte(fmt.Sprintf("*%d\r\n$6\r\ndel\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+				server.aof.append([]byte(dels))
+				// 写 backlog
+				server.appendBackLogRaw([]byte(fmt.Sprintf("*%d\r\n$6\r\ndel\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+				server.appendBackLogRaw([]byte(dels))
+			}
+
+			if !accpeted {
+				return resp.MakeErrorData("ERR Memory use is limited, no keys to evict"), false
+			}
+		}
+
 		return cmd.ExecCommand(server.dbs[cli.dbSeq], cmds, writeAllowed)
 	}
 

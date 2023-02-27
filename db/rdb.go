@@ -44,7 +44,7 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 				values, n := list.Range(0, -1)
 				listVal := make([][]byte, n)
 				for i, value := range values {
-					listVal[i] = value.(structure.String)
+					listVal[i] = value.([]byte)
 				}
 				if ttl > 0 {
 					err = enc.WriteListObject(k, listVal, encoder.WithTTL(ttl))

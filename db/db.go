@@ -11,19 +11,21 @@ import (
 // DataBase 代表一个内存数据库，包含键值对，ttl，watch等信息。同一个 DataBase 实例中键值不能重复，
 // 不同的实例键值可以重复。
 type DataBase struct {
-	dict    *structure.Dict // 存储键值对
-	ttlKeys *structure.Dict // 存储过期键
-	watches *structure.Dict // 存储监视键
-	evict   eviction.Eviction
+	dict        *structure.Dict // 存储键值对
+	ttlKeys     *structure.Dict // 存储过期键
+	watches     *structure.Dict // 存储监视键
+	evict       eviction.Eviction
+	enableEvict bool // 是否开启
 }
 
 // NewDataBase 创建一个新 DataBase 实例，并返回指针
 func NewDataBase(slot int, ops ...Option) *DataBase {
 	db := &DataBase{
-		dict:    structure.NewDict(slot),
-		ttlKeys: structure.NewDict(1),
-		watches: structure.NewDict(1),
-		evict:   eviction.NewNoEviction(),
+		dict:        structure.NewDict(slot),
+		ttlKeys:     structure.NewDict(1),
+		watches:     structure.NewDict(1),
+		evict:       eviction.NewNoEviction(),
+		enableEvict: false,
 	}
 	for _, op := range ops {
 		op(db)
@@ -39,7 +41,7 @@ func (db_ *DataBase) checkNotExpired(key string) bool {
 		return true
 	}
 
-	if ttl.(structure.Int64).Value() > global.Now.Unix() {
+	if ttl.(int64) > global.Now.Unix() {
 		// 如果没有过期
 		return true
 	}
@@ -62,7 +64,7 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 	if exist {
 		// 如果存在 ttl，检查过期时间
 		now := global.Now.Unix()
-		r := ttl.(structure.Int64).Value() - now
+		r := ttl.(int64) - now
 		if r < 0 {
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
@@ -106,7 +108,7 @@ func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 	if !db_.dict.Exist(key) {
 		return false
 	}
-	db_.ttlKeys.Set(key, structure.Int64(ttl))
+	db_.ttlKeys.Set(key, ttl)
 	return true
 }
 
@@ -114,7 +116,7 @@ func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 	item := &eviction.Item{Value: value}
 	db_.dict.Set(key, item)
-	db_.ttlKeys.Set(key, structure.Int64(ttl))
+	db_.ttlKeys.Set(key, ttl)
 	db_.evict.KeyUsed(key, item)
 	return true
 }
@@ -183,7 +185,7 @@ func (db_ *DataBase) CleanExpiredKeys(samples int) int {
 	ttls := db_.ttlKeys.Random(samples)
 	deleted := 0
 	for key, expire := range ttls {
-		if expire.(structure.Int64).Value() < now {
+		if expire.(int64) < now {
 			deleted++
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
@@ -285,7 +287,7 @@ func (db_ *DataBase) IsKeyPermitted(key string) int64 {
 	return db_.evict.Estimate(key)
 }
 
-func (db_ *DataBase) EvictKeys(access, roomNeeded int64) (evicted []string, accepted bool) {
+func (db_ *DataBase) evictKeys(access, roomNeeded int64) (evicted []string, accepted bool) {
 
 	victims := make([]string, 0, roomNeeded)
 
@@ -302,9 +304,60 @@ func (db_ *DataBase) EvictKeys(access, roomNeeded int64) (evicted []string, acce
 		if db_.evict.Estimate(minKey) > access {
 			return victims, false
 		}
+		db_.DeleteKey(minKey)
+		victims = append(victims, minKey)
+		room++
+	}
+	return victims, true
+}
+
+func (db_ *DataBase) evictTTLKeys(access, roomNeeded int64) (evicted []string, accepted bool) {
+
+	victims := make([]string, 0, roomNeeded)
+
+	for room := int64(0); room < roomNeeded; {
+		var minKey string
+		var minEvict = int64(math.MaxInt64)
+
+		// 选择一个价值最小的键或一个过期的键
+		for k, ttl := range db_.ttlKeys.Random(10) {
+
+			if ttl.(int64) < global.Now.Unix() {
+				minKey = k
+				break
+			}
+			v, _ := db_.dict.Get(k)
+			if v.(*eviction.Item).Evict < minEvict {
+				minKey = k
+			}
+		}
+
+		// 不满足驱逐条件
+		if db_.evict.Estimate(minKey) > access {
+			return victims, false
+		}
+
+		db_.DeleteKey(minKey)
 
 		victims = append(victims, minKey)
 		room++
 	}
 	return victims, true
+}
+
+func (db_ *DataBase) Evict(key []byte, roomNeeded int64) (evicted []string, accepted bool) {
+
+	access := db_.IsKeyPermitted(string(key))
+
+	if !db_.enableEvict {
+		return []string{}, false
+	}
+
+	evicted, accepted = db_.evictTTLKeys(access, roomNeeded)
+
+	if !accepted {
+		victims, _ := db_.evictKeys(access, roomNeeded)
+		evicted = append(evicted, victims...)
+	}
+	return evicted, accepted
 }

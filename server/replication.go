@@ -173,9 +173,15 @@ func (s *ReplicaStatus) appendBackLog(event *Event) {
 	// 多数据库场景需要加入数据库选择语句
 	dbStr := strconv.Itoa(event.cli.dbSeq)
 	s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-
 	s.offset = s.backLog.Append(event.raw)
 
+}
+
+func (s *ReplicaStatus) appendBackLogRaw(data []byte) {
+	if s.role != Master || len(data) <= 0 {
+		return
+	}
+	s.offset = s.backLog.Append(data)
 }
 
 func (s *Server) rdbForReplica() uint64 {

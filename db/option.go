@@ -7,23 +7,29 @@ type Option func(*DataBase)
 type EvictPolicy int
 
 const (
-	LRU EvictPolicy = iota
-	LFU
-	NO
+	EvictLRU EvictPolicy = iota
+	EvictLFU
+	NoEviction
 )
 
 func WithEviction(policy EvictPolicy) Option {
 	switch policy {
-	case LRU:
+	case EvictLRU:
 		return func(db *DataBase) {
+			db.enableEvict = true
 			db.evict = eviction.NewSampleLRU()
 		}
-	case LFU:
+	case EvictLFU:
 		return func(db *DataBase) {
+			db.enableEvict = true
 			db.evict = eviction.NewTinyLFU(100)
 		}
 	}
-	return func(*DataBase) {}
+
+	return func(db *DataBase) {
+		db.enableEvict = false
+		db.evict = eviction.NewNoEviction()
+	}
 }
 
 //func WithMemoryLimit(max uint64) Option {

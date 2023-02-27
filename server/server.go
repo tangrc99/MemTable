@@ -48,6 +48,8 @@ type Server struct {
 	aof        *aofBuffer // aof 缓冲区
 	aofEnabled bool       // 是否开启 aof
 
+	full bool // 表示已经写满
+
 	// 协程池
 	gopool *gopool.Pool // 用于客户端启动的协程池
 	sts    *Status
@@ -63,9 +65,19 @@ type Server struct {
 
 func NewServer(url string) *Server {
 
+	// 配置数据库
 	d := make([]*db.DataBase, config.Conf.DataBases)
+
 	for i := 0; i < config.Conf.DataBases; i++ {
-		d[i] = db.NewDataBase(slotNum)
+		switch config.Conf.Eviction {
+		case "no":
+			d[i] = db.NewDataBase(slotNum, db.WithEviction(db.NoEviction))
+		case "lru":
+			d[i] = db.NewDataBase(slotNum, db.WithEviction(db.EvictLRU))
+		case "lfu":
+			d[i] = db.NewDataBase(slotNum, db.WithEviction(db.EvictLFU))
+
+		}
 	}
 
 	s := &Server{

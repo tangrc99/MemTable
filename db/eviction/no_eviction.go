@@ -22,7 +22,7 @@ func (*NoEviction) Estimate(_ string) int64 {
 
 // Permitted 判断键是否通过准入门槛
 func (*NoEviction) Permitted(_ string) bool {
-	return true
+	return false
 }
 
 func (*NoEviction) KeyRemoved(_ string) {

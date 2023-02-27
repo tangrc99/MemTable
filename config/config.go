@@ -35,6 +35,9 @@ type Config struct {
 	// 集群配置
 	ClusterEnable bool
 	ClusterName   string
+
+	// 键置换配置
+	Eviction string
 }
 
 // Conf 变量存储从配置文件读取到的配置，如果配置不存在则使用默认配置
@@ -210,7 +213,12 @@ func (cfg *Config) parseFile() error {
 			} else if cfgName == "clustername" {
 
 				cfg.ClusterName = strings.ToLower(fields[1])
+
+			} else if cfgName == "eviction" {
+
+				cfg.ClusterName = strings.ToLower(fields[1])
 			}
+
 		}
 		if ioErr == io.EOF {
 			break
@@ -243,6 +251,8 @@ func init() {
 
 		ClusterEnable: false,
 		ClusterName:   "",
+
+		Eviction: "no",
 	}
 
 	if len(os.Args) > 1 {
