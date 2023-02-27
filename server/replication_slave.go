@@ -121,7 +121,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 	return true
 }
 
-func (s *Server) SendPSyncToMaster(url string) bool {
+func (s *Server) sendPSyncToMaster(url string) bool {
 	conn, err := net.Dial("tcp", url)
 	if err != nil {
 		logger.Error("PSync: Dial Failed", err.Error())

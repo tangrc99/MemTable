@@ -19,6 +19,7 @@ type Dict struct {
 	shards []Shard // 存储键值对
 	size   int     // table 分区数量
 	count  int     // 键值对数量
+	cost   int64   // 消耗的内存
 }
 
 // NewDict 创建指定分片数量的 Dict 并返回指针
@@ -377,4 +378,8 @@ func (dict *Dict) KeysInShard(shardSeq, count int) ([]string, int) {
 		i++
 	}
 	return keys, i
+}
+
+func (dict *Dict) Cost() int64 {
+	return dict.cost
 }

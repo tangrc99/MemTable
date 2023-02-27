@@ -367,7 +367,7 @@ func (s *Server) initTimeEvents() {
 
 		for _, dataBase := range s.dbs {
 			// 抽样 20 个，如果有 5 个过期，则再次删除
-			for dataBase.CleanTTLKeys(20) >= 5 {
+			for dataBase.CleanExpiredKeys(20) >= 5 {
 			}
 		}
 

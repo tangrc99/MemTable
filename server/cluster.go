@@ -411,7 +411,7 @@ func (c *clusterStatus) handleClusterChangeMessage(msg *clusterChangeMessage) {
 
 			// 其他节点竞选成功，自身更换为上线状态
 			if msg.Content != c.self.name {
-				c.server.SendPSyncToMaster(msg.Content)
+				c.server.sendPSyncToMaster(msg.Content)
 				c.state = ClusterOK
 			}
 		}

@@ -26,7 +26,7 @@ func main() {
 	s := server.NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
 	s.TryRecover()
 	s.InitModules()
-	//s.SendPSyncToMaster()
+	//s.sendPSyncToMaster()
 	//return
 	s.Start()
 }
