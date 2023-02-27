@@ -118,6 +118,10 @@ func (cli *Client) InitTX() {
 	cli.revised = false
 }
 
+func (cli *Client) Cost() int64 {
+	return 0
+}
+
 type ClientList struct {
 	list    *structure.List
 	UUIDSet map[uuid.UUID]*structure.ListNode // 用于判断是否为新链接

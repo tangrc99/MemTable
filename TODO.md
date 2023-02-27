@@ -17,3 +17,5 @@
 - recover from rdb
 - 进行恢复时，要从 rdb 里面读取到 replid 还有 offset，然后再根据 aof 的偏移量相加
 - 注释
+- etcd 需要检查配置文件
+- todo 将所有数据结构更改为 cost 类型

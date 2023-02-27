@@ -40,6 +40,10 @@ func NewPeriodTimeEvent(exe func(), tp int64, period time.Duration) TimeEvent {
 	}
 }
 
+func (TimeEvent) Cost() int64 {
+	return 0
+}
+
 type TimeEventList struct {
 	list *structure.List // 事件链表
 }

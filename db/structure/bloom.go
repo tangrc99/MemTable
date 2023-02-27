@@ -130,3 +130,7 @@ func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
 	locs := math.Ceil(float64(0.69314718056) * size / numEntries)
 	return uint64(size), uint64(locs)
 }
+
+func (bl *Bloom) Cost() int64 {
+	return int64(len(bl.bitset)+5) * 64
+}

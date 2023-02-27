@@ -18,12 +18,17 @@ type DataBase struct {
 }
 
 // NewDataBase 创建一个新 DataBase 实例，并返回指针
-func NewDataBase(slot int) *DataBase {
-	return &DataBase{
+func NewDataBase(slot int, ops ...Option) *DataBase {
+	db := &DataBase{
 		dict:    structure.NewDict(slot),
 		ttlKeys: structure.NewDict(1),
 		watches: structure.NewDict(1),
+		evict:   eviction.NewNoEviction(),
 	}
+	for _, op := range ops {
+		op(db)
+	}
+	return db
 }
 
 // checkNotExpired 检查键是否过期，如果过期则会自动删除键值对并返回 false
@@ -34,7 +39,7 @@ func (db_ *DataBase) checkNotExpired(key string) bool {
 		return true
 	}
 
-	if ttl.(int64) > time.Now().Unix() {
+	if ttl.(structure.Int64).Value() > time.Now().Unix() {
 		// 如果没有过期
 		return true
 	}
@@ -57,7 +62,7 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 	if exist {
 		// 如果存在 ttl，检查过期时间
 		now := time.Now().Unix()
-		r := ttl.(int64) - now
+		r := ttl.(structure.Int64).Value() - now
 		if r < 0 {
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
@@ -101,7 +106,7 @@ func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 	if !db_.dict.Exist(key) {
 		return false
 	}
-	db_.ttlKeys.Set(key, ttl)
+	db_.ttlKeys.Set(key, structure.Int64(ttl))
 	return true
 }
 
@@ -109,7 +114,7 @@ func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 	item := &eviction.Item{Value: value}
 	db_.dict.Set(key, item)
-	db_.ttlKeys.Set(key, ttl)
+	db_.ttlKeys.Set(key, structure.Int64(ttl))
 	db_.evict.KeyUsed(key, item)
 	return true
 }
@@ -178,7 +183,7 @@ func (db_ *DataBase) CleanExpiredKeys(samples int) int {
 	ttls := db_.ttlKeys.Random(samples)
 	deleted := 0
 	for key, expire := range ttls {
-		if expire.(int64) < now {
+		if expire.(structure.Int64).Value() < now {
 			deleted++
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)

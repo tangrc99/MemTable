@@ -17,7 +17,7 @@ type tinyLFU struct {
 	Eviction
 }
 
-func newTinyLFU(numCounters int64) *tinyLFU {
+func NewTinyLFU(numCounters int64) *tinyLFU {
 	return &tinyLFU{
 		freq:    newCmSketch(numCounters),
 		door:    structure.NewBloomFilter(float64(numCounters), 0.01),

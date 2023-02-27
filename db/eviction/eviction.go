@@ -1,9 +1,12 @@
 package eviction
 
+import "github.com/tangrc99/MemTable/db/structure"
+
 // Item 是数据库中存储的字段
 type Item struct {
 	Value any   // 真实值
 	Evict int64 // 淘汰策略用值，越大越好
+	structure.CostCounter
 }
 
 type Eviction interface {
