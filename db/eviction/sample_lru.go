@@ -1,8 +1,8 @@
 package eviction
 
 import (
+	"github.com/tangrc99/MemTable/server/global"
 	"math"
-	"time"
 )
 
 type SampleLRU struct {
@@ -15,7 +15,7 @@ func NewSampleLRU() *SampleLRU {
 
 // KeyUsed 表示该键值被调用一次
 func (*SampleLRU) KeyUsed(_ string, item *Item) {
-	item.Evict = time.Now().Unix()
+	item.Evict = global.Now.Unix()
 }
 
 // Estimate 评估键值对的键值

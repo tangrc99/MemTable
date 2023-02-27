@@ -6,8 +6,8 @@ import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
 	"strconv"
-	"time"
 )
 
 // del 删除多个键，并返回删除数量
@@ -70,7 +70,7 @@ func expire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
-	tp := time.Now().Unix() + period
+	tp := global.Now.Unix() + period
 
 	ok = db.SetTTL(string(cmd[1]), tp)
 
@@ -116,7 +116,7 @@ func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
-	tp := time.Now().Unix() + period/1000
+	tp := global.Now.Unix() + period/1000
 
 	ok = db.SetTTL(string(cmd[1]), tp)
 

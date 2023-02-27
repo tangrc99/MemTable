@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils"
 	"net"
 	"time"
@@ -34,8 +35,8 @@ func acceptNewClusterNode(conn net.Conn) *clusterNode {
 		name:     conn.RemoteAddr().String(),
 		alive:    true,
 		peer:     NewClient(conn),
-		pingTime: time.Now(),
-		pongTime: time.Now(),
+		pingTime: global.Now,
+		pongTime: global.Now,
 		slaves:   make([]*clusterNode, 0),
 	}
 	return node

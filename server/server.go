@@ -6,6 +6,7 @@ import (
 	"github.com/tangrc99/MemTable/db"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils/gopool"
 	"net"
 	"os"
@@ -222,6 +223,9 @@ func (s *Server) eventLoop() {
 
 	for !s.quit {
 
+		// 每一次循环都更新一次全局时钟
+		global.UpdateGlobalClock()
+
 		select {
 
 		case <-timer.C:
@@ -229,8 +233,8 @@ func (s *Server) eventLoop() {
 			timer.Reset(100 * time.Millisecond)
 
 			logger.Debug("EventLoop: Timer trigger")
-			// 需要完成定时任务
-			s.tl.ExecuteManyDuring(time.Now(), 25*time.Millisecond)
+			// 需要完成定时任务，这里是非阻塞的，可以使用全局时钟
+			s.tl.ExecuteManyDuring(global.Now, 25*time.Millisecond)
 			//s.tl.ExecuteOneIfExpire()
 
 		case event := <-s.events:
@@ -256,7 +260,7 @@ func (s *Server) eventLoop() {
 			}
 
 			// 更新时间戳
-			cli.UpdateTimestamp(s.sts.Now)
+			cli.UpdateTimestamp(global.Now)
 
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, event.cmd, event.raw)
@@ -390,7 +394,7 @@ func (s *Server) initTimeEvents() {
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: RDB Check")
 
-		if !s.aofEnabled && (s.dirty > 100 || s.sts.Now.Unix()-s.checkPoint > 10) {
+		if !s.aofEnabled && (s.dirty > 100 || global.Now.Unix()-s.checkPoint > 10) {
 			s.BGRDB()
 		}
 

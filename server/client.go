@@ -6,6 +6,7 @@ import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
 	"net"
 	"time"
 )
@@ -58,7 +59,7 @@ func NewClient(conn net.Conn) *Client {
 		parser: resp.NewParser(conn),
 		cnn:    conn,
 		id:     uuid.Must(uuid.NewV1()),
-		tp:     time.Now(),
+		tp:     global.Now,
 		status: WAIT,
 		dbSeq:  0,
 		res:    make(chan *resp.RedisData, 100),
@@ -180,7 +181,7 @@ func (clients *ClientList) RemoveClient(cli *Client) {
 func (clients *ClientList) RemoveLongNotUsed(num, max int, d time.Duration) {
 
 	// 早于该时间的视为过期
-	expired := time.Now().Add(-1 * d)
+	expired := global.Now.Add(-1 * d)
 
 	// 客户端列表尾端的时间戳会减小
 	for node := clients.list.BackNode(); node != nil && num >= 0 && max >= 0; {
@@ -223,7 +224,7 @@ func (clients *ClientList) UpdateTimestamp(cli *Client) {
 	}
 
 	// 更新客户端列表，并且将其移动到首部
-	cli.tp = time.Now()
+	cli.tp = global.Now
 	clients.list.RemoveNode(node)
 	clients.list.PushFront(cli)
 }

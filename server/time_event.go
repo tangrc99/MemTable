@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/server/global"
 	"time"
 )
 
@@ -57,7 +58,7 @@ func NewTimeEventList() *TimeEventList {
 func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 
 	// 类型检查
-	if event.tp < time.Now().Unix() {
+	if event.tp < global.Now.Unix() {
 		logger.Warning("TimeEventList: add an expired time Event")
 	}
 

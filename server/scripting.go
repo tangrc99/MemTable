@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils"
 	lua "github.com/yuin/gopher-lua"
 	"strconv"
@@ -666,7 +667,7 @@ func initFlags(L *lua.LState, fName string) {
 	env.randomDirty = false
 	env.running = true
 	env.curScript = fName
-	env.startTime = time.Now()
+	env.startTime = global.Now
 	env.execTime = 0
 }
 

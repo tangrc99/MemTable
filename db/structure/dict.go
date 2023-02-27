@@ -3,10 +3,10 @@ package structure
 
 import (
 	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/server/global"
 	"hash/fnv"
 	"math/rand"
 	"regexp"
-	"time"
 )
 
 const MaxConSize = int(1<<31 - 1)
@@ -202,7 +202,7 @@ func (dict *Dict) KeysByte(pattern string) ([][]byte, int) {
 // KeysWithTTL 返回全部未过期键，ttl 为记录过期时间的字典
 func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
 
-	now := time.Now().Unix()
+	now := global.Now.Unix()
 
 	keys := make([]string, dict.count)
 	i := 0
@@ -241,7 +241,7 @@ func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
 // KeysWithTTLByte 返回全部未过期键，ttl 为记录过期时间的字典，键值以[]byte形式返回
 func (dict *Dict) KeysWithTTLByte(ttl *Dict, pattern string) ([][]byte, int) {
 
-	now := time.Now().Unix()
+	now := global.Now.Unix()
 
 	keys := make([][]byte, dict.count)
 	i := 0

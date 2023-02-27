@@ -4,8 +4,8 @@ package db
 import (
 	"github.com/tangrc99/MemTable/db/eviction"
 	"github.com/tangrc99/MemTable/db/structure"
+	"github.com/tangrc99/MemTable/server/global"
 	"math"
-	"time"
 )
 
 // DataBase 代表一个内存数据库，包含键值对，ttl，watch等信息。同一个 DataBase 实例中键值不能重复，
@@ -39,7 +39,7 @@ func (db_ *DataBase) checkNotExpired(key string) bool {
 		return true
 	}
 
-	if ttl.(structure.Int64).Value() > time.Now().Unix() {
+	if ttl.(structure.Int64).Value() > global.Now.Unix() {
 		// 如果没有过期
 		return true
 	}
@@ -61,7 +61,7 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 	ttl, exist := db_.ttlKeys.Get(key)
 	if exist {
 		// 如果存在 ttl，检查过期时间
-		now := time.Now().Unix()
+		now := global.Now.Unix()
 		r := ttl.(structure.Int64).Value() - now
 		if r < 0 {
 			db_.ttlKeys.Delete(key)
@@ -178,7 +178,7 @@ func (db_ *DataBase) RandomKey() (string, bool) {
 // CleanExpiredKeys 在 db 中随机抽取 samples 个数的 ttl key，如果过期则删除，并返回删除掉的个数
 func (db_ *DataBase) CleanExpiredKeys(samples int) int {
 
-	now := time.Now().Unix()
+	now := global.Now.Unix()
 
 	ttls := db_.ttlKeys.Random(samples)
 	deleted := 0

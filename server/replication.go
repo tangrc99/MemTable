@@ -3,10 +3,10 @@ package server
 import (
 	"fmt"
 	"github.com/tangrc99/MemTable/logger"
+	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils/rand_str"
 	"github.com/tangrc99/MemTable/utils/ring_buffer"
 	"strconv"
-	"time"
 )
 
 const (
@@ -158,7 +158,7 @@ func (s *ReplicaStatus) sendBackLog() {
 
 		}
 		// 成功写入会更新时间戳
-		cli.UpdateTimestamp(time.Now())
+		cli.UpdateTimestamp(global.Now)
 
 	}
 
