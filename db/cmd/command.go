@@ -38,6 +38,7 @@ func init() {
 	registerHashCommands()
 	registerZSetCommands()
 	registerBitMapCommands()
+	RegisterBloomFilterCommands()
 }
 
 // ExecCommand 在指定的数据库中执行命令, enableWrite 参数用于控制是否允许写操作执行，函数将返回 command 执行结果以及 command 类型

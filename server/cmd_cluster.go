@@ -135,14 +135,19 @@ func clusterGetKeysInSlot(s *Server, cmd [][]byte) resp.RedisData {
 * ------------------------------------------------------------------------- */
 
 // checkCommandRunnableInCluster 判断在当前的集群状态中是否允许该命令执行
-func checkCommandRunnableInCluster(s *Server, cmd [][]byte) (allowed bool, err resp.RedisData) {
+func checkCommandRunnableInCluster(s *Server, cli *Client, cmd [][]byte) (allowed bool, err resp.RedisData) {
 
 	if s.clusterStatus.state == ClusterNone {
 
 		return true, nil
 
 	} else if s.clusterStatus.state == ClusterInit {
+
 		return false, resp.MakeErrorData("ERR This instance is being initialized")
+	}
+
+	if cli.dbSeq != 0 {
+		return false, resp.MakeErrorData("ERR Only database 0 is available in cluster mode")
 	}
 
 	if _, exist := clusterForbiddenTable[string(cmd[0])]; exist {

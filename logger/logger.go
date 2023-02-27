@@ -154,15 +154,5 @@ func Panic(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(PANIC)
-	logger.Println(v)
-}
-
-func Write(level LogLevel, v ...any) {
-	if logcfg.Level > level {
-		return
-	}
-	logMu.Lock()
-	defer logMu.Unlock()
-	setPrefix(level)
-	logger.Println(v)
+	logger.Fatal(v)
 }

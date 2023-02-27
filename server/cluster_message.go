@@ -119,3 +119,37 @@ func generateNodeUpMessage(shard int, content string) string {
 	}
 	return string(marshal)
 }
+
+/* ---------------------------------------------------------------------------
+* 配置
+* ------------------------------------------------------------------------- */
+
+type clusterConfig struct {
+	ClusterName string     `json:"cluster_name,omitempty"`
+	ShardNum    int        `json:"shard_num,omitempty"`
+	Shards      [][]string `json:"shards,omitempty"`
+}
+
+// checkClusterConfig 检查集群配置文件是否有效
+func (config *clusterConfig) isValid() (valid bool, reason string) {
+
+	if config.ClusterName == "" {
+		return false, "Empty cluster_name"
+	}
+
+	nodeMap := make(map[string]struct{})
+
+	for i := range config.Shards {
+		for j := range config.Shards[i] {
+			if _, exist := nodeMap[config.Shards[i][j]]; exist {
+				return false, "Duplicate node: " + config.Shards[i][j]
+			}
+			nodeMap[config.Shards[i][j]] = struct{}{}
+		}
+	}
+
+	if len(nodeMap) != config.ShardNum {
+		return false, "Invalid shard_num"
+	}
+	return true, ""
+}

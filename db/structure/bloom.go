@@ -16,6 +16,7 @@ type Bloom struct {
 	size    uint64
 	setLocs uint64
 	shift   uint64
+	items   int
 }
 
 // NewBloomFilter returns a new bloomfilter.
@@ -52,12 +53,12 @@ func NewBloomFilter(entry, locations float64) (bloomfilter *Bloom) {
 // 	return l, h
 // }
 
-// Add adds hash of a key to the bloomfilter.
-func (bl *Bloom) Add(hash uint64) {
+// add adds hash of a key to the bloomfilter.
+func (bl *Bloom) add(hash uint64) {
 	h := hash >> bl.shift
 	l := hash << bl.shift >> bl.shift
 	for i := uint64(0); i < bl.setLocs; i++ {
-		bl.Set((h + i*l) & bl.size)
+		bl.set((h + i*l) & bl.size)
 		bl.ElemNum++
 	}
 }
@@ -68,7 +69,7 @@ func (bl *Bloom) Has(hash uint64) bool {
 	h := hash >> bl.shift
 	l := hash << bl.shift >> bl.shift
 	for i := uint64(0); i < bl.setLocs; i++ {
-		if !bl.IsSet((h + i*l) & bl.size) {
+		if !bl.isSet((h + i*l) & bl.size) {
 			return false
 		}
 	}
@@ -82,12 +83,17 @@ func (bl *Bloom) AddIfNotHas(hash uint64) bool {
 	if bl.Has(hash) {
 		return false
 	}
-	bl.Add(hash)
+	bl.add(hash)
+	bl.items++
 	return true
 }
 
-// Size returns the total size of the bloom filter.
-func (bl *Bloom) Size() int {
+func (bl *Bloom) Capacity() uint64 {
+	return bl.size
+}
+
+// Cost returns the total size of the bloom filter.
+func (bl *Bloom) Cost() int {
 	// The bl struct has 5 members and each one is 8 byte. The bitset is a
 	// uint64 byte slice.
 	return len(bl.bitset)*8 + 5*8
@@ -101,13 +107,13 @@ func (bl *Bloom) Clear() {
 }
 
 // Set sets the bit[idx] of bitset.
-func (bl *Bloom) Set(idx uint64) {
+func (bl *Bloom) set(idx uint64) {
 	ptr := unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))
 	*(*uint8)(ptr) |= mask[idx%8]
 }
 
 // IsSet checks if bit[idx] of bitset is set, returns true/false.
-func (bl *Bloom) IsSet(idx uint64) bool {
+func (bl *Bloom) isSet(idx uint64) bool {
 	ptr := unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))
 	r := ((*(*uint8)(ptr)) >> (idx % 8)) & 1
 	return r == 1
@@ -131,6 +137,11 @@ func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
 	return uint64(size), uint64(locs)
 }
 
-func (bl *Bloom) Cost() int64 {
-	return int64(len(bl.bitset)+5) * 64
+func (bl *Bloom) FilterNum() int64 {
+	return 3
+}
+
+// Items 返回已经存在的元素数量
+func (bl *Bloom) Items() int {
+	return bl.items
 }

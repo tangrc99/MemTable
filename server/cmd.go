@@ -44,7 +44,7 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 	}
 
 	// 判断是否需要转移错误
-	if allowed, err := checkCommandRunnableInCluster(server, cmds); !allowed {
+	if allowed, err := checkCommandRunnableInCluster(server, cli, cmds); !allowed {
 		return err, false
 	}
 

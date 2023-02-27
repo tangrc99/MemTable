@@ -16,11 +16,12 @@ func TestBloom(t *testing.T) {
 		1241321, 3245, 123, 412, 3, 1234, 412, 43, 24, 132, 412, 3, 123, 12, 312, 3, 123, 12, 3, 123, 21, 3, 1243, 4, 1, 653476547657, 23534525623}
 
 	for _, d := range data {
-		bloom.Add(d)
+		bloom.add(d)
 	}
 	for _, d := range data {
 		if !bloom.Has(d) {
 			t.Error("Exist key is not counted")
 		}
 	}
+
 }

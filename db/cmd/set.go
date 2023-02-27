@@ -110,7 +110,6 @@ func sismember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	if !ok {
 		return resp.MakeIntData(0)
-
 	}
 
 	// 进行类型检查，会自动检查过期选项

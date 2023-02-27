@@ -67,6 +67,10 @@ func (e *etcdWatcher) getClusterConfig() clusterConfig {
 		return clusterConfig{}
 	}
 
+	if valid, reason := ccfg.isValid(); !valid {
+		logger.Panic("Cluster Invalid Config", reason)
+	}
+
 	return ccfg
 }
 

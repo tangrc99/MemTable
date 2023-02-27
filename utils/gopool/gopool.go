@@ -54,7 +54,7 @@ func (p *Pool) schedule(task func(), timeout <-chan time.Time) error {
 		// Timeout
 		return ErrScheduleTimeout
 	case p.work <- task:
-		// Add to queue, if queue size equals zero, block
+		// add to queue, if queue size equals zero, block
 		return nil
 	case p.sem <- struct{}{}:
 		// Create a new goroutine

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const slotNum = 10 //1 << 14
+const slotNum = 1024 //1 << 14
 
 type clusterNode struct {
 	name     string
@@ -49,10 +49,10 @@ func (n *clusterNode) isMaster() bool {
 // slaveOfNode 修改当前节点中的状态，不会发送命令给对应的节点
 func (n *clusterNode) slaveOfNode(master *clusterNode) {
 	if master == nil {
-		logger.Error("Cluster: Add Slave To Nil Node")
+		logger.Error("Cluster: add Slave To Nil Node")
 		return
 	} else if !master.isMaster() {
-		logger.Error("Cluster: Add Slave To A Slave Node", master.name)
+		logger.Error("Cluster: add Slave To A Slave Node", master.name)
 		return
 	}
 	n.slaveOf = master
@@ -89,14 +89,8 @@ func (n *clusterNode) toJson() []byte {
 }
 
 /* ---------------------------------------------------------------------------
-* 配置以及状态
+* 集群状态
 * ------------------------------------------------------------------------- */
-
-type clusterConfig struct {
-	ClusterName string     `json:"cluster_name,omitempty"`
-	ShardNum    int        `json:"shard_num,omitempty"`
-	Shards      [][]string `json:"shards,omitempty"`
-}
 
 type clusterState int
 
@@ -106,10 +100,6 @@ const (
 	ClusterOK
 	ClusterDown
 )
-
-/* ---------------------------------------------------------------------------
-* 集群状态
-* ------------------------------------------------------------------------- */
 
 type clusterStatus struct {
 	server *Server // redis 服务器
@@ -141,6 +131,7 @@ func (c *clusterStatus) initCluster(self *Server) {
 	c.state = ClusterInit
 	c.watcher = initEtcdWatcher(config.Conf.ClusterName, c.server.url)
 	c.config = c.watcher.getClusterConfig()
+
 	c.slots = make([]*clusterNode, slotNum)
 
 	c.countClusterNodeNum()
