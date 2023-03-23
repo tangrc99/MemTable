@@ -1,5 +1,7 @@
 package utils
 
+import "strings"
+
 var crc16tab = [256]uint32{0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
 	0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
 	0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
@@ -35,6 +37,14 @@ var crc16tab = [256]uint32{0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c
 
 // HashKey 使用和 redis 中相同的算法，该算法只会计算第一个 {} 之间的 crc16 值
 func HashKey(key string) int {
+
+	start := strings.Index(key, "{")
+	end := strings.Index(key, "}")
+
+	// there is a prefix
+	if start >= 0 && end-start > 1 {
+		key = key[start+1 : end]
+	}
 
 	counter := 0
 	crc := uint16(0)
