@@ -74,7 +74,7 @@ func (b *RingBuffer) Read(offset, max uint64) []byte {
 
 	content := make([]byte, max)
 
-	readPos := b.offset & (b.capacity - 1)
+	readPos := offset & (b.capacity - 1)
 	size := b.capacity - readPos
 
 	if max > size {
@@ -99,7 +99,7 @@ func (b *RingBuffer) ReadSince(offset uint64) []byte {
 	Len := b.offset - offset
 	content := make([]byte, Len)
 
-	readPos := b.offset & (b.capacity - 1)
+	readPos := offset & (b.capacity - 1)
 	size := b.capacity - readPos
 
 	if Len > size {
