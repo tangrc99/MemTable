@@ -11,11 +11,16 @@ import (
 // DataBase 代表一个内存数据库，包含键值对，ttl，watch等信息。同一个 DataBase 实例中键值不能重复，
 // 不同的实例键值可以重复。
 type DataBase struct {
-	dict        *structure.Dict // 存储键值对
-	ttlKeys     *structure.Dict // 存储过期键
-	watches     *structure.Dict // 存储监视键
+	dict    *structure.Dict // 存储键值对
+	ttlKeys *structure.Dict // 存储过期键
+	watches *structure.Dict // 存储监视键
+
+	rookies     *eviction.RookieList // 预备表，优先从预备表中淘汰
 	evict       eviction.Eviction
 	enableEvict bool // 是否开启
+
+	notifies           chan<- string // 通知服务层发送驱逐命令
+	enableNotification bool          // 是否开启了服务层通知
 }
 
 // NewDataBase 创建一个新 DataBase 实例，并返回指针
@@ -48,7 +53,23 @@ func (db_ *DataBase) checkNotExpired(key string) bool {
 
 	db_.dict.Delete(key)
 	db_.ttlKeys.Delete(key)
+
+	if db_.enableNotification {
+		// 这里不会发生阻塞，因为每一次事务循环只会清除最多
+		db_.notifies <- key
+	}
 	return false
+}
+
+// StartEvictNotification 当数据库发送键驱逐时，通知server，用于主从之间的 oplog 复制。当节点转换为 Master 时，会调用该函数。
+func (db_ *DataBase) StartEvictNotification(ch chan string) {
+	db_.enableNotification = true
+	db_.notifies = ch
+}
+
+// StopEvictNotification 关闭键驱逐的通知，当 Master 节点转变为 Slave 节点时会调用该函数
+func (db_ *DataBase) StopEvictNotification() {
+	db_.enableNotification = false
 }
 
 // RemoveTTL 删除键的 TTL 信息，如果 TTL 则返回 false
@@ -68,6 +89,10 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 		if r < 0 {
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
+			if db_.enableNotification {
+				// 这里不会发生阻塞，因为每一次事务循环只会清除最多
+				db_.notifies <- key
+			}
 			return -2
 		}
 		return r
@@ -89,6 +114,9 @@ func (db_ *DataBase) GetKey(key string) (any, bool) {
 	}
 	item, exist := db_.dict.Get(key)
 	if exist {
+		if db_.rookies != nil {
+			db_.rookies.Hit(key)
+		}
 		db_.evict.KeyUsed(key, item.(*eviction.Item))
 		return item.(*eviction.Item).Value, true
 	}
@@ -100,6 +128,9 @@ func (db_ *DataBase) SetKey(key string, value any) bool {
 	item := &eviction.Item{Value: value}
 	db_.dict.Set(key, item)
 	db_.evict.KeyUsed(key, item)
+	if db_.rookies != nil {
+		db_.rookies.NewOne(key)
+	}
 	return true
 }
 
@@ -118,6 +149,9 @@ func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 	db_.dict.Set(key, item)
 	db_.ttlKeys.Set(key, ttl)
 	db_.evict.KeyUsed(key, item)
+	if db_.rookies != nil {
+		db_.rookies.NewOne(key)
+	}
 	return true
 }
 
@@ -125,7 +159,9 @@ func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
 func (db_ *DataBase) DeleteKey(key string) bool {
 
 	db_.ttlKeys.Delete(key)
-
+	if db_.rookies != nil {
+		db_.rookies.RemoveOne(key)
+	}
 	return db_.dict.Delete(key)
 }
 
@@ -189,6 +225,10 @@ func (db_ *DataBase) CleanExpiredKeys(samples int) int {
 			deleted++
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
+			if db_.enableNotification {
+				// 这里不会发生阻塞，因为每一次事务循环只会清除最多
+				db_.notifies <- key
+			}
 		}
 	}
 	return deleted
@@ -311,6 +351,31 @@ func (db_ *DataBase) evictKeys(access, roomNeeded int64) (evicted []string, acce
 	return victims, true
 }
 
+func (db_ *DataBase) evictRookies(access, roomNeeded int64) (evicted []string, accepted bool) {
+
+	victims := make([]string, 0, roomNeeded)
+
+	for room := int64(0); room < roomNeeded; {
+		var minKey string
+		var minEvict = int64(math.MaxInt64)
+
+		// 从非活跃中选择出少部分
+		for _, k := range db_.rookies.Candidates(5) {
+
+			v, _ := db_.dict.Get(k)
+			if v.(*eviction.Item).Evict < minEvict {
+				minKey = k
+			}
+		}
+
+		db_.DeleteKey(minKey)
+
+		victims = append(victims, minKey)
+		room++
+	}
+	return victims, true
+}
+
 func (db_ *DataBase) evictTTLKeys(access, roomNeeded int64) (evicted []string, accepted bool) {
 
 	victims := make([]string, 0, roomNeeded)
@@ -353,8 +418,15 @@ func (db_ *DataBase) Evict(key []byte, roomNeeded int64) (evicted []string, acce
 		return []string{}, false
 	}
 
+	// 首先考虑带有过期时间的数据
 	evicted, accepted = db_.evictTTLKeys(access, roomNeeded)
 
+	// 其次考虑 rookies 中的数据
+	if !accepted && db_.rookies != nil {
+		evicted, accepted = db_.evictRookies(access, roomNeeded)
+	}
+
+	// 最后考虑非过期时间数据
 	if !accepted {
 		victims, _ := db_.evictKeys(access, roomNeeded)
 		evicted = append(evicted, victims...)

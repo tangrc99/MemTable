@@ -51,12 +51,16 @@ func (s *ReplicaStatus) updateReplicaStatus(event *Event) {
 }
 
 func (s *Server) handleReplicaEvents() {
+
 	switch s.role {
 	case StandAlone:
+		logger.Debug("Node role is StandAlone")
 		return
 	case Master:
+		logger.Debug("Node role is Master")
 		s.sendBackLog()
 	case Slave:
+		logger.Debug("Node role is Slave")
 
 		if s.masterAlive == true {
 			s.sendOffsetToMaster()
@@ -109,6 +113,9 @@ func (s *ReplicaStatus) standAloneToMaster() {
 	s.onLineSlaves = make(map[*Client]struct{})
 	s.offLineSlaves = make(map[*Client]struct{})
 	s.initSlaves = make(map[*Client]struct{})
+
+	logger.Info("Node becomes a Master")
+
 }
 
 func (s *ReplicaStatus) sendBackLog() {
@@ -129,6 +136,8 @@ func (s *ReplicaStatus) sendBackLog() {
 	// 选择存活 slave 发送 backlog
 	for cli := range s.onLineSlaves {
 
+		logger.Debugf("Slave %s offset: %d", cli.cnn.RemoteAddr().String(), cli.offset)
+
 		// 如果 slave 落后过多，设置为断线，停止发送 backlog
 		if cli.offset < s.minOffset() {
 			delete(s.onLineSlaves, cli)
@@ -141,17 +150,13 @@ func (s *ReplicaStatus) sendBackLog() {
 		// 一次最多读取 1kb
 		bytes := s.backLog.Read(cli.offset, 1<<10)
 
-		if len(bytes) == 0 {
+		if len(bytes) > 0 {
 
-			//从服务器完成同步，发送 ping 命令
-			_, _ = cli.cnn.Write([]byte("*1\r\n$4\r\nping\r\n"))
-
-		} else {
-
+			logger.Debug("Send Backlog", string(bytes))
 			n, err := cli.cnn.Write(bytes)
-
 			cli.offset += uint64(n)
 			if err != nil {
+				logger.Error("Send Backlog Error %s", err.Error())
 				// 如果发生错误，等待 slave 的offset 落后会自动转换为 offline
 				continue
 			}
@@ -175,6 +180,7 @@ func (s *ReplicaStatus) appendBackLog(event *Event) {
 	s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 	s.offset = s.backLog.Append(event.raw)
 
+	logger.Debugf("Append Backlog: %s", event.raw)
 }
 
 func (s *ReplicaStatus) appendBackLogRaw(data []byte) {
@@ -243,4 +249,40 @@ const (
 type SlaveStatus struct {
 	slaveStatus int
 	offset      uint64
+}
+
+func (s *Server) StartEvictionNotification() {
+	for i, db := range s.dbs {
+		db.StartEvictNotification(s.evictChannel[i])
+	}
+}
+
+func (s *Server) StopEvictionNotification() {
+	for _, db := range s.dbs {
+		db.StopEvictNotification()
+	}
+}
+
+// handleEvictionNotification 会读取数据库中过期或逐出事件，并写入 aof 以及 backlog 中
+func (s *Server) handleEvictionNotification() {
+
+	for i, e := range s.evictChannel {
+		finished := false
+		for !finished {
+			select {
+			case key := <-e:
+
+				// 从服务器中键驱逐以及键过期是被动的，这样才能够保证数据的一致性
+				dbStr := strconv.Itoa(i)
+				oplog := fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n*2\r\n$3\r\ndel\r\n$%d\r\n%s\r\n", len(dbStr), dbStr, len(key), key)
+				s.appendBackLogRaw([]byte(oplog))
+
+				// AOF 文件的过期同样也是使用这种方式来完成的
+				s.aof.append([]byte(oplog))
+
+			default:
+				finished = true
+			}
+		}
+	}
 }

@@ -293,8 +293,8 @@ func (dict *Dict) Random(num int) map[string]any {
 	// 这里优化为直接遍历
 	if num >= dict.count {
 		for _, shard := range dict.shards {
-			for key := range shard {
-				selected[key] = struct{}{}
+			for key, value := range shard {
+				selected[key] = value
 			}
 		}
 		return selected

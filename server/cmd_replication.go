@@ -19,6 +19,7 @@ func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	}
 
 	server.registerSlave(cli)
+	server.StartEvictionNotification()
 
 	// 后台执行 bgsave 后将文件发送给对方
 
@@ -75,6 +76,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	}
 
 	server.registerSlave(cli)
+	server.StartEvictionNotification()
 
 	// 检查对方的序列号以及 replOffset
 	if replID != server.runID || replOffset < int64(server.minOffset()) {

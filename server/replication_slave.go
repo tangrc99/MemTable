@@ -115,6 +115,8 @@ func (s *Server) sendSyncToMaster(url string) bool {
 
 	//fixme
 	s.standAloneToSlave(client, s.runID, s.offset)
+	// 关闭所有删除通知
+	s.StopEvictionNotification()
 
 	go s.waitMasterNotification(client)
 
@@ -302,6 +304,7 @@ func (s *Server) sendPSyncToMaster(url string) bool {
 
 	//fixme
 	s.standAloneToSlave(client, s.runID, s.offset)
+	s.StopEvictionNotification()
 
 	go s.waitMasterNotification(client)
 

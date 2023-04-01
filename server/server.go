@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"sync"
 	"syscall"
 	"time"
@@ -23,9 +24,10 @@ type Server struct {
 	dir      string       // 工作目录
 
 	// 数据库部分
-	dbs   []*db.DataBase // 多个可以用于切换的数据库
-	Chs   *db.Channels   // 订阅发布频道
-	dbNum int            //数据库数量
+	dbs          []*db.DataBase // 多个可以用于切换的数据库
+	Chs          *db.Channels   // 订阅发布频道
+	dbNum        int            //数据库数量
+	evictChannel []chan string
 
 	// 客户端部分
 	clis       *ClientList // 客户端列表
@@ -64,7 +66,6 @@ type Server struct {
 }
 
 func NewServer(url string) *Server {
-
 	// 配置数据库
 	d := make([]*db.DataBase, config.Conf.DataBases)
 
@@ -99,6 +100,17 @@ func NewServer(url string) *Server {
 		aofFile:    "appendonly.aof",
 	}
 
+	evictChannel := make([]chan string, s.dbNum)
+	for i := range evictChannel {
+		evictChannel[i] = make(chan string, 100)
+	}
+	s.evictChannel = evictChannel
+
+	// 逐出以及过期是通过 del 的方式写入日志的
+	if s.aofEnabled {
+		s.StartEvictionNotification()
+	}
+
 	env = initLuaEnv(s)
 
 	if config.Conf.ClusterEnable {
@@ -126,6 +138,8 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	client := NewClient(conn)
 
+	logger.Info("New Client", conn.RemoteAddr().String())
+
 	// 这里会阻塞等待有数据到达
 	running := true
 
@@ -142,14 +156,24 @@ func (s *Server) handleRead(conn net.Conn) {
 		select {
 		case parsed := <-req:
 
+			if parsed.Data == nil {
+				continue
+			}
+
 			if parsed.Err != nil {
 				e := parsed.Err.Error()
 				if e == "AGAIN" {
 					continue
 				} else if e == "EOF" {
-					logger.Debug("Client Peer ShutDown Connection")
+					logger.Debugf("Client %s ShutDown Connection", client.cnn.RemoteAddr().String())
 				} else {
 					logger.Info("Client Read Error:", e)
+
+					matched, _ := regexp.MatchString("Protocol error*", e)
+					if matched {
+						continue
+					}
+
 				}
 				running = false
 				break
@@ -244,7 +268,7 @@ func (s *Server) eventLoop() {
 
 			timer.Reset(100 * time.Millisecond)
 
-			logger.Debug("EventLoop: Timer trigger")
+			//logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务，这里是非阻塞的，可以使用全局时钟
 			s.tl.ExecuteManyDuring(global.Now, 25*time.Millisecond)
 			//s.tl.ExecuteOneIfExpire()
@@ -309,6 +333,8 @@ func (s *Server) eventLoop() {
 			//	s.aof.flush()
 			//}
 		}
+		s.handleEvictionNotification()
+
 	}
 
 	// 处理退出逻辑
@@ -374,7 +400,7 @@ func (s *Server) initTimeEvents() {
 
 		s.clis.RemoveLongNotUsed(3, 20, time.Duration(s.cliTimeout)*time.Second)
 
-	}, time.Now().Add(10*time.Second).Unix(), 10*time.Second,
+	}, time.Now().Add(global.TECleanClients).Unix(), global.TECleanClients,
 	))
 
 	// 过期 key 清理
@@ -387,7 +413,7 @@ func (s *Server) initTimeEvents() {
 			}
 		}
 
-	}, time.Now().Add(time.Second).Unix(), time.Second,
+	}, time.Now().Add(global.TEExpireKey).Unix(), global.TEExpireKey,
 	))
 
 	// AOF 刷盘
@@ -399,7 +425,7 @@ func (s *Server) initTimeEvents() {
 		}
 		//s.aof.syncToDisk()
 
-	}, time.Now().Add(time.Second).Unix(), time.Second,
+	}, time.Now().Add(global.TEAOF).Unix(), global.TEAOF,
 	))
 
 	// bgsave 持久化 trigger
@@ -410,7 +436,7 @@ func (s *Server) initTimeEvents() {
 			s.BGRDB()
 		}
 
-	}, time.Now().Add(time.Second).Unix(), time.Second,
+	}, time.Now().Add(global.TEBgSave).Unix(), global.TEBgSave,
 	))
 
 	// 更新服务端信息
@@ -419,7 +445,7 @@ func (s *Server) initTimeEvents() {
 
 		s.sts.UpdateStatus()
 
-	}, time.Now().Add(time.Second).Unix(), time.Second,
+	}, time.Now().Add(global.TEUpdateStatus).Unix(), global.TEUpdateStatus,
 	))
 
 	// 主从复制相关操作
@@ -428,7 +454,7 @@ func (s *Server) initTimeEvents() {
 
 		s.handleReplicaEvents()
 
-	}, time.Now().Add(200*time.Millisecond).Unix(), 200*time.Millisecond,
+	}, time.Now().Add(global.TEReplica).Unix(), global.TEReplica,
 	))
 
 	// cluster 相关操作
@@ -437,7 +463,7 @@ func (s *Server) initTimeEvents() {
 
 		s.handleClusterEvents()
 
-	}, time.Now().Add(200*time.Millisecond).Unix(), 200*time.Millisecond,
+	}, time.Now().Add(global.TECluster).Unix(), global.TECluster,
 	))
 }
 
