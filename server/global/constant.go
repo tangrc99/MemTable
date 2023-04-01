@@ -19,3 +19,9 @@ const (
 	TEReplica      = 200 * time.Millisecond
 	TECluster      = 200 * time.Millisecond
 )
+
+const (
+	RsMaxIdle    = 10
+	RsBackLogCap = 1 << 20
+	RsMaxSendLen = 1 << 10
+)

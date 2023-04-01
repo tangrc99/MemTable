@@ -16,13 +16,13 @@ const (
 )
 
 type ReplicaStatus struct {
-	role      int
-	capacity  uint64
-	offset    uint64
-	rdbOffset uint64 // 生成 rdb 时的 offset
-	runID     string // 集群 id
-	backLog   ring_buffer.RingBuffer
-
+	role       int
+	capacity   uint64
+	offset     uint64
+	rdbOffset  uint64 // 生成 rdb 时的 offset
+	runID      string // 集群 id
+	backLog    ring_buffer.RingBuffer
+	idleTicker uint64 // 记录空闲时间的逻辑时钟
 	// Master 需要的
 	onLineSlaves  map[*Client]struct{}
 	offLineSlaves map[*Client]struct{}
@@ -41,6 +41,8 @@ func (s *ReplicaStatus) updateReplicaStatus(event *Event) {
 		return
 
 	case Master:
+
+		s.idleTicker++
 		s.appendBackLog(event)
 
 	case Slave:
@@ -106,8 +108,8 @@ func (s *ReplicaStatus) changeSlaveOnline(cli *Client, slaveOffset uint64) {
 func (s *ReplicaStatus) standAloneToMaster() {
 	s.role = Master
 	s.runID = rand_str.RandHexString(40)
-	s.backLog.Init(1 << 20)
-	s.capacity = 1 << 20
+	s.backLog.Init(global.RsBackLogCap)
+	s.capacity = global.RsBackLogCap
 	s.rdbOffset = 0
 	s.offset = 0
 	s.onLineSlaves = make(map[*Client]struct{})
@@ -124,12 +126,17 @@ func (s *ReplicaStatus) sendBackLog() {
 		return
 	}
 
+	// 逻辑时钟触发，长时间没有写入操作，需要向 slave 发送心跳
+	if s.idleTicker > global.RsMaxIdle {
+		s.appendBackLogRaw([]byte("*1\r\n$4\r\nping\r\n"))
+		s.idleTicker = 0
+	}
+
 	// 检查是否有正在初始化的客户端
 	for cli := range s.initSlaves {
 		if cli.slaveStatus == slaveOnline {
 			delete(s.initSlaves, cli)
 			s.onLineSlaves[cli] = struct{}{}
-
 		}
 	}
 
@@ -145,10 +152,8 @@ func (s *ReplicaStatus) sendBackLog() {
 			cli.slaveStatus = slaveOffline
 		}
 
-		// 更新时间戳
-
 		// 一次最多读取 1kb
-		bytes := s.backLog.Read(cli.offset, 1<<10)
+		bytes := s.backLog.Read(cli.offset, global.RsMaxSendLen)
 
 		if len(bytes) > 0 {
 
@@ -164,7 +169,6 @@ func (s *ReplicaStatus) sendBackLog() {
 		}
 		// 成功写入会更新时间戳
 		cli.UpdateTimestamp(global.Now)
-
 	}
 
 }
@@ -173,21 +177,25 @@ func (s *ReplicaStatus) appendBackLog(event *Event) {
 	if s.role != Master || len(event.raw) <= 0 {
 		return
 	}
-	// 只有写命令需要持久化
 
 	// 多数据库场景需要加入数据库选择语句
 	dbStr := strconv.Itoa(event.cli.dbSeq)
 	s.offset = s.backLog.Append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
 	s.offset = s.backLog.Append(event.raw)
-
 	logger.Debugf("Append Backlog: %s", event.raw)
+
+	s.idleTicker = 0
 }
 
 func (s *ReplicaStatus) appendBackLogRaw(data []byte) {
 	if s.role != Master || len(data) <= 0 {
 		return
 	}
+
 	s.offset = s.backLog.Append(data)
+	logger.Debugf("Append Backlog: %s", data)
+
+	s.idleTicker = 0
 }
 
 func (s *Server) rdbForReplica() uint64 {
@@ -258,6 +266,9 @@ func (s *Server) StartEvictionNotification() {
 }
 
 func (s *Server) StopEvictionNotification() {
+	if s.aofEnabled {
+		return
+	}
 	for _, db := range s.dbs {
 		db.StopEvictNotification()
 	}
