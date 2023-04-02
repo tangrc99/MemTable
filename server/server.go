@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/db"
@@ -19,9 +21,11 @@ import (
 )
 
 type Server struct {
-	url      string       // 监听 url
-	listener net.Listener // listener
-	dir      string       // 工作目录
+	url         string       // 监听 url
+	tlsUrl      string       // tls url
+	tlsListener net.Listener // tls listener
+	listener    net.Listener // listener
+	dir         string       // 工作目录
 
 	// 数据库部分
 	dbs          []*db.DataBase // 多个可以用于切换的数据库
@@ -65,7 +69,7 @@ type Server struct {
 	msgPool sync.Pool
 }
 
-func NewServer(url string) *Server {
+func NewServer() *Server {
 	// 配置数据库
 	d := make([]*db.DataBase, config.Conf.DataBases)
 
@@ -87,7 +91,6 @@ func NewServer(url string) *Server {
 		Chs:        db.NewChannels(),
 		clis:       NewClientList(),
 		tl:         NewTimeEventList(),
-		url:        url,
 		events:     make(chan *Event, 10000),
 		quit:       false,
 		quitFlag:   make(chan struct{}),
@@ -98,6 +101,14 @@ func NewServer(url string) *Server {
 		dir:        config.Conf.Dir,
 		aofEnabled: config.Conf.AppendOnly,
 		aofFile:    "appendonly.aof",
+	}
+
+	// check the port
+	if config.Conf.Port != 0 {
+		s.url = fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port)
+	}
+	if config.Conf.TLSPort != 0 {
+		s.tlsUrl = fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.TLSPort)
 	}
 
 	evictChannel := make([]chan string, s.dbNum)
@@ -125,7 +136,6 @@ func (s *Server) InitModules() {
 	if config.Conf.AppendOnly {
 		logger.Debug("Config: AppendOnly Enabled")
 		s.aof = newAOFBuffer(config.Conf.Dir + "appendonly.aof")
-
 	}
 
 	if config.Conf.GoPool {
@@ -145,27 +155,30 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	req := make(chan *resp.ParsedRes, 10)
 
-	go func() {
+	s.runInNewGoroutine(func() {
 		for running && !s.quit {
-			req <- client.ParseStream()
+			r := client.ParseStream()
+			req <- r
+			if r.Abort == true {
+				break
+			}
 		}
-	}()
+	})
 
 	for running && !s.quit {
 
 		select {
 		case parsed := <-req:
 
-			if parsed.Data == nil {
-				continue
-			}
-
 			if parsed.Err != nil {
+
 				e := parsed.Err.Error()
+
 				if e == "AGAIN" {
 					continue
 				} else if e == "EOF" {
 					logger.Debugf("Client %s ShutDown Connection", client.cnn.RemoteAddr().String())
+
 				} else {
 					logger.Info("Client Read Error:", e)
 
@@ -177,6 +190,11 @@ func (s *Server) handleRead(conn net.Conn) {
 				}
 				running = false
 				break
+			}
+
+			// 如果无错误且消息为空，不做处理
+			if parsed.Data == nil {
+				continue
 			}
 
 			if plain, ok := parsed.Data.(*resp.PlainData); ok {
@@ -341,7 +359,12 @@ func (s *Server) eventLoop() {
 	logger.Info("Server: Ready To Shutdown")
 
 	// 关闭监听
-	_ = s.listener.Close()
+	if s.listener != nil {
+		_ = s.listener.Close()
+	}
+	if s.tlsListener != nil {
+		_ = s.tlsListener.Close()
+	}
 
 	// 进行数据持久化
 	s.saveData()
@@ -357,33 +380,26 @@ func (s *Server) eventLoop() {
 	s.quitFlag <- struct{}{}
 }
 
-func (s *Server) acceptLoop() {
-
-	logger.Info("Server: Start Listen")
+// acceptLoop 运行 Acceptor
+func (s *Server) acceptLoop(listener net.Listener) {
 
 	for !s.quit {
-		conn, err := s.listener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			break
 		}
 
-		// 如果客户端数量过多，拒绝服务
+		// 如果客户端数量过多，尝试清理
 		if s.maxClients > 0 && s.clis.Size() >= s.maxClients {
 			_ = conn.Close()
 		}
 
-		if s.gopool != nil {
-
-			s.gopool.Schedule(func() {
-				s.handleRead(conn)
-			})
-
-		} else {
-			go s.handleRead(conn)
-		}
+		s.runInNewGoroutine(func() {
+			s.handleRead(conn)
+		})
 
 	}
-	logger.Info("Server: Shutdown Listener")
+	logger.Infof("Server: Shutdown on %s", listener.Addr().String())
 
 }
 
@@ -469,20 +485,58 @@ func (s *Server) initTimeEvents() {
 
 func (s *Server) Start() {
 
-	// 初始化操作
-
-	logger.Info("Server: Listen at", s.url)
-
+	// 开启事务线程
 	go s.eventLoop()
 
-	// 开启监听
 	var err error
-	s.listener, err = net.Listen("tcp", s.url)
-	if err != nil {
-		logger.Error("Server:", err.Error())
+
+	if s.url != "" {
+
+		s.listener, err = net.Listen("tcp", s.url)
+		if err != nil {
+			logger.Error("Server:", err.Error())
+		}
+
+		logger.Info("Server: Listen at", s.url)
+		go s.acceptLoop(s.listener)
 	}
 
-	go s.acceptLoop()
+	if s.tlsUrl != "" {
+
+		// 载入服务端证书和私钥
+		srvCert, err := tls.LoadX509KeyPair(config.Conf.CertFile, config.Conf.KeyFile)
+		if err != nil {
+			logger.Panicf(err.Error())
+		}
+
+		// 载入根证书，用于客户端验证
+		caCertPool := x509.NewCertPool()
+		caCert, err := os.ReadFile(config.Conf.CaCertFile)
+		if err != nil {
+			logger.Panicf(err.Error())
+		}
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			logger.Panicf("Parse cert error, file: %s", config.Conf.CaCertFile)
+		}
+		tlsCfg := &tls.Config{
+			InsecureSkipVerify: false,
+			ClientAuth:         tls.RequestClientCert,
+			ClientCAs:          caCertPool,
+			Certificates:       []tls.Certificate{srvCert},
+		}
+		if config.Conf.AuthClient {
+			tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+
+		s.tlsListener, err = tls.Listen("tcp", s.tlsUrl, tlsCfg)
+
+		if err != nil {
+			logger.Error("TLS Server:", err.Error())
+		}
+
+		logger.Info("TLS Server: Listen at", s.tlsUrl)
+		go s.acceptLoop(s.tlsListener)
+	}
 
 	quit := make(chan os.Signal)
 

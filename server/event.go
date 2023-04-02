@@ -12,6 +12,7 @@ func init() {
 	}
 }
 
+// eventPool 是对 sync.Pool 的封装，用于获取 Event 对象
 type eventPool struct {
 	pool sync.Pool
 }
@@ -28,6 +29,7 @@ func (p *eventPool) newEvent(cli *Client) *Event {
 }
 
 func (p *eventPool) putEvent(e *Event) {
+	e.cli = nil
 	p.pool.Put(e)
 }
 
@@ -35,6 +37,6 @@ func (p *eventPool) putEvent(e *Event) {
 type Event struct {
 	cmd       [][]byte // 经过解析后的命令
 	raw       []byte   // 当前命令的 resp 格式
-	cli       *Client
-	pipelined bool
+	cli       *Client  // 命令所属客户端
+	pipelined bool     // 是否使用了 pipeline 格式
 }

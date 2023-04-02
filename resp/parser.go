@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/logger"
 	"io"
+	"reflect"
 	"strconv"
 )
 
@@ -13,8 +14,9 @@ import (
 // Check https://redis.io/docs/reference/protocol-spec/ for the protocol details.
 
 type ParsedRes struct {
-	Data RedisData
-	Err  error
+	Data  RedisData
+	Err   error
+	Abort bool // 解析中发生无法恢复的错误
 }
 
 type Parser struct {
@@ -30,7 +32,6 @@ func NewParser(reader io.Reader) *Parser {
 }
 
 func (parser *Parser) Parse() *ParsedRes {
-
 	return ParseStream(parser.bufReader, parser.state)
 }
 
@@ -49,14 +50,26 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 		var err error
 		var msg []byte
 		msg, err = readLine(bufReader, state)
+
 		if err != nil {
 			// read ended, stop reading.
 			if err == io.EOF {
 				return &ParsedRes{
 					Err: err,
 				}
+			} else if reflect.TypeOf(err).PkgPath() == "crypto/tls" {
+				// 如果是 tls 报错，不应该继续读取
+				logger.Error(err)
+				*state = readState{}
+
+				return &ParsedRes{
+					Err:   err,
+					Abort: true,
+				}
+
 			} else {
 
+				// TODO: 这里如果是 tls 层报错，会多次继续读取数据
 				// Protocol error
 				logger.Error(err)
 				*state = readState{}
@@ -118,7 +131,6 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 							state.arrayData.data = append(state.arrayData.data, res)
 							if len(state.arrayData.data) == state.arrayLen {
 
-								defer func() { *state = readState{} }()
 								return &ParsedRes{
 									Data: state.arrayData,
 									Err:  nil,
@@ -156,7 +168,6 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 		if state.inArray {
 			state.arrayData.data = append(state.arrayData.data, res)
 			if len(state.arrayData.data) == state.arrayLen {
-				defer func() { *state = readState{} }()
 				return &ParsedRes{
 					Data: state.arrayData,
 					Err:  nil,
@@ -169,9 +180,9 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 			}
 		}
 	}
-	//return &ParsedRes{
-	//	Err: errors.New("AGAIN"),
-	//}
+
+	// 空消息
+	//return &ParsedRes{}
 }
 
 // Read a line or bulk line end of "\r\n" from a reader.
