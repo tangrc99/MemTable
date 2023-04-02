@@ -6,7 +6,7 @@ type clusterWatcher interface {
 	// getClusterConfig 尝试获取集群的配置文件，确保返回的是一个有效的配置文件
 	getClusterConfig() clusterConfig
 
-	// watchClusterConfig 将会开启一个后台协程来监控集群的状态，
+	// watchClusterChanges 将会开启一个后台协程来监控集群的状态，
 	// 若集群状态发生变更，会将变更消息通过 channel 传递
 	watchClusterChanges() <-chan clusterChangeMessage
 

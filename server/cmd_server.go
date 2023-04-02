@@ -43,12 +43,14 @@ func bgsave(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("Background saving started")
 }
 
-func shutdown(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
+func shutdown(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := CheckCommandAndLength(&cmd, "shutdown", 1)
 	if !ok {
 		return e
 	}
+
+	server.clis.RemoveClient(cli)
 
 	err := syscall.Kill(os.Getpid(), syscall.SIGINT)
 
@@ -56,7 +58,7 @@ func shutdown(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR shutdown failed")
 	}
 
-	return resp.MakeStringData("")
+	return nil
 }
 
 func flushdb(server *Server, cli *Client, cmd [][]byte) resp.RedisData {

@@ -4,7 +4,6 @@ package config
 import (
 	"bufio"
 	"fmt"
-	"github.com/tangrc99/MemTable/logger"
 	"io"
 	"net"
 	"os"
@@ -295,13 +294,15 @@ func init() {
 	// 默认的配置
 	Conf = defaultConf
 
-	if len(os.Args) > 1 {
-		Conf.ConfFile = os.Args[1]
-		err := Conf.parseFile()
-		if err != nil {
-			logger.Error(err.Error())
-			logger.Info("Using Default Config")
-			Conf = defaultConf
+	for i := range os.Args {
+		if os.Args[i] == "--conf" {
+			Conf.ConfFile = os.Args[i+1]
+			err := Conf.parseFile()
+			if err != nil {
+				fmt.Printf(err.Error())
+				fmt.Printf("Using Default Config")
+				Conf = defaultConf
+			}
 		}
 	}
 

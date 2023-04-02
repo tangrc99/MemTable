@@ -19,9 +19,18 @@ type ParsedRes struct {
 	Abort bool // 解析中发生无法恢复的错误
 }
 
+type readState struct {
+	bulkLen   int64
+	arrayLen  int
+	multiLine bool
+	arrayData *ArrayData
+	inArray   bool
+}
+
 type Parser struct {
 	bufReader *bufio.Reader
 	state     *readState
+	exit      bool
 }
 
 func NewParser(reader io.Reader) *Parser {
@@ -31,36 +40,40 @@ func NewParser(reader io.Reader) *Parser {
 	}
 }
 
+// Stop 并不会直接终止解析，而是需要手动关闭连接
+func (parser *Parser) Stop() {
+	parser.exit = true
+}
+
 func (parser *Parser) Parse() *ParsedRes {
-	return ParseStream(parser.bufReader, parser.state)
-}
-
-type readState struct {
-	bulkLen   int64
-	arrayLen  int
-	multiLine bool
-	arrayData *ArrayData
-	inArray   bool
-}
-
-func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 
 	for {
 		var res RedisData
 		var err error
 		var msg []byte
-		msg, err = readLine(bufReader, state)
+		msg, err = readLine(parser.bufReader, parser.state)
+
+		if parser.exit {
+			// 返回空消息
+			return &ParsedRes{
+				Data:  nil,
+				Err:   nil,
+				Abort: true,
+			}
+		}
 
 		if err != nil {
+
 			// read ended, stop reading.
 			if err == io.EOF {
 				return &ParsedRes{
 					Err: err,
 				}
+
 			} else if reflect.TypeOf(err).PkgPath() == "crypto/tls" {
 				// 如果是 tls 报错，不应该继续读取
 				logger.Error(err)
-				*state = readState{}
+				*parser.state = readState{}
 
 				return &ParsedRes{
 					Err:   err,
@@ -72,7 +85,7 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 				// TODO: 这里如果是 tls 层报错，会多次继续读取数据
 				// Protocol error
 				logger.Error(err)
-				*state = readState{}
+				*parser.state = readState{}
 
 				return &ParsedRes{
 					Err: err,
@@ -82,28 +95,28 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 		// parse the read messages
 		// if msg is an array or a bulk string, then parse their header first.
 		// if msg is a normal line, parse it directly.
-		if !state.multiLine {
+		if !parser.state.multiLine {
 			// parse single line: no bulk string
 
 			if msg[0] == '*' {
-				err := parseArrayHeader(msg, state)
+				err := parseArrayHeader(msg, parser.state)
 				if err != nil {
 					logger.Error(err)
-					*state = readState{}
+					*parser.state = readState{}
 
 					return &ParsedRes{
 						Err: err,
 					}
 				} else {
-					if state.arrayLen == -1 {
+					if parser.state.arrayLen == -1 {
 						// null array
-						*state = readState{}
+						*parser.state = readState{}
 						return &ParsedRes{
 							Data: MakeArrayData(nil),
 						}
-					} else if state.arrayLen == 0 {
+					} else if parser.state.arrayLen == 0 {
 						// empty array
-						*state = readState{}
+						*parser.state = readState{}
 						return &ParsedRes{
 							Data: MakeArrayData([]RedisData{}),
 						}
@@ -113,26 +126,26 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 			}
 
 			if msg[0] == '$' {
-				err := parseBulkHeader(msg, state)
+				err := parseBulkHeader(msg, parser.state)
 				if err != nil {
 					logger.Error(err)
-					*state = readState{}
+					*parser.state = readState{}
 
 					return &ParsedRes{
 						Err: err,
 					}
 				} else {
-					if state.bulkLen == -1 {
+					if parser.state.bulkLen == -1 {
 						// null bulk string
-						state.multiLine = false
-						state.bulkLen = 0
+						parser.state.multiLine = false
+						parser.state.bulkLen = 0
 						res = MakeBulkData(nil)
-						if state.inArray {
-							state.arrayData.data = append(state.arrayData.data, res)
-							if len(state.arrayData.data) == state.arrayLen {
+						if parser.state.inArray {
+							parser.state.arrayData.data = append(parser.state.arrayData.data, res)
+							if len(parser.state.arrayData.data) == parser.state.arrayLen {
 
 								return &ParsedRes{
-									Data: state.arrayData,
+									Data: parser.state.arrayData,
 									Err:  nil,
 								}
 							}
@@ -149,14 +162,14 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 			res, err = parseSingleLine(msg)
 		} else {
 			// parse multiple lines: bulk string (binary safe)
-			state.multiLine = false
-			state.bulkLen = 0
+			parser.state.multiLine = false
+			parser.state.bulkLen = 0
 			res, err = parseMultiLine(msg)
 		}
 
 		if err != nil {
 			logger.Error(err)
-			*state = readState{}
+			*parser.state = readState{}
 
 			return &ParsedRes{
 				Err: err,
@@ -165,11 +178,11 @@ func ParseStream(bufReader *bufio.Reader, state *readState) *ParsedRes {
 		}
 
 		// Struct parsed data as an array or a single data, and put it into channel.
-		if state.inArray {
-			state.arrayData.data = append(state.arrayData.data, res)
-			if len(state.arrayData.data) == state.arrayLen {
+		if parser.state.inArray {
+			parser.state.arrayData.data = append(parser.state.arrayData.data, res)
+			if len(parser.state.arrayData.data) == parser.state.arrayLen {
 				return &ParsedRes{
-					Data: state.arrayData,
+					Data: parser.state.arrayData,
 					Err:  nil,
 				}
 			}

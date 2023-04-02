@@ -62,7 +62,7 @@ func NewClient(conn net.Conn) *Client {
 		tp:     global.Now,
 		status: WAIT,
 		dbSeq:  0,
-		res:    make(chan *resp.RedisData, 100),
+		res:    make(chan *resp.RedisData, 10),
 
 		blocked: false,
 	}
@@ -73,7 +73,7 @@ func NewFakeClient() *Client {
 		id:      uuid.Must(uuid.NewV1()),
 		status:  WAIT,
 		dbSeq:   0,
-		res:     make(chan *resp.RedisData, 100),
+		res:     make(chan *resp.RedisData, 10),
 		blocked: false,
 	}
 }
@@ -90,7 +90,7 @@ func (cli *Client) Subscribe(chs *db.Channels, channel string) int {
 
 	if cli.chs == nil {
 		cli.chs = make(map[string]struct{})
-		cli.msg = make(chan []byte, 100)
+		cli.msg = make(chan []byte, 10)
 	}
 
 	chs.Subscribe(channel, cli.id.String(), &cli.msg)
@@ -158,6 +158,7 @@ func (clients *ClientList) AddClientIfNotExist(cli *Client) bool {
 func (clients *ClientList) removeClientWithPosition(cli *Client, node *structure.ListNode) {
 	logger.Debug("ClientList: Remove Client", cli.id)
 	cli.status = EXIT
+	cli.parser.Stop()
 	clients.list.RemoveNode(node)
 	delete(clients.UUIDSet, cli.id)
 	_ = cli.cnn.Close()
@@ -178,33 +179,34 @@ func (clients *ClientList) RemoveClient(cli *Client) {
 	clients.removeClientWithPosition(cli, node)
 }
 
-func (clients *ClientList) RemoveLongNotUsed(num, max int, d time.Duration) {
+// RemoveLongNotUsed 会尝试移除活跃时大于 d 的客户端连接，在遍历 maxTraverse 或删除 maxRemove 后函数停止。
+func (clients *ClientList) RemoveLongNotUsed(maxRemove, maxTraverse int, d time.Duration) {
 
 	// 早于该时间的视为过期
 	expired := global.Now.Add(-1 * d)
 
 	// 客户端列表尾端的时间戳会减小
-	for node := clients.list.BackNode(); node != nil && num >= 0 && max >= 0; {
+	for node := clients.list.BackNode(); node != nil && maxRemove >= 0 && maxTraverse >= 0; {
 		cli, ok := node.Value.(*Client)
 
 		if !ok {
+
 			logger.Error("ClientList: type is not Client")
 			prev := node.Prev()
 			clients.list.RemoveNode(node)
 			node = prev
 
-		} else if cli.tp.Before(expired) || cli.status == ERROR || cli.status == EXIT {
+		} else if cli.slaveStatus == slaveNot && (cli.tp.Before(expired) || cli.status == ERROR || cli.status == EXIT) {
 			// 清理过期和失效客户端
 			prev := node.Prev()
 			clients.removeClientWithPosition(cli, node)
 			node = prev
-			num--
+			maxRemove--
 
 		} else {
 			node = node.Prev()
 		}
-
-		max--
+		maxTraverse--
 	}
 }
 

@@ -155,7 +155,7 @@ func (s *Server) handleRead(conn net.Conn) {
 
 	req := make(chan *resp.ParsedRes, 10)
 
-	s.runInNewGoroutine(func() {
+	ok := s.runInNewGoroutine(func() {
 		for running && !s.quit {
 			r := client.ParseStream()
 			req <- r
@@ -164,6 +164,10 @@ func (s *Server) handleRead(conn net.Conn) {
 			}
 		}
 	})
+	if !ok {
+		_ = conn.Close()
+		return
+	}
 
 	for running && !s.quit {
 
@@ -180,8 +184,8 @@ func (s *Server) handleRead(conn net.Conn) {
 					logger.Debugf("Client %s ShutDown Connection", client.cnn.RemoteAddr().String())
 
 				} else {
-					logger.Info("Client Read Error:", e)
 
+					logger.Info("Client Read Error:", e)
 					matched, _ := regexp.MatchString("Protocol error*", e)
 					if matched {
 						continue
@@ -394,9 +398,11 @@ func (s *Server) acceptLoop(listener net.Listener) {
 			_ = conn.Close()
 		}
 
-		s.runInNewGoroutine(func() {
+		if ok := s.runInNewGoroutine(func() {
 			s.handleRead(conn)
-		})
+		}); !ok {
+			_ = conn.Close()
+		}
 
 	}
 	logger.Infof("Server: Shutdown on %s", listener.Addr().String())
@@ -495,6 +501,7 @@ func (s *Server) Start() {
 		s.listener, err = net.Listen("tcp", s.url)
 		if err != nil {
 			logger.Error("Server:", err.Error())
+			return
 		}
 
 		logger.Info("Server: Listen at", s.url)

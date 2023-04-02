@@ -11,7 +11,7 @@ const (
 * ------------------------------------------------------------------------- */
 
 const (
-	TECleanClients = 300 * time.Second
+	TECleanClients = 10 * time.Second
 	TEExpireKey    = time.Second
 	TEAOF          = time.Second
 	TEBgSave       = 5 * time.Second
