@@ -17,8 +17,7 @@ const (
 )
 
 type RDBStatus struct {
-	rdbLock sync.Mutex // 禁止 rdb 重入锁
-
+	rdbLock       sync.Mutex // 禁止 rdb 重入锁
 	rdbFileStatus int
 	rdbWaitNum    int
 }
@@ -116,7 +115,7 @@ func (s *Server) BGRDB() bool {
 	}
 
 	// aof 启动一个 server
-	ws := NewServer("")
+	ws := NewServer()
 	ws.runID = s.runID
 	ws.offset = s.offset
 	ws.rdbOffset = s.rdbOffset

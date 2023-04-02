@@ -23,7 +23,7 @@ func Daemon() (int, error) {
 		}
 	}
 	if isDaemon { // daemon process
-		// 创建新会话
+		// 创建新会话，防止 ssh 启动时，因用户退出而退出
 		_, err := syscall.Setsid()
 		return 0, err
 	}

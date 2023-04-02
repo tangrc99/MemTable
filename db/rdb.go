@@ -6,6 +6,7 @@ import (
 	"github.com/hdt3213/rdb/core"
 	"github.com/hdt3213/rdb/encoder"
 	"github.com/hdt3213/rdb/model"
+	"github.com/tangrc99/MemTable/db/eviction"
 	"github.com/tangrc99/MemTable/db/structure"
 )
 
@@ -21,6 +22,8 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 
 	for _, dict := range *dicts {
 		for k, v := range dict {
+
+			v = v.(*eviction.Item).Value
 
 			keys++
 			var ttl uint64 = 0

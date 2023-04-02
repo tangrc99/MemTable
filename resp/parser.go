@@ -45,6 +45,7 @@ func (parser *Parser) Stop() {
 	parser.exit = true
 }
 
+// Parse 将会阻塞地读取数据流，并且尝试解析出 RESP 包
 func (parser *Parser) Parse() *ParsedRes {
 
 	for {
