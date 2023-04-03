@@ -69,10 +69,10 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 				members, n := zset.Pos(0, -1)
 				entrys := make([]*model.ZSetEntry, n)
 				for i, member := range members {
-					score, _ := zset.GetScoreByKey(member.(string))
+					score, _ := zset.GetScoreByKey(string(member.(structure.String)))
 					entrys[i] = &model.ZSetEntry{
 						Score:  float64(score),
-						Member: member.(string),
+						Member: string(member.(structure.String)),
 					}
 				}
 				if ttl > 0 {

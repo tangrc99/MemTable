@@ -267,7 +267,8 @@ func (db_ *DataBase) UnWatch(key string, flag *bool) {
 }
 
 // ReviseNotify 通知键修改
-func (db_ *DataBase) ReviseNotify(key string) {
+func (db_ *DataBase) ReviseNotify(key string, oldCost, newCost int64) {
+	db_.dict.UpdateCost(db_.dict.Cost() + newCost - oldCost)
 	db_.watches.reviseNotify(key)
 }
 

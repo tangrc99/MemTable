@@ -48,13 +48,15 @@ func ExecCommand(base *db.DataBase, cmd [][]byte, enableWrite bool) (res resp.Re
 		return resp.MakeErrorData("error: empty command"), false
 	}
 
-	_, isWriteCommand = writeCommands[strings.ToLower(string(cmd[0]))]
+	commandName := strings.ToLower(string(cmd[0]))
+
+	_, isWriteCommand = writeCommands[commandName]
 
 	if isWriteCommand && !enableWrite {
 		return resp.MakeErrorData("ERR READONLY You can't write against a read only slave"), false
 	}
 
-	f, ok := commandTable[strings.ToLower(string(cmd[0]))]
+	f, ok := commandTable[commandName]
 	if !ok {
 		return resp.MakeErrorData("error: unsupported command"), isWriteCommand
 	}

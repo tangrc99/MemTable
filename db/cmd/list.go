@@ -37,10 +37,15 @@ func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
+	oldCost := int64(0)
+
 	value, ok := db.GetKey(string(cmd[1]))
+
 	if !ok {
 		value = structure.NewList()
 		db.SetKey(string(cmd[1]), value)
+	} else {
+		oldCost = value.Cost()
 	}
 
 	err := checkType(value, LIST)
@@ -57,6 +62,8 @@ func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		listVal.PushFront(structure.Slice(ele))
 	}
 
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
+
 	return resp.MakeIntData(int64(n))
 }
 
@@ -66,10 +73,14 @@ func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型
 		return e
 	}
 
+	oldCost := int64(0)
+
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
 		value = structure.NewList()
 		db.SetKey(string(cmd[1]), value)
+	} else {
+		oldCost = value.Cost()
 	}
 
 	err := checkType(value, LIST)
@@ -85,6 +96,7 @@ func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型
 		n++
 		listVal.PushBack(structure.Slice(ele))
 	}
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
 
 	return resp.MakeIntData(int64(n))
 }
@@ -105,8 +117,6 @@ func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
-	listVal := value.(*structure.List)
-
 	count := 1
 
 	if len(cmd) == 3 {
@@ -116,6 +126,8 @@ func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			return resp.MakeErrorData("ERR value is not an integer or out of range")
 		}
 	}
+	listVal := value.(*structure.List)
+	oldCost := listVal.Cost()
 
 	if count >= listVal.Size() {
 		count = listVal.Size()
@@ -129,6 +141,8 @@ func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		v, _ := listVal.PopFront().(structure.Slice)
 		res[i] = resp.MakeBulkData(v)
 	}
+
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
 
 	return resp.MakeArrayData(res)
 }
@@ -149,8 +163,6 @@ func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
-	listVal := value.(*structure.List)
-
 	count := 1
 
 	if len(cmd) == 3 {
@@ -160,6 +172,9 @@ func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			return resp.MakeErrorData("ERR value is not an integer or out of range")
 		}
 	}
+
+	listVal := value.(*structure.List)
+	oldCost := listVal.Cost()
 
 	if count >= listVal.Size() {
 		count = listVal.Size()
@@ -173,6 +188,8 @@ func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		v, _ := listVal.PopBack().(structure.Slice)
 		res[i] = resp.MakeBulkData(v)
 	}
+
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
 
 	return resp.MakeArrayData(res)
 }
@@ -262,10 +279,14 @@ func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
+	oldCost := listVal.Cost()
+
 	ok = listVal.Set(structure.Slice(cmd[3]), pos)
 	if !ok {
 		return resp.MakeErrorData("ERR index out of range")
 	}
+
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
 
 	return resp.MakeStringData("OK")
 }
@@ -294,6 +315,8 @@ func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
+	oldCost := listVal.Cost()
+
 	deleted := 0
 	for cur := listVal.FrontNode(); cur != nil && deleted <= count; {
 		byteVal := cur.Value.(structure.Slice)
@@ -309,6 +332,8 @@ func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		}
 
 	}
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
+
 	return resp.MakeIntData(int64(deleted))
 }
 
@@ -381,7 +406,10 @@ func lTrim(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
+	oldCost := listVal.Cost()
 	listVal.Trim(start, end)
+
+	db.ReviseNotify(string(cmd[1]), oldCost, listVal.Cost())
 
 	return resp.MakeStringData("OK")
 }
@@ -451,6 +479,9 @@ func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	} else {
 		return resp.MakeErrorData("ERR syntax error")
 	}
+
+	db.ReviseNotify(string(cmd[1]), 0, 0)
+	db.ReviseNotify(string(cmd[2]), 0, 0)
 
 	return resp.MakeStringData("OK")
 

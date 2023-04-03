@@ -43,6 +43,8 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		}
 
 		db.SetKey(string(cmd[1]), zset)
+		db.ReviseNotify(string(cmd[1]), 0, zset.Cost())
+
 		return resp.MakeIntData(int64(added))
 	}
 
@@ -66,6 +68,8 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	zsetVal := value.(*structure.ZSet)
 
+	oldCost := zsetVal.Cost()
+
 	added := 0
 
 	for i, score := range scores {
@@ -77,6 +81,7 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 重置 TTL
 	db.RemoveTTL(string(cmd[1]))
+	db.ReviseNotify(string(cmd[1]), oldCost, zsetVal.Cost())
 
 	return resp.MakeIntData(int64(added))
 }
@@ -158,7 +163,7 @@ func zRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	zsetVal := value.(*structure.ZSet)
-
+	oldCost := zsetVal.Cost()
 	deleted := 0
 
 	for _, key := range cmd[2:] {
@@ -166,6 +171,7 @@ func zRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			deleted++
 		}
 	}
+	db.ReviseNotify(string(cmd[1]), oldCost, zsetVal.Cost())
 	return resp.MakeIntData(int64(deleted))
 }
 
@@ -212,6 +218,8 @@ func zIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		zsetVal.Add(structure.Float32(increment), string(cmd[3]))
 		return resp.MakeBulkData(cmd[2])
 	}
+
+	db.ReviseNotify(string(cmd[1]), 0, 0)
 
 	return resp.MakeBulkData([]byte(fmt.Sprintf("%f", score)))
 }
@@ -415,7 +423,12 @@ func zRemRangeByRank(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
+	oldCost := zsetVal.Cost()
+
 	deleted := zsetVal.DeleteRange(start, end)
+
+	db.ReviseNotify(string(cmd[1]), oldCost, zsetVal.Cost())
+
 	return resp.MakeIntData(int64(deleted))
 }
 
@@ -448,7 +461,12 @@ func zRemRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not a valid float")
 	}
 
+	oldCost := zsetVal.Cost()
+
 	deleted := zsetVal.DeleteRangeByScore(structure.Float32(min), structure.Float32(max))
+
+	db.ReviseNotify(string(cmd[1]), oldCost, zsetVal.Cost())
+
 	return resp.MakeIntData(int64(deleted))
 }
 

@@ -401,3 +401,7 @@ func (dict *Dict) KeysInShard(shardSeq, count int) ([]string, int) {
 func (dict *Dict) Cost() int64 {
 	return dict.cost
 }
+
+func (dict *Dict) UpdateCost(cost int64) {
+	dict.cost = cost
+}

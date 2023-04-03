@@ -13,10 +13,14 @@ func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
+	oldCost := int64(0)
+
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
 		value = structure.NewDict(1)
 		db.SetKey(string(cmd[1]), value)
+	} else {
+		oldCost = value.Cost()
 	}
 
 	e = checkType(value, HASH)
@@ -36,6 +40,8 @@ func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		hashVal.Set(string(cmd[i]), structure.Slice(cmd[i+1]))
 	}
 
+	db.ReviseNotify(string(cmd[1]), oldCost, hashVal.Cost())
+
 	return resp.MakeIntData(int64(l/2 - 1))
 }
 
@@ -45,10 +51,14 @@ func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return e
 	}
 
+	oldCost := int64(0)
+
 	value, ok := db.GetKey(string(cmd[1]))
 	if !ok {
 		value = structure.NewDict(1)
 		db.SetKey(string(cmd[1]), value)
+	} else {
+		oldCost = value.Cost()
 	}
 
 	e = checkType(value, HASH)
@@ -69,6 +79,8 @@ func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		hashVal.Set(string(cmd[i]), structure.Slice(cmd[i+1]))
 
 	}
+
+	db.ReviseNotify(string(cmd[1]), oldCost, hashVal.Cost())
 
 	return resp.MakeStringData("OK")
 }
@@ -173,7 +185,7 @@ func hDel(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	hashVal := value.(*structure.Dict)
-
+	oldCost := hashVal.Cost()
 	deleted := 0
 
 	for _, key := range cmd[2:] {
@@ -181,6 +193,7 @@ func hDel(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			deleted++
 		}
 	}
+	db.ReviseNotify(string(cmd[1]), oldCost, hashVal.Cost())
 
 	return resp.MakeIntData(int64(deleted))
 }
@@ -317,6 +330,8 @@ func hIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	intVal += increment
 	hashVal.Set(string(cmd[2]), structure.Slice(strconv.Itoa(intVal)))
+
+	db.ReviseNotify(string(cmd[1]), 0, 0)
 
 	return resp.MakeIntData(int64(intVal))
 }

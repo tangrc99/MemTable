@@ -36,6 +36,8 @@ func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return err
 	}
 
+	oldCost := value.Cost()
+
 	added := 0
 	for _, key := range cmd[2:] {
 		if value.(*structure.Set).Add(string(key)) {
@@ -45,6 +47,8 @@ func sadd(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 重置 TTL
 	db.RemoveTTL(string(cmd[1]))
+
+	db.ReviseNotify(string(cmd[1]), oldCost, value.Cost())
 
 	return resp.MakeIntData(int64(added))
 }
@@ -69,12 +73,16 @@ func sRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	set := value.(*structure.Set)
 	deleted := 0
 
+	oldCost := set.Cost()
+
 	for _, key := range cmd[2:] {
 		ok := set.Delete(string(key))
 		if ok {
 			deleted++
 		}
 	}
+	db.ReviseNotify(string(cmd[1]), oldCost, value.Cost())
+
 	return resp.MakeIntData(int64(deleted))
 }
 
@@ -264,6 +272,10 @@ func sMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		setVal2.Add(string(cmd[3]))
 		return resp.MakeIntData(1)
 	}
+
+	db.ReviseNotify(string(cmd[1]), 0, 0)
+	db.ReviseNotify(string(cmd[2]), 0, 0)
+
 	return resp.MakeIntData(0)
 }
 
@@ -371,6 +383,8 @@ func sDiffStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	db.SetKey(string(cmd[1]), dstSet)
 	db.RemoveTTL(string(cmd[1]))
+	db.ReviseNotify(string(cmd[1]), 0, 0)
+
 	return resp.MakeIntData(int64(dstSet.Size()))
 }
 
@@ -482,6 +496,8 @@ func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	db.SetKey(string(cmd[1]), dstSet)
 	db.RemoveTTL(string(cmd[1]))
+	db.ReviseNotify(string(cmd[1]), 0, 0)
+
 	return resp.MakeIntData(int64(dstSet.Size()))
 }
 
@@ -574,6 +590,8 @@ func sUnionStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	db.SetKey(string(cmd[1]), dstSet)
 	db.RemoveTTL(string(cmd[1]))
+	db.ReviseNotify(string(cmd[1]), 0, 0)
+
 	return resp.MakeIntData(int64(dstSet.Size()))
 }
 
