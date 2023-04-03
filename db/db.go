@@ -6,10 +6,13 @@ import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/server/global"
 	"math"
+	"unsafe"
 )
 
 type Int64 = structure.Int64
 type Object = structure.Object
+
+const databaseBasicCost = int64(unsafe.Sizeof(DataBase{}))
 
 // DataBase 代表一个内存数据库，包含键值对，ttl，watch等信息。同一个 DataBase 实例中键值不能重复，
 // 不同的实例键值可以重复。
@@ -435,4 +438,8 @@ func (db_ *DataBase) Evict(key []byte, roomNeeded int64) (evicted []string, acce
 		evicted = append(evicted, victims...)
 	}
 	return evicted, accepted
+}
+
+func (db_ *DataBase) Cost() int64 {
+	return db_.dict.Cost() + db_.ttlKeys.Cost() + db_.watches.Cost() + databaseBasicCost
 }

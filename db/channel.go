@@ -3,30 +3,37 @@ package db
 import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"strings"
+	"unsafe"
 )
 
 // 这里借鉴 etcd 的设计，使用两种数据结构来实现发布订阅频道，允许使用目录来进行匹配
 
+const channelBasicCost = int64(unsafe.Sizeof(channel{}))
+
 // channel 是用于实现 pub/sub 功能的结构体，它维护一个订阅信息表
 type channel struct {
 	subscriber map[string]*chan []byte
+	cost       int64
 }
 
 // newChannel 创建一个 channel 实例并返回指针
 func newChannel() *channel {
 	return &channel{
 		subscriber: make(map[string]*chan []byte),
+		cost:       channelBasicCost,
 	}
 }
 
 // subscribe 注册一个订阅信息
 func (ch *channel) subscribe(owner string, notify *chan []byte) {
 	ch.subscriber[owner] = notify
+	ch.cost += int64(len(owner) + 8)
 }
 
 // unSubscribe 删除订阅并且返回删除后的订阅数量
 func (ch *channel) unSubscribe(owner string) int {
 	delete(ch.subscriber, owner)
+	ch.cost -= int64(len(owner) + 8)
 	return len(ch.subscriber)
 }
 
@@ -39,16 +46,17 @@ func (ch *channel) publish(msg []byte) int {
 }
 
 func (ch *channel) Cost() int64 {
-
-	//TODO:
-	return -1
+	return ch.cost
 }
+
+const channelsBasicCost = int64(unsafe.Sizeof(Channels{}))
 
 // Channels 维护所有的订阅频道信息，内部有哈希表和前缀树两种数据结构，分别用于
 // 处理单一频道和路径频道两种模式的发布和订阅。
 type Channels struct {
 	channels map[string]*channel
 	paths    *structure.TrieTree
+	cost     int64
 }
 
 // NewChannels 创建一个 Channel 实例并返回指针
@@ -56,6 +64,7 @@ func NewChannels() *Channels {
 	return &Channels{
 		channels: make(map[string]*channel),
 		paths:    structure.NewTrieTree(),
+		cost:     channelsBasicCost,
 	}
 }
 
@@ -100,8 +109,11 @@ func (chs *Channels) Subscribe(channel string, owner string, notify *chan []byte
 	if !ok {
 		ch = newChannel()
 		chs.channels[channel] = ch
+	} else {
+		chs.cost -= ch.Cost()
 	}
 	ch.subscribe(owner, notify)
+	chs.cost += ch.Cost()
 }
 
 func (chs *Channels) subscribePath(ch string, owner string, notify *chan []byte) {
@@ -112,6 +124,7 @@ func (chs *Channels) subscribePath(ch string, owner string, notify *chan []byte)
 	node, _ := chs.paths.AddNodeIfNotLeaf(paths[1:], newChannel())
 
 	node.Value.(*channel).subscribe(owner, notify)
+	chs.cost += node.Value.Cost()
 }
 
 // UnSubscribe 取消指定频道的订阅
@@ -125,6 +138,7 @@ func (chs *Channels) UnSubscribe(channel string, owner string) bool {
 	}
 
 	if ch.unSubscribe(owner) == 0 {
+		chs.cost -= ch.Cost()
 		delete(chs.channels, channel)
 	}
 	return true
@@ -138,8 +152,13 @@ func (chs *Channels) unSubscribePath(ch string, owner string) bool {
 		return false
 	}
 	subs := node.Value.(*channel).unSubscribe(owner)
+	chs.cost -= node.Value.Cost()
 	if subs == 0 {
 		chs.paths.DeleteLeafNode(node)
 	}
 	return true
+}
+
+func (chs *Channels) Cost() int64 {
+	return chs.cost + chs.paths.Cost()
 }
