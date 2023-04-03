@@ -17,14 +17,14 @@ func multi(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR MULTI calls can not be nested")
 	}
 
-	cli.inTx = true
+	cli.InitTX()
 
 	return resp.MakeStringData("OK")
 }
 
 func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmds, "execTX", 1)
+	e, ok := CheckCommandAndLength(&cmds, "exec", 1)
 	if !ok {
 		return e
 	}
@@ -42,7 +42,6 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 				server.dbs[dbSeq].UnWatch(key, &cli.revised)
 			}
 		}
-
 		cli.watched = make(map[int][]string)
 		cli.revised = false
 	}()
@@ -86,7 +85,7 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 func watch(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "execTX", 2)
+	e, ok := CheckCommandAndLength(&cmd, "watch", 2)
 	if !ok {
 		return e
 	}
@@ -94,6 +93,8 @@ func watch(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	if cli.inTx {
 		return resp.MakeErrorData("ERR WATCH inside MULTI is not allowed")
 	}
+
+	cli.InitWatchers()
 
 	for _, key := range cmd[1:] {
 
@@ -126,4 +127,5 @@ func RegisterTransactionCommand() {
 	RegisterCommand("multi", multi, RD)
 	RegisterCommand("exec", execTX, RD)
 	RegisterCommand("discard", discard, RD)
+	RegisterCommand("watch", watch, RD)
 }

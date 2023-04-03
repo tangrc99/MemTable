@@ -112,9 +112,12 @@ func (cli *Client) UnSubscribeAll(chs *db.Channels) {
 }
 
 func (cli *Client) InitTX() {
-	cli.inTx = false
+	cli.inTx = true
 	cli.tx = make([][][]byte, 0, 20)
 	cli.txRaw = make([][]byte, 0, 20)
+}
+
+func (cli *Client) InitWatchers() {
 	cli.watched = make(map[int][]string)
 	cli.revised = false
 }

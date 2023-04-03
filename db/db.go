@@ -137,6 +137,7 @@ func (db_ *DataBase) SetKey(key string, value Object) bool {
 	if db_.rookies != nil {
 		db_.rookies.NewOne(key)
 	}
+	db_.ReviseNotify(key, 0, 0)
 	return true
 }
 
@@ -158,6 +159,7 @@ func (db_ *DataBase) SetKeyWithTTL(key string, value Object, ttl int64) bool {
 	if db_.rookies != nil {
 		db_.rookies.NewOne(key)
 	}
+	db_.ReviseNotify(key, 0, 0)
 	return true
 }
 
@@ -168,7 +170,11 @@ func (db_ *DataBase) DeleteKey(key string) bool {
 	if db_.rookies != nil {
 		db_.rookies.RemoveOne(key)
 	}
-	return db_.dict.Delete(key)
+	exist := db_.dict.Delete(key)
+	if exist {
+		db_.ReviseNotify(key, 0, 0)
+	}
+	return exist
 }
 
 // RenameKey 将键值对的键重命名，同时转移 TTL 信息，该操作可能会覆盖旧键值对
@@ -186,6 +192,10 @@ func (db_ *DataBase) RenameKey(old, new string) bool {
 
 	db_.dict.Set(new, value)
 	db_.ttlKeys.Set(new, ttl)
+
+	db_.ReviseNotify(old, 0, 0)
+	db_.ReviseNotify(new, 0, 0)
+
 	return true
 }
 
