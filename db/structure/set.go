@@ -1,5 +1,7 @@
 package structure
 
+const setBasicCost = 16
+
 // Set 是一个键集合，底层数据结构为哈希表
 type Set struct {
 	dict *Dict
@@ -87,7 +89,5 @@ func (set *Set) KeysByte(pattern string) ([][]byte, int) {
 }
 
 func (set *Set) Cost() int64 {
-
-	// TODO:
-	return -1
+	return setBasicCost + set.dict.Cost()
 }

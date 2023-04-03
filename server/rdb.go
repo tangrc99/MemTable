@@ -91,7 +91,13 @@ func (s *Server) RDB(file string) bool {
 	return true
 }
 
+// BGRDB 必须借助于 AOF 才能够实现，具体过程是复制一份 aof，然后开启一个 fake server 进行持久化
 func (s *Server) BGRDB() bool {
+
+	if !s.aofEnabled {
+		logger.Error("Can't start bgsave if aof is not enabled")
+		return false
+	}
 
 	// 复制 aof
 	file1, err := os.Open(path.Join(s.dir, s.aofFile))

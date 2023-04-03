@@ -7,9 +7,12 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"regexp"
+	"unsafe"
 )
 
 const MaxConSize = int(1<<31 - 1)
+const shardBasicCost = int64(unsafe.Sizeof(Shard{}))
+const dictBasicCost = int64(unsafe.Sizeof(Dict{}))
 
 // Shard 是 Dict 中的一个分片
 type Shard = map[string]Object
@@ -31,6 +34,7 @@ func NewDict(size int) *Dict {
 		shards: make([]Shard, size),
 		size:   size,
 		count:  0,
+		cost:   dictBasicCost + shardBasicCost*int64(size),
 	}
 	for i := 0; i < size; i++ {
 		dict.shards[i] = make(map[string]Object)
@@ -65,11 +69,14 @@ func (dict *Dict) Set(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
-	if _, exist := (*shard)[key]; !exist {
+	if v, exist := (*shard)[key]; !exist {
 		dict.count++
+	} else {
+		dict.cost -= v.Cost() + int64(len(key))
 	}
 
 	(*shard)[key] = value
+	dict.cost += value.Cost() + int64(len(key))
 	return true
 }
 
@@ -84,6 +91,8 @@ func (dict *Dict) SetIfNotExist(key string, value Object) bool {
 
 	(*shard)[key] = value
 	dict.count++
+	dict.cost += value.Cost() + int64(len(key))
+
 	return true
 }
 
@@ -92,9 +101,10 @@ func (dict *Dict) SetIfExist(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
-	if _, exist := (*shard)[key]; exist {
+	if v, exist := (*shard)[key]; exist {
 		(*shard)[key] = value
-
+		dict.cost -= v.Cost()
+		dict.cost += value.Cost()
 		return true
 	}
 
@@ -110,9 +120,10 @@ func (dict *Dict) Update(key string, value Object) bool {
 func (dict *Dict) Delete(key string) bool {
 	shard := dict.countShard(key)
 
-	if _, exist := (*shard)[key]; exist {
+	if v, exist := (*shard)[key]; exist {
 		delete(*shard, key)
 		dict.count--
+		dict.cost -= v.Cost() + int64(len(key))
 		return true
 	}
 
@@ -126,6 +137,8 @@ func (dict *Dict) DeleteGet(key string) Object {
 	if value, exist := (*shard)[key]; exist {
 		delete(*shard, key)
 		dict.count--
+		dict.cost -= value.Cost() + int64(len(key))
+
 		return value
 	}
 
@@ -137,7 +150,7 @@ func (dict *Dict) Size() int {
 	return dict.count
 }
 
-// Nil 用于判断 Dict 是否为空
+// Empty 用于判断 Dict 是否为空
 func (dict *Dict) Empty() bool {
 	return dict.count == 0
 }
@@ -145,6 +158,7 @@ func (dict *Dict) Empty() bool {
 // Clear 删除 Dict 中的所有键值对
 func (dict *Dict) Clear() {
 	*dict = *NewDict(dict.size)
+	dict.cost = dictBasicCost + shardBasicCost*int64(dict.size)
 }
 
 // Keys 返回匹配正则表达式全部键以及数量
@@ -213,6 +227,8 @@ func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
 			tp, exist := ttl.Get(key)
 			if exist && tp.(Int64).Value() < now {
 				// 如果过期需要删除
+				v, _ := shard[key]
+				dict.cost -= v.Cost() + int64(len(key))
 				delete(shard, key)
 				ttl.Delete(key)
 			} else {
@@ -252,6 +268,8 @@ func (dict *Dict) KeysWithTTLByte(ttl *Dict, pattern string) ([][]byte, int) {
 			tp, exist := ttl.Get(key)
 			if exist && tp.(Int64).Value() < now {
 				// 如果过期需要删除
+				v, _ := shard[key]
+				dict.cost -= v.Cost() + int64(len(key))
 				delete(shard, key)
 				ttl.Delete(key)
 			} else {

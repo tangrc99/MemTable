@@ -11,11 +11,11 @@ func TestTrieTree(t *testing.T) {
 	path2 := []string{"a", "b", "e"}
 	path3 := []string{"a", "b", "c", "d"}
 	path4 := []string{"a", "b", "e", "f"}
-	tree.AddNode(path0, "p0")
-	tree.AddNode(path1, "p1")
-	tree.AddNode(path2, "p2")
-	tree.AddNode(path3, "p3")
-	tree.AddNode(path4, "p4")
+	tree.AddNode(path0, Slice("p0"))
+	tree.AddNode(path1, Slice("p1"))
+	tree.AddNode(path2, Slice("p2"))
+	tree.AddNode(path3, Slice("p3"))
+	tree.AddNode(path4, Slice("p4"))
 
 	if nodes := tree.AllLeafNodeInPath(path0); len(nodes) != 1 {
 		t.Error("AllLeafNodeInPath Failed")

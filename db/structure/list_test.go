@@ -1,6 +1,9 @@
 package structure
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestList(t *testing.T) {
 	list := NewList()
@@ -35,4 +38,30 @@ func TestList(t *testing.T) {
 	if _, ok := list.Pos(100); ok {
 		t.Error("Pos Failed")
 	}
+}
+
+func TestListCost(t *testing.T) {
+
+	list := NewList()
+
+	assert.Equal(t, int64(48), list.Cost())
+
+	list.PushBack(Slice("1234567890"))
+	assert.Equal(t, int64(48+34), list.Cost())
+	list.PopFront()
+	assert.Equal(t, int64(48), list.Cost())
+
+	list.PushBack(Slice("1234567890"))
+	assert.Equal(t, int64(48+34), list.Cost())
+	list.RemoveNode(list.BackNode())
+	assert.Equal(t, int64(48), list.Cost())
+
+	list.PushBack(Slice("1234567890"))
+	list.PushBack(Slice("1234567890"))
+	list.PushBack(Slice("1234567890"))
+	list.PushBack(Slice("1234567890"))
+
+	list.Trim(2, -1)
+	assert.Equal(t, int64(48+34*2), list.Cost())
+
 }

@@ -95,6 +95,7 @@ func NewServer() *Server {
 		quit:       false,
 		quitFlag:   make(chan struct{}),
 		rdbFile:    config.Conf.RDBFile,
+		dirty:      0,
 		sts:        NewStatus(),
 		cliTimeout: config.Conf.Timeout,
 		maxClients: config.Conf.MaxClients,
@@ -566,7 +567,7 @@ func (s *Server) TryRecover() {
 	if _, err := os.Stat(aof); err == nil {
 		logger.Info("Recover From AppendOnly File")
 		s.recoverFromAOF(aof)
-	} else if _, err := os.Stat(aof); err == nil {
+	} else if _, err := os.Stat(rdb); err == nil {
 		logger.Info("Recover From RDB File")
 		s.recoverFromRDB(aof, rdb)
 	}

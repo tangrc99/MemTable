@@ -1,5 +1,7 @@
 package structure
 
+import "unsafe"
+
 // ListNode 是一个双向链表节点
 type ListNode struct {
 	next, prev *ListNode
@@ -23,17 +25,26 @@ func (node *ListNode) Prev() *ListNode {
 	return node.prev
 }
 
+func (node *ListNode) Cost() int64 {
+	return 24 + node.Value.Cost()
+}
+
 // List 是一个双向链表
 type List struct {
 	head *ListNode
 	size int
+	cost int64
 }
+
+// listBasicCost 是链表字段的长度加上哨兵节点的长度
+const listBasicCost = int64(unsafe.Sizeof(List{})) + 24
 
 // NewList 创建一个双向链表并返回指针
 func NewList() *List {
 	l := List{
 		head: nil,
 		size: 0,
+		cost: listBasicCost,
 	}
 	head := &ListNode{
 		next: nil, prev: nil, list: &l, Value: nil,
@@ -90,6 +101,7 @@ func (list *List) InsertAfterNode(value Object, at *ListNode) *ListNode {
 	next.prev = &node
 	at.next = &node
 	list.size++
+	list.cost += node.Cost()
 	return &node
 }
 
@@ -113,6 +125,7 @@ func (list *List) InsertBeforeNode(value Object, at *ListNode) *ListNode {
 	prev.next = &node
 	at.prev = &node
 	list.size++
+	list.cost += node.Cost()
 	return &node
 }
 
@@ -132,6 +145,7 @@ func (list *List) RemoveNode(at *ListNode) Object {
 	at.next = nil
 	at.prev = nil
 	list.size--
+	list.cost -= at.Cost()
 	return at.Value
 }
 
@@ -167,7 +181,7 @@ func (list *List) Size() int {
 	return list.size
 }
 
-// Nil 返回链表是否为空链表
+// Empty 返回链表是否为空链表
 func (list *List) Empty() bool {
 	return list.size == 0
 }
@@ -378,6 +392,13 @@ func (list *List) Trim(start, end int) bool {
 	endNode.next = list.head
 
 	list.size = end - start + 1
+
+	// 重新计算 cost
+	list.cost = listBasicCost
+	for s := startNode; s != nil; s = s.Next() {
+		list.cost += s.Cost()
+	}
+
 	return true
 }
 
@@ -399,6 +420,7 @@ func (list *List) Set(value Object, pos int) bool {
 		for i := 0; i < pos; i++ {
 			p = p.prev
 		}
+		list.cost += value.Cost() - p.Value.Cost()
 		p.Value = value
 		return true
 	}
@@ -408,6 +430,7 @@ func (list *List) Set(value Object, pos int) bool {
 	for i := 0; i < pos; i++ {
 		p = p.next
 	}
+	list.cost += value.Cost() - p.Value.Cost()
 	p.Value = value
 	return true
 }
@@ -417,10 +440,9 @@ func (list *List) Clear() {
 	list.head.prev = list.head
 	list.head.next = list.head
 	list.size = 0
+	list.cost = listBasicCost
 }
 
 func (list *List) Cost() int64 {
-
-	// TODO:
-	return -1
+	return list.cost
 }

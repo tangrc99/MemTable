@@ -8,6 +8,8 @@ import (
 	"strconv"
 )
 
+type String = structure.String
+
 func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
 	e, ok := checkCommandAndLength(&cmd, "zadd", 4)
@@ -250,7 +252,7 @@ func zRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	keys, n := zsetVal.Pos(start, end)
 	res := make([]resp.RedisData, n)
 	for i, key := range keys {
-		res[i] = resp.MakeBulkData([]byte(key.(string)))
+		res[i] = resp.MakeBulkData([]byte(key.(String)))
 	}
 
 	return resp.MakeArrayData(res)
@@ -288,7 +290,7 @@ func zRevRange(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入�
 	keys, n := zsetVal.Pos(start, end)
 	res := make([]resp.RedisData, n)
 	for i, key := range keys {
-		res[n-i-1] = resp.MakeBulkData([]byte(key.(string)))
+		res[n-i-1] = resp.MakeBulkData([]byte(key.(String)))
 	}
 
 	return resp.MakeArrayData(res)

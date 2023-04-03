@@ -2,16 +2,19 @@ package structure
 
 import (
 	"math/rand"
+	"unsafe"
 )
+
+const skipListNodeBasicCost = int64(unsafe.Sizeof(skipListNode{}))
 
 type skipListNode struct {
 	next   []*skipListNode
 	height int
 	key    Float32
-	value  any
+	value  Object
 }
 
-func newSkipListNode(key Float32, value any, height int) *skipListNode {
+func newSkipListNode(key Float32, value Object, height int) *skipListNode {
 	return &skipListNode{
 		next:   make([]*skipListNode, height),
 		height: height,
@@ -35,19 +38,27 @@ func (node *skipListNode) removeNextNode(level int) {
 	node.next[level] = new_
 }
 
+func (node *skipListNode) Cost() int64 {
+	return skipListNodeBasicCost + node.value.Cost() + int64(node.height*8)
+}
+
 // SkipList 是一个跳跃表容器
 type SkipList struct {
 	size  int
 	level int
 	head  *skipListNode
+	cost  int64
 }
+
+const skipListBasicCost = int64(unsafe.Sizeof(skipListNode{}))
 
 // NewSkipList 创建指定 level 的跳跃表并返回指针
 func NewSkipList(level int) *SkipList {
 	return &SkipList{
 		size:  0,
 		level: level,
-		head:  newSkipListNode(-1, "", level),
+		head:  newSkipListNode(-1, Slice(""), level),
+		cost:  skipListBasicCost,
 	}
 }
 
@@ -63,7 +74,7 @@ func randomHeight(max int) int {
 }
 
 // Insert 将键值对插入到跳跃表中
-func (sl *SkipList) Insert(key Float32, value any) {
+func (sl *SkipList) Insert(key Float32, value Object) {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -92,11 +103,11 @@ func (sl *SkipList) Insert(key Float32, value any) {
 		prevs[i].changeNextNode(i, node)
 	}
 	sl.size++
-
+	sl.cost += node.Cost()
 }
 
 // InsertIfNotExist 将键值对插入到跳跃表中，若键已存在，返回 false
-func (sl *SkipList) InsertIfNotExist(key Float32, value any) bool {
+func (sl *SkipList) InsertIfNotExist(key Float32, value Object) bool {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -123,11 +134,12 @@ func (sl *SkipList) InsertIfNotExist(key Float32, value any) bool {
 		prevs[i].changeNextNode(i, node)
 	}
 	sl.size++
+	sl.cost += node.Cost()
 	return true
 }
 
 // Update 更新给定键的值，若键不存在，返回 false
-func (sl *SkipList) Update(key Float32, value any) bool {
+func (sl *SkipList) Update(key Float32, value Object) bool {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -139,14 +151,16 @@ func (sl *SkipList) Update(key Float32, value any) bool {
 	}
 
 	if cur.key == key {
+		sl.cost -= cur.Cost()
 		cur.value = value
+		sl.cost += cur.Cost()
 		return true
 	}
 	return false
 }
 
 // Get 返回键的值，如果键不存在返回 nil,false
-func (sl *SkipList) Get(key Float32) (any, bool) {
+func (sl *SkipList) Get(key Float32) (Object, bool) {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -181,12 +195,13 @@ func (sl *SkipList) Delete(key Float32) bool {
 	height := 0
 	if prevs[0].getNextNode(0) != nil && prevs[0].getNextNode(0).key == key {
 		height = prevs[0].getNextNode(0).height
-
+		node := prevs[0].getNextNode(0)
 		// 从底层到高层依次插入
 		for i := 0; i < height; i++ {
 			prevs[i].removeNextNode(i)
 		}
 		sl.size--
+		sl.cost -= node.Cost()
 		return true
 
 	}
@@ -214,7 +229,7 @@ func (sl *SkipList) Size() int {
 }
 
 // Range 返回给定键范围的所有节点值以及数量
-func (sl *SkipList) Range(min, max Float32) ([]any, int) {
+func (sl *SkipList) Range(min, max Float32) ([]Object, int) {
 
 	// 需要找到每一个层次的前驱
 	cur := sl.head
@@ -230,11 +245,11 @@ func (sl *SkipList) Range(min, max Float32) ([]any, int) {
 	for ; cur != nil && cur.key < min; cur = cur.getNextNode(0) {
 	}
 
-	values := make([]any, 0)
+	values := make([]Object, 0)
 	size := 0
 
 	for ; cur != nil && cur.key <= max; cur = cur.getNextNode(0) {
-		values = append(values, cur.value.(string))
+		values = append(values, cur.value.(String))
 		size++
 	}
 
@@ -280,12 +295,12 @@ func (sl *SkipList) GetPosByKey(key Float32) int {
 }
 
 // DeleteRange 删除跳跃表中指定返回的键值对，返回值和数量
-func (sl *SkipList) DeleteRange(min, max Float32) ([]any, int) {
+func (sl *SkipList) DeleteRange(min, max Float32) ([]Object, int) {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
 	deleted := 0
-	values := make([]any, 0)
+	values := make([]Object, 0)
 
 	// 每一个 prev 的 key 小于等于需要插入的 key
 	for i := sl.level - 1; i >= 0 && cur.key < min; i-- {
@@ -299,6 +314,7 @@ func (sl *SkipList) DeleteRange(min, max Float32) ([]any, int) {
 			if i == 0 {
 				values = append(values, n.value)
 				deleted++
+				sl.cost -= n.Cost()
 			}
 
 		}
@@ -310,7 +326,7 @@ func (sl *SkipList) DeleteRange(min, max Float32) ([]any, int) {
 }
 
 // DeletePos 删除跳跃表中指定位置的键值对，返回值和数量
-func (sl *SkipList) DeletePos(start, end int) ([]any, int) {
+func (sl *SkipList) DeletePos(start, end int) ([]Object, int) {
 
 	// 判别位置
 	if start < 0 {
@@ -345,7 +361,7 @@ func (sl *SkipList) DeletePos(start, end int) ([]any, int) {
 }
 
 // Pos 返回跳跃表中指定位置键值对的值和数量
-func (sl *SkipList) Pos(start, end int) ([]any, int) {
+func (sl *SkipList) Pos(start, end int) ([]Object, int) {
 
 	// 判别位置
 	if start < 0 {
@@ -370,7 +386,7 @@ func (sl *SkipList) Pos(start, end int) ([]any, int) {
 		cur = cur.getNextNode(0)
 	}
 
-	values := make([]any, 0)
+	values := make([]Object, 0)
 
 	for i := start; i <= end; i++ {
 		values = append(values, cur.value)
@@ -378,4 +394,8 @@ func (sl *SkipList) Pos(start, end int) ([]any, int) {
 	}
 	return values, end - start + 1
 
+}
+
+func (sl *SkipList) Cost() int64 {
+	return sl.cost
 }

@@ -1,5 +1,9 @@
 package structure
 
+import "unsafe"
+
+const trieTreeNodeBasicCost = int64(unsafe.Sizeof(trieTreeNode{}))
+
 type trieTreeNode struct {
 	Key      string                   // 键
 	Value    Object                   // 值
@@ -20,16 +24,24 @@ func newTrieTreeNode(key string, value Object, leaf bool, parent *trieTreeNode, 
 	}
 }
 
+func (n *trieTreeNode) Cost() int64 {
+	return n.Value.Cost() + trieTreeNodeBasicCost
+}
+
+const trieTreeBasicCost = int64(unsafe.Sizeof(TrieTree{}))
+
 // TrieTree 是一个前缀树容器
 type TrieTree struct {
 	root  *trieTreeNode // 根节点
 	count int           // 叶节点数量
+	cost  int64
 }
 
 // NewTrieTree 创建一个前缀树 TrieTree 并返回指针
 func NewTrieTree() *TrieTree {
 	tree := TrieTree{
 		root: newTrieTreeNode("", nil, false, nil, nil),
+		cost: trieTreeNodeBasicCost,
 	}
 	tree.root.tree = &tree
 	return &tree
@@ -43,6 +55,7 @@ func (tree *TrieTree) AddNode(paths []string, value Object) *trieTreeNode {
 		node, exists := cur.children[path]
 		if !exists {
 			node = newTrieTreeNode(path, nil, false, cur, tree)
+			tree.cost += node.Cost()
 			cur.children[path] = node
 		}
 		cur = node
@@ -52,7 +65,10 @@ func (tree *TrieTree) AddNode(paths []string, value Object) *trieTreeNode {
 		tree.count++
 	}
 	cur.isLeaf = true
+	tree.cost -= cur.Cost()
 	cur.Value = value
+	tree.cost += cur.Cost()
+
 	return cur
 }
 
@@ -65,6 +81,7 @@ func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value Object) (*trieTreeN
 		node, exists := cur.children[path]
 		if !exists {
 			node = newTrieTreeNode(path, nil, false, cur, tree)
+			tree.cost += node.Cost()
 			cur.children[path] = node
 		}
 		cur = node
@@ -77,6 +94,8 @@ func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value Object) (*trieTreeN
 	cur.isLeaf = true
 	cur.Value = value
 	tree.count++
+	tree.cost += cur.Cost()
+
 	return cur, true
 }
 
@@ -88,11 +107,13 @@ func (tree *TrieTree) DeleteLeafNode(node *trieTreeNode) bool {
 
 	cur := node.parent
 	delete(cur.children, node.Key)
+	tree.cost -= node.Cost()
 
 	for cur != nil && !cur.isLeaf && len(cur.children) == 0 {
 		nxt := cur.parent
 		if nxt != nil {
 			delete(nxt.children, cur.Key)
+			tree.cost -= cur.Cost()
 		}
 		cur = nxt
 	}
@@ -224,4 +245,8 @@ func (tree *TrieTree) AllLeafNodeInPathRecursive(paths []string) []*trieTreeNode
 	tree.dfsGetLeafNodes(cur, &r)
 
 	return r
+}
+
+func (tree *TrieTree) Cost() int64 {
+	return tree.cost
 }

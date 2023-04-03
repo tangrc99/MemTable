@@ -24,11 +24,11 @@ func (zset *ZSet) Add(score Float32, key string) {
 		// 如果存在则需要先删除跳跃表中原来的键值对
 		zset.dict.Set(key, score)
 		zset.skipList.Delete(old.(Float32))
-		zset.skipList.Insert(score, key)
+		zset.skipList.Insert(score, String(key))
 
 	} else {
 		zset.dict.Set(key, score)
-		zset.skipList.Insert(score, key)
+		zset.skipList.Insert(score, String(key))
 	}
 }
 
@@ -38,13 +38,11 @@ func (zset *ZSet) AddIfNotExist(score Float32, key string) bool {
 	_, exist := zset.dict.Get(key)
 
 	if exist {
-
 		return false
-
 	}
 
 	zset.dict.Set(key, score)
-	zset.skipList.Insert(score, key)
+	zset.skipList.Insert(score, String(key))
 
 	return true
 }
@@ -83,7 +81,7 @@ func (zset *ZSet) GetKeysByRange(min, max Float32) ([]string, int) {
 	values, size := zset.skipList.Range(min, max)
 	keys := make([]string, size)
 	for i := 0; i < size; i++ {
-		keys[i] = values[i].(string)
+		keys[i] = string(values[i].(String))
 	}
 
 	return keys, size
@@ -114,7 +112,7 @@ func (zset *ZSet) ReviseScore(key string, score Float32) bool {
 	}
 
 	zset.skipList.Delete(old.(Float32))
-	zset.skipList.Insert(score, key)
+	zset.skipList.Insert(score, String(key))
 	return true
 }
 
@@ -132,7 +130,7 @@ func (zset *ZSet) IncrScore(key string, increment Float32) (Float32, bool) {
 
 	zset.dict.Set(key, old.(Float32)+increment)
 	zset.skipList.Delete(old.(Float32))
-	zset.skipList.Insert(increment+old.(Float32), key)
+	zset.skipList.Insert(increment+old.(Float32), String(key))
 	return increment + old.(Float32), true
 }
 
@@ -141,7 +139,7 @@ func (zset *ZSet) DeleteRange(start, end int) int {
 	keys, deleted := zset.skipList.DeletePos(start, end)
 
 	for _, key := range keys {
-		zset.dict.Delete(key.(string))
+		zset.dict.Delete(string(key.(String)))
 	}
 
 	return deleted
@@ -152,19 +150,17 @@ func (zset *ZSet) DeleteRangeByScore(min, max Float32) int {
 	keys, deleted := zset.skipList.DeleteRange(min, max)
 
 	for _, key := range keys {
-		zset.dict.Delete(key.(string))
+		zset.dict.Delete(string(key.(String)))
 	}
 
 	return deleted
 }
 
 // Pos 返回指定位置范围内的所有键
-func (zset *ZSet) Pos(start, end int) ([]any, int) {
+func (zset *ZSet) Pos(start, end int) ([]Object, int) {
 	return zset.skipList.Pos(start, end)
 }
 
 func (zset *ZSet) Cost() int64 {
-
-	// TODO:
-	return -1
+	return zset.skipList.Cost() + zset.dict.Cost()
 }
