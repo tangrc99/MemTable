@@ -19,7 +19,7 @@ const databaseBasicCost = int64(unsafe.Sizeof(DataBase{}))
 type DataBase struct {
 	dict    *structure.Dict // 存储键值对
 	ttlKeys *structure.Dict // 存储过期键
-	watches *structure.Dict // 存储监视键
+	watches *watcher        // 存储监视键
 
 	rookies     *eviction.RookieList // 预备表，优先从预备表中淘汰
 	evict       eviction.Eviction
@@ -34,7 +34,7 @@ func NewDataBase(slot int, ops ...Option) *DataBase {
 	db := &DataBase{
 		dict:        structure.NewDict(slot),
 		ttlKeys:     structure.NewDict(1),
-		watches:     structure.NewDict(1),
+		watches:     newWatcher(),
 		evict:       eviction.NewNoEviction(),
 		enableEvict: false,
 	}
@@ -258,59 +258,22 @@ func (db_ *DataBase) TTLSize() int {
 
 // Watch 监控一个键是否被修改，如果键值被修改 flag 变量将会被设置为 false
 func (db_ *DataBase) Watch(key string, flag *bool) {
-
-	//v, ok := db_.watches.Get(key)
-	//if !ok {
-	//	flags := make(map[*bool]struct{})
-	//	flags[flag] = struct{}{}
-	//	db_.watches.Set(key, &flags)
-	//	return
-	//}
-	//
-	//flags := v.(*map[*bool]struct{})
-	//(*flags)[flag] = struct{}{}
+	db_.watches.watch(key, flag)
 }
 
 // UnWatch 取消对键的监控
 func (db_ *DataBase) UnWatch(key string, flag *bool) {
-	//v, ok := db_.watches.Get(key)
-	//if !ok {
-	//	return
-	//}
-	//flags := v.(*map[*bool]struct{})
-	//delete(*flags, flag)
-	//
-	//if len(*flags) == 0 {
-	//	db_.watches.Delete(key)
-	//}
+	db_.watches.unwatch(key, flag)
 }
 
 // ReviseNotify 通知键修改
 func (db_ *DataBase) ReviseNotify(key string) {
-	//v, ok := db_.watches.Get(key)
-	//if !ok {
-	//	return
-	//}
-	//flags := v.(*map[*bool]struct{})
-	//
-	//for flag := range *flags {
-	//	*flag = true
-	//}
+	db_.watches.reviseNotify(key)
 }
 
 // ReviseNotifyAll 通知所有被 watch 的键修改，用于 flushdb 和 flushall 命令
 func (db_ *DataBase) ReviseNotifyAll() {
-
-	//dicts, _ := db_.watches.GetAll()
-	//
-	//for _, dict := range *dicts {
-	//	for _, v := range dict {
-	//		flags := v.(*map[*bool]struct{})
-	//		for flag := range *flags {
-	//			*flag = true
-	//		}
-	//	}
-	//}
+	db_.watches.reviseNotifyAll()
 }
 
 // WatchSize 返回数据库中被监控的键值对数目
