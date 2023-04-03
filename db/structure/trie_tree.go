@@ -41,7 +41,7 @@ type TrieTree struct {
 func NewTrieTree() *TrieTree {
 	tree := TrieTree{
 		root: newTrieTreeNode("", nil, false, nil, nil),
-		cost: trieTreeNodeBasicCost,
+		cost: trieTreeBasicCost,
 	}
 	tree.root.tree = &tree
 	return &tree
