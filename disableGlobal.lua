@@ -3,6 +3,7 @@
 --- Created by tangrenchu.
 --- DateTime: 2023/2/12 00:43
 --- 由于 Gopher-Lua 中不支持 Lua 的调试模式，因此这里使用判别名称这一简单的方式来禁用全局变量
+--- 这里做的控制是只允许使用 f_* 格式的全局变量
 
 setmetatable(_G, {
             __newindex = function (t, n, v)

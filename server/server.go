@@ -55,6 +55,7 @@ type Server struct {
 	aofEnabled bool       // 是否开启 aof
 
 	full bool // 表示已经写满
+	cost int64
 
 	// 协程池
 	gopool *gopool.Pool // 用于客户端启动的协程池
@@ -589,6 +590,19 @@ func (s *Server) saveData() {
 		} else {
 			logger.Info("quit: Generated RDB File")
 		}
+	}
+}
+
+func (s *Server) collectCost() {
+
+	s.full = false
+	s.cost = s.clis.Cost()
+
+	for _, d := range s.dbs {
+		s.cost += d.Cost()
+	}
+	if uint64(s.cost) > config.Conf.MaxMemory {
+		s.full = true
 	}
 }
 

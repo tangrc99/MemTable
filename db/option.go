@@ -32,6 +32,20 @@ func WithEviction(policy EvictPolicy) Option {
 	}
 }
 
+func WithRookies() Option {
+	return func(db *DataBase) {
+		db.rookies = eviction.NewRookieList()
+	}
+}
+
+// WithEvictNotification 当数据库因为过期，或者内存已满发生淘汰时，会向 channel 发送一个通知
+func WithEvictNotification(evictNotification chan string) Option {
+	return func(db *DataBase) {
+		db.notifies = evictNotification
+		db.enableNotification = true
+	}
+}
+
 //func WithMemoryLimit(max uint64) Option {
 //	return func(db *DataBase) {
 //

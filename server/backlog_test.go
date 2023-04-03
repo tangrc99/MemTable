@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/logger"
 	"testing"
@@ -15,7 +14,7 @@ func TestBackLog(t *testing.T) {
 		return
 	}
 
-	s := NewServer(fmt.Sprintf("%s:%d", config.Conf.Host, config.Conf.Port))
+	s := NewServer()
 	s.InitModules()
 	s.standAloneToMaster()
 	println(s.backLog.LowWaterLevel())

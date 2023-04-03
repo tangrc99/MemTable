@@ -9,6 +9,7 @@ import (
 	"github.com/tangrc99/MemTable/server/global"
 	"net"
 	"time"
+	"unsafe"
 )
 
 type ClientStatus int
@@ -123,7 +124,7 @@ func (cli *Client) InitWatchers() {
 }
 
 func (cli *Client) Cost() int64 {
-	return 0
+	return int64(unsafe.Sizeof(Client{}))
 }
 
 type ClientList struct {
@@ -232,4 +233,8 @@ func (clients *ClientList) UpdateTimestamp(cli *Client) {
 	cli.tp = global.Now
 	clients.list.RemoveNode(node)
 	clients.list.PushFront(cli)
+}
+
+func (clients *ClientList) Cost() int64 {
+	return clients.list.Cost() + int64(24*clients.Size())
 }

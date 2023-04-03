@@ -57,8 +57,7 @@ func (db_ *DataBase) checkNotExpired(key string) bool {
 		return true
 	}
 
-	db_.dict.Delete(key)
-	db_.ttlKeys.Delete(key)
+	db_.DeleteKey(key)
 
 	if db_.enableNotification {
 		// 这里不会发生阻塞，因为每一次事务循环只会清除最多
@@ -300,6 +299,7 @@ func (db_ *DataBase) KeysInSlot(slotSeq, count int) ([]string, int) {
 	return db_.dict.KeysInShard(slotSeq, count)
 }
 
+// IsKeyPermitted 检查键是否允许被写入，如果不允许返回 -1，否则返回权重值
 func (db_ *DataBase) IsKeyPermitted(key string) int64 {
 	if !db_.evict.Permitted(key) {
 		return -1
@@ -331,7 +331,7 @@ func (db_ *DataBase) evictKeys(access, roomNeeded int64) (evicted []string, acce
 	return victims, true
 }
 
-func (db_ *DataBase) evictRookies(access, roomNeeded int64) (evicted []string, accepted bool) {
+func (db_ *DataBase) evictRookies(_, roomNeeded int64) (evicted []string, accepted bool) {
 
 	victims := make([]string, 0, roomNeeded)
 
@@ -390,9 +390,7 @@ func (db_ *DataBase) evictTTLKeys(access, roomNeeded int64) (evicted []string, a
 	return victims, true
 }
 
-func (db_ *DataBase) Evict(key []byte, roomNeeded int64) (evicted []string, accepted bool) {
-
-	access := db_.IsKeyPermitted(string(key))
+func (db_ *DataBase) Evict(access, roomNeeded int64) (evicted []string, accepted bool) {
 
 	if !db_.enableEvict {
 		return []string{}, false
@@ -411,6 +409,12 @@ func (db_ *DataBase) Evict(key []byte, roomNeeded int64) (evicted []string, acce
 		victims, _ := db_.evictKeys(access, roomNeeded)
 		evicted = append(evicted, victims...)
 	}
+
+	// 驱逐通知
+	for i := range evicted {
+		db_.notifies <- evicted[i]
+	}
+
 	return evicted, accepted
 }
 

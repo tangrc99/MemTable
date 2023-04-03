@@ -11,8 +11,9 @@ var ErrScheduleTimeout = fmt.Errorf("schedule error: timed out")
 
 // Pool contains logic of goroutine reuse.
 type Pool struct {
-	sem  chan struct{}
-	work chan func()
+	sem  chan struct{} // channel to evaluate wait-queue
+	work chan func()   // task to be executed
+	max  int           // max goroutine of this pool
 }
 
 // NewPool creates new goroutine pool with given size. It also creates a work
@@ -28,6 +29,7 @@ func NewPool(size, queue, spawn int) *Pool {
 	p := &Pool{
 		sem:  make(chan struct{}, size),
 		work: make(chan func(), queue),
+		max:  size,
 	}
 	for i := 0; i < spawn; i++ {
 		p.sem <- struct{}{}
@@ -71,4 +73,8 @@ func (p *Pool) worker(task func()) {
 	for task := range p.work {
 		task()
 	}
+}
+
+func (p *Pool) Maximum() int {
+	return p.max
 }

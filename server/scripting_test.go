@@ -1,14 +1,15 @@
 package server
 
 import (
+	"github.com/tangrc99/MemTable/db/structure"
 	"testing"
 	"time"
 )
 
 func TestScriptingGlobal(t *testing.T) {
-	s := NewServer("127.0.0.1:6379")
+	s := NewServer()
 
-	s.dbs[0].SetKey("k1", []byte("v1"))
+	s.dbs[0].SetKey("k1", structure.Slice("v1"))
 
 	luaScript := "return { redis.call('keys')[1] , ARGV[1] } "
 
@@ -23,7 +24,7 @@ func TestScriptingGlobal(t *testing.T) {
 
 func TestScriptingAbort(t *testing.T) {
 
-	_ = NewServer("127.0.0.1:6379")
+	_ = NewServer()
 
 	luaScript := "local clock = os.clock\n  function f_sleep(n)  -- seconds\n    local t0 = clock()\n    while clock() - t0 <= n do end\n  end\n  f_sleep(10)"
 
@@ -53,7 +54,7 @@ func TestScriptingAbort(t *testing.T) {
 }
 
 func TestScriptingLocal(t *testing.T) {
-	_ = NewServer("127.0.0.1:6379")
+	_ = NewServer()
 
 	luaScript := "a = 1 return a"
 
