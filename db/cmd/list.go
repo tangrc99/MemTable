@@ -54,7 +54,7 @@ func lPush(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	for _, ele := range cmd[2:] {
 		n++
-		listVal.PushFront(ele)
+		listVal.PushFront(structure.Slice(ele))
 	}
 
 	return resp.MakeIntData(int64(n))
@@ -83,7 +83,7 @@ func rPush(db *db.DataBase, cmd [][]byte) resp.RedisData { // 进行输入类型
 
 	for _, ele := range cmd[2:] {
 		n++
-		listVal.PushBack(ele)
+		listVal.PushBack(structure.Slice(ele))
 	}
 
 	return resp.MakeIntData(int64(n))
@@ -126,7 +126,7 @@ func lPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	res := make([]resp.RedisData, count)
 
 	for i := 0; i < count; i++ {
-		v, _ := listVal.PopFront().([]byte)
+		v, _ := listVal.PopFront().(structure.Slice)
 		res[i] = resp.MakeBulkData(v)
 	}
 
@@ -170,7 +170,7 @@ func rPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	res := make([]resp.RedisData, count)
 
 	for i := 0; i < count; i++ {
-		v, _ := listVal.PopBack().([]byte)
+		v, _ := listVal.PopBack().(structure.Slice)
 		res[i] = resp.MakeBulkData(v)
 	}
 
@@ -205,7 +205,7 @@ func lIndex(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	return resp.MakeBulkData(nodeVal.([]byte))
+	return resp.MakeBulkData(nodeVal.(structure.Slice))
 }
 
 func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData {
@@ -229,7 +229,7 @@ func lPos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	pos := 0
 
 	for cur := listVal.FrontNode(); cur != nil; cur = cur.Next() {
-		byteVal := cur.Value.([]byte)
+		byteVal := cur.Value.(structure.Slice)
 
 		if string(byteVal) == string(cmd[2]) {
 			return resp.MakeIntData(int64(pos))
@@ -262,7 +262,7 @@ func lSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not an integer or out of range")
 	}
 
-	ok = listVal.Set(cmd[3], pos)
+	ok = listVal.Set(structure.Slice(cmd[3]), pos)
 	if !ok {
 		return resp.MakeErrorData("ERR index out of range")
 	}
@@ -296,7 +296,7 @@ func lRem(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	deleted := 0
 	for cur := listVal.FrontNode(); cur != nil && deleted <= count; {
-		byteVal := cur.Value.([]byte)
+		byteVal := cur.Value.(structure.Slice)
 
 		if string(byteVal) == string(cmd[2]) {
 
@@ -346,7 +346,7 @@ func lRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 	res := make([]resp.RedisData, len(values))
 	for i, v := range values {
-		res[i] = resp.MakeBulkData(v.([]byte))
+		res[i] = resp.MakeBulkData(v.(structure.Slice))
 	}
 
 	return resp.MakeArrayData(res)

@@ -4,7 +4,7 @@ package structure
 type ListNode struct {
 	next, prev *ListNode
 	list       *List
-	Value      any
+	Value      Object
 }
 
 // Next 返回 ListNode 的下一个节点指针，若当前 ListNode 为链表尾，返回 nil
@@ -61,17 +61,17 @@ func (list *List) BackNode() *ListNode {
 }
 
 // Front 返回链表第一个节点存储的值，如果不存在值会返回 nil
-func (list *List) Front() any {
+func (list *List) Front() Object {
 	return list.head.next.Value
 }
 
 // Back 返回链表最后一个节点存储的值，如果不存在值会返回 nil
-func (list *List) Back() any {
+func (list *List) Back() Object {
 	return list.head.prev.Value
 }
 
 // InsertAfterNode 创建一个 ListNode 对象，并插入到 at 之前
-func (list *List) InsertAfterNode(value any, at *ListNode) *ListNode {
+func (list *List) InsertAfterNode(value Object, at *ListNode) *ListNode {
 	if at == nil {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (list *List) InsertAfterNode(value any, at *ListNode) *ListNode {
 }
 
 // InsertBeforeNode 创建一个 ListNode 对象，并插入到 at 之后
-func (list *List) InsertBeforeNode(value any, at *ListNode) *ListNode {
+func (list *List) InsertBeforeNode(value Object, at *ListNode) *ListNode {
 	if at == nil {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (list *List) InsertBeforeNode(value any, at *ListNode) *ListNode {
 }
 
 // RemoveNode 删除 at 节点，并返回其存储的值
-func (list *List) RemoveNode(at *ListNode) any {
+func (list *List) RemoveNode(at *ListNode) Object {
 
 	if at.list != list {
 		return nil
@@ -136,17 +136,17 @@ func (list *List) RemoveNode(at *ListNode) any {
 }
 
 // PushFront 创建一个 ListNode 对象，并插入到链表头
-func (list *List) PushFront(value any) {
+func (list *List) PushFront(value Object) {
 	list.InsertAfterNode(value, list.head)
 }
 
 // PushBack 创建一个 ListNode 对象，并插入到链表尾
-func (list *List) PushBack(value any) {
+func (list *List) PushBack(value Object) {
 	list.InsertBeforeNode(value, list.head)
 }
 
 // PopFront 删除链表头，并返回值
-func (list *List) PopFront() any {
+func (list *List) PopFront() Object {
 	if list.Size() == 0 {
 		return nil
 	}
@@ -155,7 +155,7 @@ func (list *List) PopFront() any {
 }
 
 // PopBack 删除链表尾，并返回值
-func (list *List) PopBack() any {
+func (list *List) PopBack() Object {
 	if list.Size() == 0 {
 		return nil
 	}
@@ -167,13 +167,13 @@ func (list *List) Size() int {
 	return list.size
 }
 
-// Empty 返回链表是否为空链表
+// Nil 返回链表是否为空链表
 func (list *List) Empty() bool {
 	return list.size == 0
 }
 
 // InsertAfter 将元素插入到给定位置后面，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
-func (list *List) InsertAfter(value any, pos int) bool {
+func (list *List) InsertAfter(value Object, pos int) bool {
 	if pos >= list.Size() || pos < 0 {
 		return false
 	}
@@ -200,7 +200,7 @@ func (list *List) InsertAfter(value any, pos int) bool {
 }
 
 // InsertBefore 将元素插入到给定位置后面，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
-func (list *List) InsertBefore(value any, pos int) bool {
+func (list *List) InsertBefore(value Object, pos int) bool {
 
 	if pos >= list.Size() || pos < 0 {
 		return false
@@ -229,7 +229,7 @@ func (list *List) InsertBefore(value any, pos int) bool {
 }
 
 // Pos 返回指定位置的值，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾。如果位置不存在，返回 nil
-func (list *List) Pos(pos int) (any, bool) {
+func (list *List) Pos(pos int) (Object, bool) {
 	if pos < 0 {
 		pos += list.Size()
 	}
@@ -289,7 +289,7 @@ func (list *List) PosNode(pos int) (*ListNode, bool) {
 }
 
 // Range 返回范围之间的链表值，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
-func (list *List) Range(start, end int) ([]any, int) {
+func (list *List) Range(start, end int) ([]Object, int) {
 
 	if start < 0 {
 		start += list.Size()
@@ -321,7 +321,7 @@ func (list *List) Range(start, end int) ([]any, int) {
 		p = p.next
 	}
 
-	values := make([]any, end-start+1)
+	values := make([]Object, end-start+1)
 
 	for i := start; i <= end; i++ {
 		values[i-start] = p.Value
@@ -382,7 +382,7 @@ func (list *List) Trim(start, end int) bool {
 }
 
 // Set 更新指定位置的链表值，如果 pos 小于 0，代表倒序位置，如 -1 代表链表尾
-func (list *List) Set(value any, pos int) bool {
+func (list *List) Set(value Object, pos int) bool {
 	if pos < 0 {
 		pos += list.Size()
 	}
@@ -417,4 +417,10 @@ func (list *List) Clear() {
 	list.head.prev = list.head
 	list.head.next = list.head
 	list.size = 0
+}
+
+func (list *List) Cost() int64 {
+
+	// TODO:
+	return -1
 }

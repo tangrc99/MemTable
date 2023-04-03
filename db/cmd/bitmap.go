@@ -24,7 +24,7 @@ func setbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		if err := checkType(value, STRING); err != nil {
 			return err
 		}
-		byteVal = value.([]byte)
+		byteVal = value.(structure.Slice)
 	}
 
 	pos, err := strconv.Atoi(string(cmd[3]))
@@ -43,7 +43,7 @@ func setbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	bm := structure.NewBitMapFromBytes(byteVal)
 
 	old := bm.GetSet(pos, byte(bitVal))
-	db.SetKey(string(cmd[1]), ([]byte)(*bm))
+	db.SetKey(string(cmd[1]), (structure.Slice)(*bm))
 
 	return resp.MakeIntData(int64(old))
 }
@@ -69,7 +69,7 @@ func getbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR bit offset is not an integer or out of range")
 	}
 
-	bm := structure.NewBitMapFromBytes(value.([]byte))
+	bm := structure.NewBitMapFromBytes(value.(structure.Slice))
 
 	old := bm.Get(pos)
 
@@ -115,7 +115,7 @@ func bitcount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		end = e
 	}
 
-	bm := structure.NewBitMapFromBytes(value.([]byte))
+	bm := structure.NewBitMapFromBytes(value.(structure.Slice))
 
 	count := bm.Count(start, end)
 
@@ -164,7 +164,7 @@ func bitpos(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		end = e
 	}
 
-	bm := structure.NewBitMapFromBytes(value.([]byte))
+	bm := structure.NewBitMapFromBytes(value.(structure.Slice))
 
 	pos := bm.Pos(byte(bitVal), start, end)
 

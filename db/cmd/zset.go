@@ -35,7 +35,7 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 				return resp.MakeErrorData("ERR value is not a valid float")
 			}
 
-			if zset.AddIfNotExist(float32(score), string(cmd[i+1])) {
+			if zset.AddIfNotExist(structure.Float32(score), string(cmd[i+1])) {
 				added++
 			}
 		}
@@ -49,7 +49,7 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return err
 	}
 
-	scores := make([]float32, l/2-1)
+	scores := make([]structure.Float32, l/2-1)
 	members := make([][]byte, l/2-1)
 
 	for i := 2; i < l; i += 2 {
@@ -58,7 +58,7 @@ func zADD(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		if err != nil {
 			return resp.MakeErrorData("ERR value is not a valid float")
 		}
-		scores[i/2-1] = float32(score)
+		scores[i/2-1] = structure.Float32(score)
 		members[i/2-1] = cmd[i+1]
 	}
 
@@ -108,7 +108,7 @@ func zCount(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not a valid float")
 	}
 
-	count := zsetVal.CountByRange(float32(min), float32(max))
+	count := zsetVal.CountByRange(structure.Float32(min), structure.Float32(max))
 	return resp.MakeIntData(int64(count))
 }
 
@@ -185,7 +185,7 @@ func zIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 			return resp.MakeErrorData("ERR value is not a valid float")
 		}
 
-		zset.Add(float32(increment), string(cmd[3]))
+		zset.Add(structure.Float32(increment), string(cmd[3]))
 
 		db.SetKey(string(cmd[1]), zset)
 
@@ -204,10 +204,10 @@ func zIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not a valid float")
 	}
 
-	score, ok := zsetVal.IncrScore(string(cmd[3]), float32(increment))
+	score, ok := zsetVal.IncrScore(string(cmd[3]), structure.Float32(increment))
 	if !ok {
 
-		zsetVal.Add(float32(increment), string(cmd[3]))
+		zsetVal.Add(structure.Float32(increment), string(cmd[3]))
 		return resp.MakeBulkData(cmd[2])
 	}
 
@@ -446,7 +446,7 @@ func zRemRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not a valid float")
 	}
 
-	deleted := zsetVal.DeleteRangeByScore(float32(min), float32(max))
+	deleted := zsetVal.DeleteRangeByScore(structure.Float32(min), structure.Float32(max))
 	return resp.MakeIntData(int64(deleted))
 }
 
@@ -479,7 +479,7 @@ func zRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not a valid float")
 	}
 
-	keys, n := zsetVal.GetKeysByRange(float32(min), float32(max))
+	keys, n := zsetVal.GetKeysByRange(structure.Float32(min), structure.Float32(max))
 
 	res := make([]resp.RedisData, n)
 	for i, key := range keys {
@@ -518,7 +518,7 @@ func zRevRangeByScore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeErrorData("ERR value is not a valid float")
 	}
 
-	keys, n := zsetVal.GetKeysByRange(float32(min), float32(max))
+	keys, n := zsetVal.GetKeysByRange(structure.Float32(min), structure.Float32(max))
 
 	res := make([]resp.RedisData, n)
 	for i, key := range keys {

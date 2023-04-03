@@ -30,11 +30,11 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 
 			if expiredAt, ok := db_.ttlKeys.Get(k); ok {
 
-				ttl = uint64(expiredAt.(int64) * 1000)
+				ttl = uint64(expiredAt.(Int64) * 1000)
 				ttls++
 			}
 
-			if str, ok := v.([]byte); ok {
+			if str, ok := v.(structure.Slice); ok {
 
 				if ttl > 0 {
 					err = enc.WriteStringObject(k, str, encoder.WithTTL(ttl))
@@ -47,7 +47,7 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 				values, n := list.Range(0, -1)
 				listVal := make([][]byte, n)
 				for i, value := range values {
-					listVal[i] = value.([]byte)
+					listVal[i] = value.(structure.Slice)
 				}
 				if ttl > 0 {
 					err = enc.WriteListObject(k, listVal, encoder.WithTTL(ttl))
@@ -86,7 +86,7 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 				kvs, _ := hash.GetAll()
 				entrys := make(map[string][]byte)
 				for key, value := range (*kvs)[0] {
-					entrys[key] = value.([]byte)
+					entrys[key] = value.(structure.Slice)
 				}
 
 				if ttl > 0 {

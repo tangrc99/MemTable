@@ -15,7 +15,7 @@ func NewZSet() *ZSet {
 }
 
 // Add 插入一个键并设置权重，若键已存在，覆盖原有的权重
-func (zset *ZSet) Add(score float32, key string) {
+func (zset *ZSet) Add(score Float32, key string) {
 
 	old, exist := zset.dict.Get(key)
 
@@ -23,7 +23,7 @@ func (zset *ZSet) Add(score float32, key string) {
 
 		// 如果存在则需要先删除跳跃表中原来的键值对
 		zset.dict.Set(key, score)
-		zset.skipList.Delete(old.(float32))
+		zset.skipList.Delete(old.(Float32))
 		zset.skipList.Insert(score, key)
 
 	} else {
@@ -33,7 +33,7 @@ func (zset *ZSet) Add(score float32, key string) {
 }
 
 // AddIfNotExist 插入一个键并设置权重，若键已存在，返回 false
-func (zset *ZSet) AddIfNotExist(score float32, key string) bool {
+func (zset *ZSet) AddIfNotExist(score Float32, key string) bool {
 
 	_, exist := zset.dict.Get(key)
 
@@ -58,7 +58,7 @@ func (zset *ZSet) Delete(key string) bool {
 		return false
 	}
 
-	zset.skipList.Delete(score.(float32))
+	zset.skipList.Delete(score.(Float32))
 	return true
 }
 
@@ -68,17 +68,17 @@ func (zset *ZSet) Size() int {
 }
 
 // GetScoreByKey 返回键的权重，若键不存在，返回 -1,false
-func (zset *ZSet) GetScoreByKey(key string) (float32, bool) {
+func (zset *ZSet) GetScoreByKey(key string) (Float32, bool) {
 
 	score, ok := zset.dict.Get(key)
 	if !ok {
 		return -1, false
 	}
-	return score.(float32), ok
+	return score.(Float32), ok
 }
 
 // GetKeysByRange 返回权重范围内的所有键以及数量
-func (zset *ZSet) GetKeysByRange(min, max float32) ([]string, int) {
+func (zset *ZSet) GetKeysByRange(min, max Float32) ([]string, int) {
 
 	values, size := zset.skipList.Range(min, max)
 	keys := make([]string, size)
@@ -90,17 +90,17 @@ func (zset *ZSet) GetKeysByRange(min, max float32) ([]string, int) {
 }
 
 // CountByRange 返回权重范围内所有键的数量
-func (zset *ZSet) CountByRange(min, max float32) int {
+func (zset *ZSet) CountByRange(min, max Float32) int {
 	return zset.skipList.CountByRange(min, max)
 }
 
 // PosByScore 获取权重值的排序位置，若权重不存在，返回-1
-func (zset *ZSet) PosByScore(score float32) int {
+func (zset *ZSet) PosByScore(score Float32) int {
 	return zset.skipList.GetPosByKey(score)
 }
 
 // ReviseScore 修改键的权重值，若键不存在，返回 false
-func (zset *ZSet) ReviseScore(key string, score float32) bool {
+func (zset *ZSet) ReviseScore(key string, score Float32) bool {
 	old, exist := zset.dict.Get(key)
 
 	if exist {
@@ -109,17 +109,17 @@ func (zset *ZSet) ReviseScore(key string, score float32) bool {
 
 	}
 
-	if old.(float32) == score {
+	if old.(Float32) == score {
 		return true
 	}
 
-	zset.skipList.Delete(old.(float32))
+	zset.skipList.Delete(old.(Float32))
 	zset.skipList.Insert(score, key)
 	return true
 }
 
 // IncrScore 将键的权重值增值指定的 increment，若键不存在，返回 false
-func (zset *ZSet) IncrScore(key string, increment float32) (float32, bool) {
+func (zset *ZSet) IncrScore(key string, increment Float32) (Float32, bool) {
 	old, exist := zset.dict.Get(key)
 
 	if !exist {
@@ -127,13 +127,13 @@ func (zset *ZSet) IncrScore(key string, increment float32) (float32, bool) {
 	}
 
 	if increment == 0 {
-		return old.(float32), true
+		return old.(Float32), true
 	}
 
-	zset.dict.Set(key, old.(float32)+increment)
-	zset.skipList.Delete(old.(float32))
-	zset.skipList.Insert(increment+old.(float32), key)
-	return increment + old.(float32), true
+	zset.dict.Set(key, old.(Float32)+increment)
+	zset.skipList.Delete(old.(Float32))
+	zset.skipList.Insert(increment+old.(Float32), key)
+	return increment + old.(Float32), true
 }
 
 // DeleteRange 删除指定位置范围内的所有键，并返回删除数量
@@ -148,7 +148,7 @@ func (zset *ZSet) DeleteRange(start, end int) int {
 }
 
 // DeleteRangeByScore 删除权重范围内的所有键，返回删除数量
-func (zset *ZSet) DeleteRangeByScore(min, max float32) int {
+func (zset *ZSet) DeleteRangeByScore(min, max Float32) int {
 	keys, deleted := zset.skipList.DeleteRange(min, max)
 
 	for _, key := range keys {
@@ -161,4 +161,10 @@ func (zset *ZSet) DeleteRangeByScore(min, max float32) int {
 // Pos 返回指定位置范围内的所有键
 func (zset *ZSet) Pos(start, end int) ([]any, int) {
 	return zset.skipList.Pos(start, end)
+}
+
+func (zset *ZSet) Cost() int64 {
+
+	// TODO:
+	return -1
 }

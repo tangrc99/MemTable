@@ -33,9 +33,7 @@ func hSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	for i := 2; i < l; i += 2 {
-
-		hashVal.Set(string(cmd[i]), cmd[i+1])
-
+		hashVal.Set(string(cmd[i]), structure.Slice(cmd[i+1]))
 	}
 
 	return resp.MakeIntData(int64(l/2 - 1))
@@ -68,7 +66,7 @@ func hMSet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	for i := 2; i < l; i += 2 {
 
-		hashVal.Set(string(cmd[i]), cmd[i+1])
+		hashVal.Set(string(cmd[i]), structure.Slice(cmd[i+1]))
 
 	}
 
@@ -98,7 +96,7 @@ func hGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	return resp.MakeBulkData(val.([]byte))
+	return resp.MakeBulkData(val.(structure.Slice))
 }
 
 func hMGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
@@ -125,7 +123,7 @@ func hMGet(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 		val, ok := hashVal.Get(string(key))
 		if ok {
-			res = append(res, resp.MakeBulkData(val.([]byte)))
+			res = append(res, resp.MakeBulkData(val.(structure.Slice)))
 		}
 	}
 
@@ -213,7 +211,7 @@ func hGetAll(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	for _, dict := range *dicts {
 		for k, v := range dict {
 			res[i] = resp.MakeBulkData([]byte(k))
-			res[i+1] = resp.MakeBulkData(v.([]byte))
+			res[i+1] = resp.MakeBulkData(v.(structure.Slice))
 			i += 2
 		}
 	}
@@ -274,7 +272,7 @@ func hVals(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	i := 0
 	for _, dict := range *dicts {
 		for _, v := range dict {
-			res[i] = resp.MakeBulkData(v.([]byte))
+			res[i] = resp.MakeBulkData(v.(structure.Slice))
 			i++
 		}
 	}
@@ -307,18 +305,18 @@ func hIncrBy(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	val, ok := hashVal.Get(string(cmd[2]))
 	if !ok {
-		val = cmd[3]
+		val = structure.Slice(cmd[3])
 		hashVal.Set(string(cmd[2]), val)
 		return resp.MakeIntData(int64(increment))
 	}
 
-	intVal, err := strconv.Atoi(string(val.([]byte)))
+	intVal, err := strconv.Atoi(string(val.(structure.Slice)))
 	if err != nil {
 		return resp.MakeErrorData("ERR hash value is not an integer")
 	}
 
 	intVal += increment
-	hashVal.Set(string(cmd[2]), []byte(strconv.Itoa(intVal)))
+	hashVal.Set(string(cmd[2]), structure.Slice(strconv.Itoa(intVal)))
 
 	return resp.MakeIntData(int64(intVal))
 }
@@ -370,7 +368,7 @@ func hStrLen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeIntData(0)
 	}
 
-	sl := len(val.([]byte))
+	sl := len(val.(structure.Slice))
 
 	return resp.MakeIntData(int64(sl))
 }

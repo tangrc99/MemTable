@@ -7,9 +7,9 @@ import (
 func TestDict(t *testing.T) {
 	dict := NewDict(10)
 
-	dict.Set("1", "1")
+	dict.Set("1", Slice("1"))
 
-	if v, ok := dict.Get("1"); !ok || v.(string) != "1" {
+	if v, ok := dict.Get("1"); !ok || string(v.(Slice)) != "1" {
 		t.Error("Set Get failed")
 	}
 
@@ -21,23 +21,23 @@ func TestDict(t *testing.T) {
 		t.Error("Random failed")
 	}
 
-	if dict.SetIfNotExist("1", "1") {
+	if dict.SetIfNotExist("1", Slice("1")) {
 		t.Error("SetIfNotExist failed")
 	}
 
-	if !dict.SetIfExist("1", "2") {
+	if !dict.SetIfExist("1", Slice("2")) {
 		t.Error("SetIfExist failed")
 	}
 
-	if v, ok := dict.Get("1"); !ok || v.(string) != "2" {
+	if v, ok := dict.Get("1"); !ok || string(v.(Slice)) != "2" {
 		t.Error("SetIfNotExist failed")
 	}
 
-	if !dict.Set("1", "3") {
+	if !dict.Set("1", Slice("3")) {
 		t.Error("Set failed")
 	}
 
-	if v, ok := dict.Get("1"); !ok || v.(string) != "3" {
+	if v, ok := dict.Get("1"); !ok || string(v.(Slice)) != "3" {
 		t.Error("Set failed")
 	}
 

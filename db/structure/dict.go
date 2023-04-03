@@ -12,7 +12,7 @@ import (
 const MaxConSize = int(1<<31 - 1)
 
 // Shard 是 Dict 中的一个分片
-type Shard = map[string]any
+type Shard = map[string]Object
 
 // Dict 包含了不同的分片，每一个分片包含一个哈希表
 type Dict struct {
@@ -33,7 +33,7 @@ func NewDict(size int) *Dict {
 		count:  0,
 	}
 	for i := 0; i < size; i++ {
-		dict.shards[i] = make(map[string]any)
+		dict.shards[i] = make(map[string]Object)
 	}
 	return &dict
 }
@@ -53,7 +53,7 @@ func (dict *Dict) countShard(key string) *Shard {
 }
 
 // Get 从 Dict 中查找键值对并返回值，如果不存在将会返回 nil
-func (dict *Dict) Get(key string) (any, bool) {
+func (dict *Dict) Get(key string) (Object, bool) {
 
 	shard := dict.countShard(key)
 	obj, exist := (*shard)[key]
@@ -61,7 +61,7 @@ func (dict *Dict) Get(key string) (any, bool) {
 }
 
 // Set 将键值对插入 Dict 对象中，该操作会覆盖原有键值对
-func (dict *Dict) Set(key string, value any) bool {
+func (dict *Dict) Set(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
@@ -74,7 +74,7 @@ func (dict *Dict) Set(key string, value any) bool {
 }
 
 // SetIfNotExist 将键值对插入 Dict 对象中，若键值对已存在将会返回 false
-func (dict *Dict) SetIfNotExist(key string, value any) bool {
+func (dict *Dict) SetIfNotExist(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
@@ -88,7 +88,7 @@ func (dict *Dict) SetIfNotExist(key string, value any) bool {
 }
 
 // SetIfExist 覆盖原有的键值对，若键值对不存在将会返回 false
-func (dict *Dict) SetIfExist(key string, value any) bool {
+func (dict *Dict) SetIfExist(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
@@ -102,7 +102,7 @@ func (dict *Dict) SetIfExist(key string, value any) bool {
 }
 
 // Update 覆盖原有的键值对，若键值对不存在将会返回 false
-func (dict *Dict) Update(key string, value any) bool {
+func (dict *Dict) Update(key string, value Object) bool {
 	return dict.SetIfExist(key, value)
 }
 
@@ -120,7 +120,7 @@ func (dict *Dict) Delete(key string) bool {
 }
 
 // DeleteGet 删除键值对并返回删除前的值，若键值对不存在则返回 nil
-func (dict *Dict) DeleteGet(key string) any {
+func (dict *Dict) DeleteGet(key string) Object {
 	shard := dict.countShard(key)
 
 	if value, exist := (*shard)[key]; exist {
@@ -137,7 +137,7 @@ func (dict *Dict) Size() int {
 	return dict.count
 }
 
-// Empty 用于判断 Dict 是否为空
+// Nil 用于判断 Dict 是否为空
 func (dict *Dict) Empty() bool {
 	return dict.count == 0
 }
@@ -211,7 +211,7 @@ func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
 		for key := range shard {
 
 			tp, exist := ttl.Get(key)
-			if exist && tp.(int64) < now {
+			if exist && tp.(Int64).Value() < now {
 				// 如果过期需要删除
 				delete(shard, key)
 				ttl.Delete(key)
@@ -250,7 +250,7 @@ func (dict *Dict) KeysWithTTLByte(ttl *Dict, pattern string) ([][]byte, int) {
 		for key := range shard {
 
 			tp, exist := ttl.Get(key)
-			if exist && tp.(int64) < now {
+			if exist && tp.(Int64).Value() < now {
 				// 如果过期需要删除
 				delete(shard, key)
 				ttl.Delete(key)
@@ -286,9 +286,9 @@ func (dict *Dict) Exist(key string) bool {
 }
 
 // Random 随机返回 Dict 中指定数量的键值对
-func (dict *Dict) Random(num int) map[string]any {
+func (dict *Dict) Random(num int) map[string]Object {
 
-	selected := make(map[string]any)
+	selected := make(map[string]Object)
 
 	// 这里优化为直接遍历
 	if num >= dict.count {
@@ -355,7 +355,7 @@ func (dict *Dict) RandomKeys(num int) map[string]struct{} {
 	return selected
 }
 
-func (dict *Dict) GetAll() (*[]map[string]any, int) {
+func (dict *Dict) GetAll() (*[]map[string]Object, int) {
 	return &dict.shards, dict.count
 }
 

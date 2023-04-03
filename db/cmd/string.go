@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"github.com/tangrc99/MemTable/db"
+	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/resp"
 	"strconv"
 )
+
+type Slice = structure.Slice
 
 func set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
@@ -21,7 +24,7 @@ func set(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 键值对设置
-	db.SetKey(string(cmd[1]), cmd[2])
+	db.SetKey(string(cmd[1]), Slice(cmd[2]))
 
 	// 重置 TTL
 	db.RemoveTTL(string(cmd[1]))
@@ -41,7 +44,7 @@ func get(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -67,7 +70,7 @@ func getset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 重置 TTL
-	db.SetKey(string(cmd[1]), cmd[2])
+	db.SetKey(string(cmd[1]), Slice(cmd[2]))
 	db.RemoveTTL(string(cmd[1]))
 	return resp.MakeStringData("OK")
 }
@@ -90,7 +93,7 @@ func strlen(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return err
 	}
 
-	strVal, ok := value.([]byte)
+	strVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -110,7 +113,7 @@ func getRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -149,7 +152,7 @@ func setRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -173,7 +176,7 @@ func setRange(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		newVal[start+i] = c
 	}
 
-	db.SetKey(string(cmd[1]), newVal)
+	db.SetKey(string(cmd[1]), Slice(newVal))
 
 	return resp.MakeIntData(int64(l))
 }
@@ -196,7 +199,7 @@ func mget(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 		} else {
 
-			byteVal, ok := value.([]byte)
+			byteVal, ok := value.(Slice)
 			if !ok {
 				res[i] = resp.MakeStringData("nil")
 			}
@@ -222,7 +225,7 @@ func mset(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	for i := 1; i < len(cmd); i += 2 {
-		db.SetKey(string(cmd[i]), cmd[i+1])
+		db.SetKey(string(cmd[i]), Slice(cmd[i+1]))
 		// 重置 TTL
 		db.RemoveTTL(string(cmd[i]))
 	}
@@ -241,7 +244,7 @@ func incr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -252,7 +255,7 @@ func incr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	intVal++
-	db.SetKey(string(cmd[1]), []byte(strconv.Itoa(intVal)))
+	db.SetKey(string(cmd[1]), Slice(strconv.Itoa(intVal)))
 
 	return resp.MakeIntData(int64(intVal))
 }
@@ -268,7 +271,7 @@ func incrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -284,7 +287,7 @@ func incrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	intVal += increment
-	db.SetKey(string(cmd[1]), []byte(strconv.Itoa(intVal)))
+	db.SetKey(string(cmd[1]), Slice(strconv.Itoa(intVal)))
 
 	return resp.MakeIntData(int64(intVal))
 }
@@ -300,7 +303,7 @@ func decr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -311,7 +314,7 @@ func decr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	intVal--
-	db.SetKey(string(cmd[1]), []byte(strconv.Itoa(intVal)))
+	db.SetKey(string(cmd[1]), Slice(strconv.Itoa(intVal)))
 
 	return resp.MakeIntData(int64(intVal))
 
@@ -328,7 +331,7 @@ func decrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}
@@ -344,7 +347,7 @@ func decrby(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	intVal -= decrement
-	db.SetKey(string(cmd[1]), []byte(strconv.Itoa(intVal)))
+	db.SetKey(string(cmd[1]), Slice(strconv.Itoa(intVal)))
 
 	return resp.MakeIntData(int64(intVal))
 
@@ -363,7 +366,7 @@ func appendStr(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return resp.MakeStringData("nil")
 	}
 
-	byteVal, ok := value.([]byte)
+	byteVal, ok := value.(Slice)
 	if !ok {
 		return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
 	}

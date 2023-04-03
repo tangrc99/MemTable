@@ -93,10 +93,10 @@ func (bl *Bloom) Capacity() uint64 {
 }
 
 // Cost returns the total size of the bloom filter.
-func (bl *Bloom) Cost() int {
+func (bl *Bloom) Cost() int64 {
 	// The bl struct has 5 members and each one is 8 byte. The bitset is a
 	// uint64 byte slice.
-	return len(bl.bitset)*8 + 5*8
+	return int64(len(bl.bitset)*8 + 5*8)
 }
 
 // Clear resets the Bloom filter.

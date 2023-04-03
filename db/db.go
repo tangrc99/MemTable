@@ -8,6 +8,9 @@ import (
 	"math"
 )
 
+type Int64 = structure.Int64
+type Object = structure.Object
+
 // DataBase 代表一个内存数据库，包含键值对，ttl，watch等信息。同一个 DataBase 实例中键值不能重复，
 // 不同的实例键值可以重复。
 type DataBase struct {
@@ -46,7 +49,7 @@ func (db_ *DataBase) checkNotExpired(key string) bool {
 		return true
 	}
 
-	if ttl.(int64) > global.Now.Unix() {
+	if ttl.(structure.Int64).Value() > global.Now.Unix() {
 		// 如果没有过期
 		return true
 	}
@@ -85,7 +88,7 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 	if exist {
 		// 如果存在 ttl，检查过期时间
 		now := global.Now.Unix()
-		r := ttl.(int64) - now
+		r := ttl.(Int64).Value() - now
 		if r < 0 {
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
@@ -107,7 +110,7 @@ func (db_ *DataBase) GetTTL(key string) int64 {
 }
 
 // GetKey 查询数据库中是否存在该键值，如果键值存在且为过期，返回键对应的值；若键已经过期，将会删除该键值对，并返回 nil
-func (db_ *DataBase) GetKey(key string) (any, bool) {
+func (db_ *DataBase) GetKey(key string) (Object, bool) {
 	ok := db_.checkNotExpired(key)
 	if !ok {
 		return nil, false
@@ -124,7 +127,7 @@ func (db_ *DataBase) GetKey(key string) (any, bool) {
 }
 
 // SetKey 将键值对插入到 DataBase 中，该操作可能会覆盖旧键。
-func (db_ *DataBase) SetKey(key string, value any) bool {
+func (db_ *DataBase) SetKey(key string, value Object) bool {
 	item := &eviction.Item{Value: value}
 	db_.dict.Set(key, item)
 	db_.evict.KeyUsed(key, item)
@@ -139,15 +142,15 @@ func (db_ *DataBase) SetTTL(key string, ttl int64) bool {
 	if !db_.dict.Exist(key) {
 		return false
 	}
-	db_.ttlKeys.Set(key, ttl)
+	db_.ttlKeys.Set(key, Int64(ttl))
 	return true
 }
 
 // SetKeyWithTTL 将键值对插入到 DataBase 中，并设置 TTL 信息，该操作可能会覆盖旧键。
-func (db_ *DataBase) SetKeyWithTTL(key string, value any, ttl int64) bool {
+func (db_ *DataBase) SetKeyWithTTL(key string, value Object, ttl int64) bool {
 	item := &eviction.Item{Value: value}
 	db_.dict.Set(key, item)
-	db_.ttlKeys.Set(key, ttl)
+	db_.ttlKeys.Set(key, Int64(ttl))
 	db_.evict.KeyUsed(key, item)
 	if db_.rookies != nil {
 		db_.rookies.NewOne(key)
@@ -221,7 +224,7 @@ func (db_ *DataBase) CleanExpiredKeys(samples int) int {
 	ttls := db_.ttlKeys.Random(samples)
 	deleted := 0
 	for key, expire := range ttls {
-		if expire.(int64) < now {
+		if expire.(Int64).Value() < now {
 			deleted++
 			db_.ttlKeys.Delete(key)
 			db_.dict.Delete(key)
@@ -253,58 +256,58 @@ func (db_ *DataBase) TTLSize() int {
 // Watch 监控一个键是否被修改，如果键值被修改 flag 变量将会被设置为 false
 func (db_ *DataBase) Watch(key string, flag *bool) {
 
-	v, ok := db_.watches.Get(key)
-	if !ok {
-		flags := make(map[*bool]struct{})
-		flags[flag] = struct{}{}
-		db_.watches.Set(key, &flags)
-		return
-	}
-
-	flags := v.(*map[*bool]struct{})
-	(*flags)[flag] = struct{}{}
+	//v, ok := db_.watches.Get(key)
+	//if !ok {
+	//	flags := make(map[*bool]struct{})
+	//	flags[flag] = struct{}{}
+	//	db_.watches.Set(key, &flags)
+	//	return
+	//}
+	//
+	//flags := v.(*map[*bool]struct{})
+	//(*flags)[flag] = struct{}{}
 }
 
 // UnWatch 取消对键的监控
 func (db_ *DataBase) UnWatch(key string, flag *bool) {
-	v, ok := db_.watches.Get(key)
-	if !ok {
-		return
-	}
-	flags := v.(*map[*bool]struct{})
-	delete(*flags, flag)
-
-	if len(*flags) == 0 {
-		db_.watches.Delete(key)
-	}
+	//v, ok := db_.watches.Get(key)
+	//if !ok {
+	//	return
+	//}
+	//flags := v.(*map[*bool]struct{})
+	//delete(*flags, flag)
+	//
+	//if len(*flags) == 0 {
+	//	db_.watches.Delete(key)
+	//}
 }
 
 // ReviseNotify 通知键修改
 func (db_ *DataBase) ReviseNotify(key string) {
-	v, ok := db_.watches.Get(key)
-	if !ok {
-		return
-	}
-	flags := v.(*map[*bool]struct{})
-
-	for flag := range *flags {
-		*flag = true
-	}
+	//v, ok := db_.watches.Get(key)
+	//if !ok {
+	//	return
+	//}
+	//flags := v.(*map[*bool]struct{})
+	//
+	//for flag := range *flags {
+	//	*flag = true
+	//}
 }
 
 // ReviseNotifyAll 通知所有被 watch 的键修改，用于 flushdb 和 flushall 命令
 func (db_ *DataBase) ReviseNotifyAll() {
 
-	dicts, _ := db_.watches.GetAll()
-
-	for _, dict := range *dicts {
-		for _, v := range dict {
-			flags := v.(*map[*bool]struct{})
-			for flag := range *flags {
-				*flag = true
-			}
-		}
-	}
+	//dicts, _ := db_.watches.GetAll()
+	//
+	//for _, dict := range *dicts {
+	//	for _, v := range dict {
+	//		flags := v.(*map[*bool]struct{})
+	//		for flag := range *flags {
+	//			*flag = true
+	//		}
+	//	}
+	//}
 }
 
 // WatchSize 返回数据库中被监控的键值对数目
@@ -387,7 +390,7 @@ func (db_ *DataBase) evictTTLKeys(access, roomNeeded int64) (evicted []string, a
 		// 选择一个价值最小的键或一个过期的键
 		for k, ttl := range db_.ttlKeys.Random(10) {
 
-			if ttl.(int64) < global.Now.Unix() {
+			if ttl.(Int64).Value() < global.Now.Unix() {
 				minKey = k
 				break
 			}

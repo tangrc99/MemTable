@@ -2,14 +2,14 @@ package structure
 
 type trieTreeNode struct {
 	Key      string                   // 键
-	Value    any                      // 值
+	Value    Object                   // 值
 	isLeaf   bool                     // 判别是否为叶子节点
 	parent   *trieTreeNode            // 父结点
 	children map[string]*trieTreeNode // 子节点链表
 	tree     *TrieTree                // 所属的树
 }
 
-func newTrieTreeNode(key string, value any, leaf bool, parent *trieTreeNode, owner *TrieTree) *trieTreeNode {
+func newTrieTreeNode(key string, value Object, leaf bool, parent *trieTreeNode, owner *TrieTree) *trieTreeNode {
 	return &trieTreeNode{
 		Key:      key,
 		Value:    value,
@@ -36,7 +36,7 @@ func NewTrieTree() *TrieTree {
 }
 
 // AddNode 将值插入到指定路径，该操作可能会覆盖旧值
-func (tree *TrieTree) AddNode(paths []string, value any) *trieTreeNode {
+func (tree *TrieTree) AddNode(paths []string, value Object) *trieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
@@ -57,7 +57,7 @@ func (tree *TrieTree) AddNode(paths []string, value any) *trieTreeNode {
 }
 
 // AddNodeIfNotLeaf 将值插入到指定路径，若路径已经为叶子节点，该操作不会覆盖旧值，返回 nil,false。
-func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value any) (*trieTreeNode, bool) {
+func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value Object) (*trieTreeNode, bool) {
 
 	cur := tree.root
 
@@ -132,7 +132,7 @@ func (tree *TrieTree) IsPathExist(paths []string) bool {
 }
 
 // GetValue 获取给定路径的值，若路径不存在或不为叶节点，返回 nil,false
-func (tree *TrieTree) GetValue(paths []string) (any, bool) {
+func (tree *TrieTree) GetValue(paths []string) (Object, bool) {
 	cur := tree.root
 
 	for _, path := range paths {

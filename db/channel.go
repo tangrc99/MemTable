@@ -38,6 +38,12 @@ func (ch *channel) publish(msg []byte) int {
 	return len(ch.subscriber)
 }
 
+func (ch *channel) Cost() int64 {
+
+	//TODO:
+	return -1
+}
+
 // Channels 维护所有的订阅频道信息，内部有哈希表和前缀树两种数据结构，分别用于
 // 处理单一频道和路径频道两种模式的发布和订阅。
 type Channels struct {

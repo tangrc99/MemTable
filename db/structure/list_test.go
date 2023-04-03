@@ -4,15 +4,15 @@ import "testing"
 
 func TestList(t *testing.T) {
 	list := NewList()
-	list.PushBack(0)
-	list.PushBack(1)
-	list.PushBack(2)
-	list.PushBack(3)
-	if list.Set(645, 4) || list.Set(645, -100) {
+	list.PushBack(Int64(0))
+	list.PushBack(Int64(1))
+	list.PushBack(Int64(2))
+	list.PushBack(Int64(3))
+	if list.Set(Int64(645), 4) || list.Set(Int64(645), -100) {
 		t.Error("Set Failed")
 	}
 
-	if !list.Set(645, -1) && list.Back().(int) != 645 {
+	if !list.Set(Int64(645), -1) && list.Back().(Int64) != 645 {
 		t.Error("Set Failed")
 	}
 
@@ -29,7 +29,7 @@ func TestList(t *testing.T) {
 	if _, n := list.Range(-100, -1); n != 4 {
 		t.Error("Range Failed")
 	}
-	if v, ok := list.Pos(-1); !ok || v.(int) != 645 {
+	if v, ok := list.Pos(-1); !ok || v.(Int64) != 645 {
 		t.Error("Pos Failed")
 	}
 	if _, ok := list.Pos(100); ok {

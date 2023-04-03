@@ -26,7 +26,7 @@ func checkType(value any, vt valueType) resp.RedisData {
 		// 如果已经存在，进行类型检查
 		switch vt {
 		case STRING:
-			_, typeOk = value.([]byte)
+			_, typeOk = value.(structure.Slice)
 
 		case HASH:
 			// 复杂数据类型全部为指针

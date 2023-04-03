@@ -14,7 +14,7 @@ func NewSet() *Set {
 
 // Add 将指定键插入到集合中，若键已存在将返回 false
 func (set *Set) Add(key string) bool {
-	return set.dict.SetIfNotExist(key, struct{}{})
+	return set.dict.SetIfNotExist(key, Nil{})
 }
 
 // Delete 将指定键从集合中删除，若键不存在将返回 false
@@ -84,4 +84,10 @@ func (set *Set) Keys(pattern string) ([]string, int) {
 // KeysByte 返回通过正则表达式匹配的所有键，键以[]byte形式返回
 func (set *Set) KeysByte(pattern string) ([][]byte, int) {
 	return set.dict.KeysByte(pattern)
+}
+
+func (set *Set) Cost() int64 {
+
+	// TODO:
+	return -1
 }

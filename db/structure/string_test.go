@@ -8,9 +8,9 @@ func TestString(t *testing.T) {
 
 	slice := []byte("12345")
 
-	println(String(slice).Cost())
+	println(Slice(slice).Cost())
 
-	s := String("12345")
+	s := Slice("12345")
 
 	println(s.Cost())
 

@@ -7,11 +7,11 @@ import (
 type skipListNode struct {
 	next   []*skipListNode
 	height int
-	key    float32
+	key    Float32
 	value  any
 }
 
-func newSkipListNode(key float32, value any, height int) *skipListNode {
+func newSkipListNode(key Float32, value any, height int) *skipListNode {
 	return &skipListNode{
 		next:   make([]*skipListNode, height),
 		height: height,
@@ -63,7 +63,7 @@ func randomHeight(max int) int {
 }
 
 // Insert 将键值对插入到跳跃表中
-func (sl *SkipList) Insert(key float32, value any) {
+func (sl *SkipList) Insert(key Float32, value any) {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -96,7 +96,7 @@ func (sl *SkipList) Insert(key float32, value any) {
 }
 
 // InsertIfNotExist 将键值对插入到跳跃表中，若键已存在，返回 false
-func (sl *SkipList) InsertIfNotExist(key float32, value any) bool {
+func (sl *SkipList) InsertIfNotExist(key Float32, value any) bool {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -127,7 +127,7 @@ func (sl *SkipList) InsertIfNotExist(key float32, value any) bool {
 }
 
 // Update 更新给定键的值，若键不存在，返回 false
-func (sl *SkipList) Update(key float32, value any) bool {
+func (sl *SkipList) Update(key Float32, value any) bool {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -146,7 +146,7 @@ func (sl *SkipList) Update(key float32, value any) bool {
 }
 
 // Get 返回键的值，如果键不存在返回 nil,false
-func (sl *SkipList) Get(key float32) (any, bool) {
+func (sl *SkipList) Get(key Float32) (any, bool) {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -164,7 +164,7 @@ func (sl *SkipList) Get(key float32) (any, bool) {
 }
 
 // Delete 删除键值对，若键值不存在，返回 false
-func (sl *SkipList) Delete(key float32) bool {
+func (sl *SkipList) Delete(key Float32) bool {
 
 	// 需要找到每一个层次的前驱
 	prevs := make([]*skipListNode, sl.level)
@@ -194,7 +194,7 @@ func (sl *SkipList) Delete(key float32) bool {
 }
 
 // Exist 判断键值对是否存在于跳跃表中
-func (sl *SkipList) Exist(key float32) bool {
+func (sl *SkipList) Exist(key Float32) bool {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -214,7 +214,7 @@ func (sl *SkipList) Size() int {
 }
 
 // Range 返回给定键范围的所有节点值以及数量
-func (sl *SkipList) Range(min, max float32) ([]any, int) {
+func (sl *SkipList) Range(min, max Float32) ([]any, int) {
 
 	// 需要找到每一个层次的前驱
 	cur := sl.head
@@ -242,7 +242,7 @@ func (sl *SkipList) Range(min, max float32) ([]any, int) {
 }
 
 // CountByRange 返回给定键范围的节点数量
-func (sl *SkipList) CountByRange(min, max float32) int {
+func (sl *SkipList) CountByRange(min, max Float32) int {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
@@ -267,7 +267,7 @@ func (sl *SkipList) CountByRange(min, max float32) int {
 }
 
 // GetPosByKey 返回键值对在跳跃表中的位置
-func (sl *SkipList) GetPosByKey(key float32) int {
+func (sl *SkipList) GetPosByKey(key Float32) int {
 	pos := -1
 	cur := sl.head
 	for ; cur != nil && cur.key <= key; cur = cur.getNextNode(0) {
@@ -280,7 +280,7 @@ func (sl *SkipList) GetPosByKey(key float32) int {
 }
 
 // DeleteRange 删除跳跃表中指定返回的键值对，返回值和数量
-func (sl *SkipList) DeleteRange(min, max float32) ([]any, int) {
+func (sl *SkipList) DeleteRange(min, max Float32) ([]any, int) {
 	// 需要找到每一个层次的前驱
 	cur := sl.head
 
