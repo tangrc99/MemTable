@@ -112,3 +112,9 @@ func IsServerCommand(cmd string) bool {
 	}
 	return f.ct == CTServer
 }
+
+func ForAnyCommands(f func(cmdName string, cmd Command)) {
+	for i, c := range commandTable {
+		f(i, c)
+	}
+}

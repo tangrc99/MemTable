@@ -4,8 +4,13 @@ package structure
 type BitMap []byte
 
 // NewBitMap 创建一个空的 BitMap
-func NewBitMap() *BitMap {
-	a := make([]byte, 0)
+func NewBitMap(cap int) *BitMap {
+
+	if cap%8 != 0 {
+		cap += 8 - cap%8
+	}
+
+	a := make([]byte, cap/8)
 	return (*BitMap)(&a)
 }
 
@@ -94,7 +99,7 @@ func (b *BitMap) Count(start, end int) int {
 	return count
 }
 
-// Pos 返回 bit 范围内 bit 值为 val 的数量，start 和 end 是 bit 位置，而不是 byte 位置
+// Pos 返回 byte 范围内 bit 值为 val 的起始位置； start 和 end 都是 byte 的位置，而不是 bit 位置
 func (b *BitMap) Pos(val byte, start, end int) int {
 	// 位置检查
 	maxLen := b.ByteLen()
@@ -131,4 +136,38 @@ func (b *BitMap) Pos(val byte, start, end int) int {
 		}
 	}
 	return -1
+}
+
+func (b *BitMap) RangeSet(val byte, start, end int) {
+	maxLen := b.ByteLen() * 8
+	if start < 0 {
+		start += maxLen
+	}
+	if end < 0 {
+		end += maxLen
+	}
+
+	if start > end || end < 0 || start >= maxLen {
+		return
+	}
+	if start < 0 {
+		start = 0
+	}
+	if end >= maxLen {
+		end = maxLen - 1
+	}
+
+	for i := start; i <= end; {
+		if i%8 == 0 && end-i >= 8 {
+			if val == 1 {
+				(*b)[i/8] = 255
+			} else {
+				(*b)[i/8] = 0
+			}
+			i += 8
+		} else {
+			b.Set(i, val)
+			i++
+		}
+	}
 }
