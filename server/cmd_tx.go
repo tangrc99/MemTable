@@ -123,7 +123,7 @@ func discard(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func RegisterTransactionCommand() {
+func registerTransactionCommand() {
 	RegisterCommand("multi", multi, RD)
 	RegisterCommand("exec", execTX, RD)
 	RegisterCommand("discard", discard, RD)

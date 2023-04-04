@@ -197,7 +197,7 @@ func bfReserve(base *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func RegisterBloomFilterCommands() {
+func registerBloomFilterCommands() {
 
 	registerCommand("bf.add", bfAdd, WR)
 	registerCommand("bf.madd", bfMAdd, WR)

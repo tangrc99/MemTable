@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
 	"strconv"
 	"strings"
 )
@@ -41,7 +42,7 @@ func cluster(s *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 }
 
-func RegisterClusterCommand() {
+func registerClusterCommand() {
 	RegisterCommand("cluster", cluster, RD)
 }
 
@@ -163,10 +164,10 @@ func checkCommandRunnableInCluster(s *Server, cli *Client, cmd [][]byte) (allowe
 // checkKeyNeedsMoved 用来判断命令是否需要迁移到其他实例上
 func checkKeyNeedsMoved(s *Server, cmd [][]byte) (needMove bool, err resp.RedisData) {
 
-	command := string(cmd[0])
+	command := strings.ToLower(string(cmd[0]))
 
 	// 首先判断命令是否是数据库命令
-	if _, exist := CommandTable[command]; !exist {
+	if ok := global.IsDatabaseCommand(command); !ok {
 		if len(cmd) > 1 {
 			if moved, slot, peer := s.isKeyNeedMove(string(cmd[1])); moved {
 				return true, resp.MakeErrorData(fmt.Sprintf("MOVED %d %s", slot, peer.name))

@@ -55,7 +55,7 @@ func unsubscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeArrayData(res)
 }
 
-func RegisterPubSubCommands() {
+func registerPubSubCommands() {
 	RegisterCommand("publish", publish, RD)
 	RegisterCommand("subscribe", subscribe, RD)
 	RegisterCommand("unsubscribe", unsubscribe, RD)

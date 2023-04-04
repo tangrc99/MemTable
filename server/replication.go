@@ -33,6 +33,10 @@ type ReplicaStatus struct {
 	masterAlive bool
 }
 
+func (s *ReplicaStatus) Role() int {
+	return s.role
+}
+
 func (s *ReplicaStatus) updateReplicaStatus(event *Event) {
 
 	switch s.role {

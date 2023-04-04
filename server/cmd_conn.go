@@ -52,7 +52,7 @@ func selectDB(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func RegisterConnectionCommands() {
+func registerConnectionCommands() {
 	RegisterCommand("ping", ping, RD)
 	RegisterCommand("quit", quit, RD)
 	RegisterCommand("select", selectDB, RD)

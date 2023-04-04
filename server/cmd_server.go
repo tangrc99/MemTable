@@ -153,7 +153,7 @@ func slowlog(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeErrorData(fmt.Sprintf("ERR unknown subcommand '%s' of slowlog", subcommand))
 }
 
-func RegisterServerCommand() {
+func registerServerCommand() {
 	RegisterCommand("shutdown", shutdown, RD)
 	RegisterCommand("flushdb", flushdb, WR)
 	RegisterCommand("flushall", flushall, WR)

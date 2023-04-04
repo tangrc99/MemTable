@@ -385,10 +385,10 @@ func luaRedisCallImpl(L *lua.LState, protected bool) int {
 	cmdName := string(env.fakeCli.cmd[0])
 
 	// 检查写操作和随机操作
-	if IsRandCommand(cmdName) {
+	if global.IsRandCommand(cmdName) {
 		env.randomDirty = true
 	}
-	if IsWriteCommand(cmdName) {
+	if global.IsWriteCommand(cmdName) {
 		env.writeFlagMtx.Lock()
 		defer env.writeFlagMtx.Unlock()
 		env.writeDirty = true

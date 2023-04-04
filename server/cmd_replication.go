@@ -199,7 +199,7 @@ func slaveof(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
-func RegisterReplicationCommands() {
+func registerReplicationCommands() {
 	RegisterCommand("sync", syncCMD, RD)
 	RegisterCommand("psync", psync, RD)
 	RegisterCommand("replconf", replconf, RD)

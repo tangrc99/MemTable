@@ -3,38 +3,67 @@ package server
 import (
 	"fmt"
 	"github.com/tangrc99/MemTable/config"
-	"github.com/tangrc99/MemTable/db/cmd"
+	"github.com/tangrc99/MemTable/db"
+	_ "github.com/tangrc99/MemTable/db/cmd"
+	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
+	"reflect"
 	"strings"
 )
 
-type ExecStatus int
+type ExecStatus = global.ExecStatus
 
-const (
-	RD ExecStatus = iota
-	WR
-)
+const WR = global.WR
+const RD = global.RD
+
+type CommandType = global.CommandType
+
+const CTServer = global.CTServer
+const CTDatabase = global.CTDatabase
 
 type Command = func(server *Server, cli *Client, cmd [][]byte) resp.RedisData
 
-var CommandTable = make(map[string]Command)
-var WriteCommands = make(map[string]struct{})
-
 func RegisterCommand(name string, cmd Command, status ExecStatus) {
-	CommandTable[name] = cmd
-	if status == WR {
-		WriteCommands[name] = struct{}{}
-	}
+	global.RegisterServerCommand(name, cmd, status)
 }
 
 func init() {
-	RegisterPubSubCommands()
-	RegisterConnectionCommands()
-	RegisterServerCommand()
-	RegisterTransactionCommand()
-	RegisterReplicationCommands()
-	RegisterScriptCommands()
-	RegisterClusterCommand()
+	registerPubSubCommands()
+	registerConnectionCommands()
+	registerServerCommand()
+	registerTransactionCommand()
+	registerReplicationCommands()
+	registerScriptCommands()
+	registerClusterCommand()
+	//cmd.RegisterCommands()
+}
+
+func execCommand(c global.Command, server *Server, cli *Client, cmds [][]byte) resp.RedisData {
+
+	f := c.Function()
+
+	if c.Type() == CTDatabase {
+		df, ok := f.(func(base *db.DataBase, cmd [][]byte) resp.RedisData)
+		if !ok {
+			logger.Errorf("Error command type %d with %s", c.Type(), reflect.TypeOf(c.Function()).String())
+			return resp.MakeErrorData("Err Server Error")
+		}
+		return df(server.dbs[cli.dbSeq], cmds)
+
+	} else if c.Type() == CTServer {
+
+		sf, ok := f.(func(server *Server, cli *Client, cmd [][]byte) resp.RedisData)
+		if !ok {
+			logger.Errorf("Error command type %d with %s", c.Type(), reflect.TypeOf(c.Function()).String())
+			return resp.MakeErrorData("Err Server Error")
+		}
+		return sf(server, cli, cmds)
+	}
+
+	logger.Errorf("Unknown command type %d", c.Type())
+
+	return resp.MakeErrorData("Err Server Error")
 }
 
 func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret resp.RedisData, isWrite bool) {
@@ -53,11 +82,18 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 		return resp.MakeErrorData("BUSY running a script. You can only call SCRIPT KILL or SHUTDOWN NOSAVE"), false
 	}
 
-	_, isWriteCommand := WriteCommands[strings.ToLower(string(cmds[0]))]
+	commandName := strings.ToLower(string(cmds[0]))
+
+	c, ok := global.FindCommand(commandName)
+
+	if !ok {
+		println("sdfkhj")
+		return resp.MakeErrorData("error: unsupported command"), false
+	}
 
 	writeAllowed := !(server.role == Slave && cli != server.Master)
 
-	if isWriteCommand && !writeAllowed {
+	if c.IsWriteCommand() && !writeAllowed {
 		return resp.MakeErrorData("ERR READONLY You can't write against a read only slave"), false
 	}
 
@@ -68,32 +104,25 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 		return resp.MakeStringData("QUEUED"), false
 	}
 
-	f, ok := CommandTable[strings.ToLower(string(cmds[0]))]
-
-	// 如果没有匹配命令，执行数据库命令
-	if !ok {
-
-		access := int64(0)
-		if server.full && cmd.IsWriteCommand(string(cmds[0])) {
-			access = server.dbs[cli.dbSeq].IsKeyPermitted(string(cmds[1]))
-			if access == -1 {
-				// 拒绝写入
-				return resp.MakeErrorData("ERR database is full"), false
-			}
+	// check before write
+	access := int64(0)
+	if server.full && c.IsWriteCommand() {
+		access = server.dbs[cli.dbSeq].IsKeyPermitted(string(cmds[1]))
+		if access == -1 {
+			// 拒绝写入
+			return resp.MakeErrorData("ERR database is full"), false
 		}
-
-		ret, isWriteCommand = cmd.ExecCommand(server.dbs[cli.dbSeq], cmds, writeAllowed)
-
-		// 更新数据库 cost
-		server.collectCost()
-		if server.full {
-			server.dbs[cli.dbSeq].Evict(access, server.cost-int64(config.Conf.MaxMemory))
-		}
-
-		return ret, isWriteCommand
 	}
 
-	return f(server, cli, cmds), isWriteCommand
+	ret = execCommand(c, server, cli, cmds)
+
+	// 更新 cost
+	server.collectCost()
+	if server.full {
+		server.dbs[cli.dbSeq].Evict(access, server.cost-int64(config.Conf.MaxMemory))
+	}
+
+	return ret, c.IsWriteCommand()
 }
 
 func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
@@ -111,17 +140,4 @@ func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.Redi
 
 func NotTxCommand(cmd string) bool {
 	return cmd != "exec" && cmd != "discard" && cmd != "watch" && cmd != "multi"
-}
-
-func IsWriteCommand(cmdName string) bool {
-
-	if _, ok := WriteCommands[cmdName]; ok {
-		return true
-	}
-	return cmd.IsWriteCommand(cmdName)
-}
-
-func IsRandCommand(cmdName string) bool {
-
-	return cmd.IsRandCommand(cmdName)
 }
