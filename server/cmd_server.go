@@ -1,11 +1,13 @@
 package server
 
 import (
+	"fmt"
 	"github.com/tangrc99/MemTable/db"
 	"github.com/tangrc99/MemTable/resp"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -115,6 +117,42 @@ func dbsize(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(int64(size))
 }
 
+func slowlog(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
+
+	e, ok := CheckCommandAndLength(&cmd, "slowlog", 2)
+	if !ok {
+		return e
+	}
+
+	subcommand := strings.ToLower(string(cmd[1]))
+
+	switch subcommand {
+	case "len":
+
+		return resp.MakeIntData(server.slowlog.Len())
+
+	case "get":
+
+		if len(cmd) < 3 {
+			return resp.MakeErrorData("ERR wrong number of arguments for 'slowlog get' command")
+		}
+
+		limit, err := strconv.Atoi(string(cmd[2]))
+		if err != nil {
+			return resp.MakeErrorData("ERR value is not an integer or out of range")
+		}
+		return server.slowlog.getEntries(limit)
+
+	case "reset":
+
+		server.slowlog.clear()
+
+		return resp.MakeStringData("OK")
+	}
+
+	return resp.MakeErrorData(fmt.Sprintf("ERR unknown subcommand '%s' of slowlog", subcommand))
+}
+
 func RegisterServerCommand() {
 	RegisterCommand("shutdown", shutdown, RD)
 	RegisterCommand("flushdb", flushdb, WR)
@@ -122,4 +160,5 @@ func RegisterServerCommand() {
 	RegisterCommand("dbsize", dbsize, RD)
 	RegisterCommand("save", save, RD)
 	RegisterCommand("bgsave", bgsave, RD)
+	RegisterCommand("slowlog", slowlog, RD)
 }

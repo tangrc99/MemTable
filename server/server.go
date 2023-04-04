@@ -57,6 +57,9 @@ type Server struct {
 	full bool // 表示已经写满
 	cost int64
 
+	// 慢查询日志
+	slowlog *slowLog
+
 	// 协程池
 	gopool *gopool.Pool // 用于客户端启动的协程池
 	sts    *Status
@@ -103,6 +106,7 @@ func NewServer() *Server {
 		dir:        config.Conf.Dir,
 		aofEnabled: config.Conf.AppendOnly,
 		aofFile:    "appendonly.aof",
+		slowlog:    newSlowLog(config.Conf.SlowLogMaxLen),
 	}
 
 	// check the port
@@ -298,6 +302,10 @@ func (s *Server) eventLoop() {
 			//s.tl.ExecuteOneIfExpire()
 
 		case event := <-s.events:
+
+			global.UpdateGlobalClock()
+			startTs := global.Now
+
 			cli := event.cli
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
@@ -324,6 +332,17 @@ func (s *Server) eventLoop() {
 
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, event.cmd, event.raw)
+
+			global.UpdateGlobalClock()
+			endTs := global.Now
+
+			if config.Conf.SlowLogSlowerThan >= 0 {
+				// this is a slow command
+
+				if d := endTs.Sub(startTs).Microseconds(); d >= config.Conf.SlowLogSlowerThan {
+					s.slowlog.appendEntry(event.cmd, d)
+				}
+			}
 
 			if res == nil {
 				continue
@@ -597,7 +616,8 @@ func (s *Server) collectCost() {
 
 	s.full = false
 	s.cost = s.clis.Cost()
-
+	s.cost += s.slowlog.Cost()
+	s.cost += global.RsBackLogCap
 	for _, d := range s.dbs {
 		s.cost += d.Cost()
 	}

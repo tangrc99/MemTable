@@ -21,7 +21,7 @@ type Eviction interface {
 
 	KeyRemoved(key string)
 
-	// Estimate 评估键值对的键值
+	// Estimate 评估键值对的键值，更有键值的键应该返回更大的值
 	Estimate(key string) int64
 
 	// Permitted 判断键是否通过准入门槛

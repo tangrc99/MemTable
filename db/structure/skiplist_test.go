@@ -5,9 +5,9 @@ import "testing"
 func TestSkipList(t *testing.T) {
 
 	skipList := NewSkipList(3)
-	skipList.Insert(0.0, "1")
-	skipList.InsertIfNotExist(1.1, 1)
-	skipList.Insert(1.2, "222")
+	skipList.Insert(0.0, Slice("1"))
+	skipList.InsertIfNotExist(1.1, Int64(1))
+	skipList.Insert(1.2, Slice("222"))
 
 	skipList.Delete(1.1)
 

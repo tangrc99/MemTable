@@ -43,6 +43,9 @@ type Config struct {
 
 	// 键置换配置
 	Eviction string
+
+	SlowLogMaxLen     int
+	SlowLogSlowerThan int64
 }
 
 // Conf 变量存储从配置文件读取到的配置，如果配置不存在则使用默认配置
@@ -251,6 +254,22 @@ func (cfg *Config) parseFile() error {
 			} else if cfgName == "eviction" {
 
 				cfg.ClusterName = strings.ToLower(fields[1])
+
+			} else if cfgName == "slowlog-log-slower-than" {
+
+				slow, err := strconv.Atoi(fields[1])
+				if err != nil {
+					return err
+				}
+				cfg.SlowLogSlowerThan = int64(slow)
+
+			} else if cfgName == "slowlog-max-len" {
+
+				max, err := strconv.Atoi(fields[1])
+				if err != nil {
+					return err
+				}
+				cfg.SlowLogMaxLen = max
 			}
 
 		}
@@ -287,6 +306,9 @@ var defaultConf = Config{
 	ClusterName:   "",
 
 	Eviction: "no",
+
+	SlowLogMaxLen:     100,
+	SlowLogSlowerThan: 10000, // 1000 us
 }
 
 // init 函数会在包初始化阶段将配置文件内容读取到 Conf 变量中

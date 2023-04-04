@@ -103,7 +103,7 @@ func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.Redi
 	}
 
 	if len(*cmd) < minLength {
-		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (*cmd)[1])), false
+		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (*cmd)[0])), false
 	}
 
 	return nil, true
