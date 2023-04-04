@@ -6,7 +6,7 @@ import (
 
 func publish(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "publish", 3)
+	e, ok := CheckCommandAndLength(cmd, "publish", 3)
 	if !ok {
 		return e
 	}
@@ -23,7 +23,7 @@ func publish(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 func subscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "subscribe", 2)
+	e, ok := CheckCommandAndLength(cmd, "subscribe", 2)
 	if !ok {
 		return e
 	}
@@ -41,7 +41,7 @@ func subscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func unsubscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "subscribe", 2)
+	e, ok := CheckCommandAndLength(cmd, "subscribe", 2)
 	if !ok {
 		return e
 	}

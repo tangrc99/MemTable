@@ -655,7 +655,7 @@ func getLuaScriptBySha1(sha string) (string, bool) {
 func initFlags(L *lua.LState, fName string) {
 
 	// 初始化 fake client
-	env.fakeCli = NewClient(nil)
+	env.fakeCli = NewFakeClient()
 
 	// 初始化超时处理
 	ctx, cancel := context.WithCancel(context.Background())

@@ -13,7 +13,7 @@ import (
 
 func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "sync", 1)
+	e, ok := CheckCommandAndLength(cmd, "sync", 1)
 	if !ok {
 		return e
 	}
@@ -64,7 +64,7 @@ func syncCMD(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "psync", 3)
+	e, ok := CheckCommandAndLength(cmd, "psync", 3)
 	if !ok {
 		return e
 	}
@@ -146,7 +146,7 @@ func psync(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func replconf(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "replconf", 2)
+	e, ok := CheckCommandAndLength(cmd, "replconf", 2)
 	if !ok {
 		return e
 	}
@@ -170,7 +170,7 @@ func replconf(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func slaveof(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "slaveof", 3)
+	e, ok := CheckCommandAndLength(cmd, "slaveof", 3)
 	if !ok {
 		return e
 	}

@@ -6,6 +6,7 @@ import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/acl"
 	"github.com/tangrc99/MemTable/server/global"
 	"net"
 	"time"
@@ -37,6 +38,9 @@ type Client struct {
 
 	pipelined bool
 
+	user *acl.User
+	auth bool
+
 	// 发布订阅
 	chs map[string]struct{} //订阅频道
 	msg chan []byte         // 用于订阅通知
@@ -64,18 +68,21 @@ func NewClient(conn net.Conn) *Client {
 		status: WAIT,
 		dbSeq:  0,
 		res:    make(chan *resp.RedisData, 10),
+		user:   acl.DefaultUser(),
 
 		blocked: false,
 	}
 }
 
+// NewFakeClient 创建一个无连接的，具有最高权限的客户端
 func NewFakeClient() *Client {
 	return &Client{
-		id:      uuid.Must(uuid.NewV1()),
-		status:  WAIT,
-		dbSeq:   0,
-		res:     make(chan *resp.RedisData, 10),
-		blocked: false,
+		id:     uuid.Must(uuid.NewV1()),
+		status: CONNECTED,
+		dbSeq:  0,
+		res:    make(chan *resp.RedisData, 10),
+		auth:   true,
+		user:   acl.ManageUser(),
 	}
 }
 

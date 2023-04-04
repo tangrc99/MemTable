@@ -155,7 +155,31 @@ func (user *User) IsKeyAccessible(key string) bool {
 	return false
 }
 
+func (user *User) HasPassword() bool {
+	return len(user.passwords) > 0
+}
+
 func (user *User) ToResp() resp.RedisData {
 	// TODO
 	return nil
+}
+
+var defaultUser *User
+var manageUser *User
+
+func initUser() {
+	defaultUser = NewUser("default")
+	defaultUser.WithPattern(".*").WithPermittedCategory(categoryAll).WithPassword("123456")
+	manageUser = NewUser("")
+	manageUser.WithPattern(".*").WithPermittedCategory(categoryAll)
+}
+
+// DefaultUser 返回默认设置权限的用户
+func DefaultUser() *User {
+	return defaultUser
+}
+
+// ManageUser 返回一个具有全能权限的用户
+func ManageUser() *User {
+	return manageUser
 }

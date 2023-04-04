@@ -11,7 +11,7 @@ import (
 func cluster(s *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "cluster", 2)
+	e, ok := CheckCommandAndLength(cmd, "cluster", 2)
 	if !ok {
 		return e
 	}

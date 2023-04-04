@@ -8,6 +8,7 @@ import (
 	"github.com/tangrc99/MemTable/db"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/acl"
 	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils/gopool"
 	"net"
@@ -71,6 +72,8 @@ type Server struct {
 	clusterStatus
 
 	msgPool sync.Pool
+
+	acl *acl.ACL
 }
 
 func NewServer() *Server {
@@ -107,6 +110,7 @@ func NewServer() *Server {
 		aofEnabled: config.Conf.AppendOnly,
 		aofFile:    "appendonly.aof",
 		slowlog:    newSlowLog(config.Conf.SlowLogMaxLen),
+		acl:        acl.NewAccessControlList(config.Conf.ACLFile),
 	}
 
 	// check the port

@@ -13,7 +13,7 @@ import (
 
 func save(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "save", 1)
+	e, ok := CheckCommandAndLength(cmd, "save", 1)
 	if !ok {
 		return e
 	}
@@ -30,7 +30,7 @@ func save(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 func bgsave(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "bgsave", 1)
+	e, ok := CheckCommandAndLength(cmd, "bgsave", 1)
 	if !ok {
 		return e
 	}
@@ -47,7 +47,7 @@ func bgsave(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 func shutdown(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "shutdown", 1)
+	e, ok := CheckCommandAndLength(cmd, "shutdown", 1)
 	if !ok {
 		return e
 	}
@@ -65,7 +65,7 @@ func shutdown(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func flushdb(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "flushdb", 1)
+	e, ok := CheckCommandAndLength(cmd, "flushdb", 1)
 	if !ok {
 		return e
 	}
@@ -79,7 +79,7 @@ func flushdb(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func flushall(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "flushall", 1)
+	e, ok := CheckCommandAndLength(cmd, "flushall", 1)
 	if !ok {
 		return e
 	}
@@ -94,7 +94,7 @@ func flushall(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 func dbsize(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "dbsize", 1)
+	e, ok := CheckCommandAndLength(cmd, "dbsize", 1)
 	if !ok {
 		return e
 	}
@@ -119,7 +119,7 @@ func dbsize(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func slowlog(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
-	e, ok := CheckCommandAndLength(&cmd, "slowlog", 2)
+	e, ok := CheckCommandAndLength(cmd, "slowlog", 2)
 	if !ok {
 		return e
 	}

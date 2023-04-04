@@ -85,8 +85,8 @@ func main() {
 	}
 
 	s := server.NewServer()
-	s.TryRecover()
 	s.InitModules()
+	s.TryRecover()
 	s.Start()
 
 }

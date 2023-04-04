@@ -46,6 +46,8 @@ type Config struct {
 
 	SlowLogMaxLen     int
 	SlowLogSlowerThan int64
+
+	ACLFile string
 }
 
 // Conf 变量存储从配置文件读取到的配置，如果配置不存在则使用默认配置

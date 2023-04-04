@@ -8,7 +8,7 @@ import (
 
 func multi(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "multi", 1)
+	e, ok := CheckCommandAndLength(cmd, "multi", 1)
 	if !ok {
 		return e
 	}
@@ -24,7 +24,7 @@ func multi(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmds, "exec", 1)
+	e, ok := CheckCommandAndLength(cmds, "exec", 1)
 	if !ok {
 		return e
 	}
@@ -85,7 +85,7 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 func watch(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "watch", 2)
+	e, ok := CheckCommandAndLength(cmd, "watch", 2)
 	if !ok {
 		return e
 	}
@@ -107,7 +107,7 @@ func watch(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func discard(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "discard", 1)
+	e, ok := CheckCommandAndLength(cmd, "discard", 1)
 	if !ok {
 		return e
 	}

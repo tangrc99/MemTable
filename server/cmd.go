@@ -36,7 +36,7 @@ func init() {
 	registerReplicationCommands()
 	registerScriptCommands()
 	registerClusterCommand()
-	//cmd.RegisterCommands()
+	registerAuthCommands()
 }
 
 func execCommand(c global.Command, server *Server, cli *Client, cmds [][]byte) resp.RedisData {
@@ -66,7 +66,7 @@ func execCommand(c global.Command, server *Server, cli *Client, cmds [][]byte) r
 	return resp.MakeErrorData("Err Server Error")
 }
 
-func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret resp.RedisData, isWrite bool) {
+func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret resp.RedisData, dirty bool) {
 
 	if len(cmds) == 0 {
 		return resp.MakeErrorData("error: empty command"), false
@@ -84,10 +84,14 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 
 	commandName := strings.ToLower(string(cmds[0]))
 
+	passed := checkAuthority(cli, commandName)
+	if !passed {
+		return resp.MakeErrorData("ERR operation not permitted"), false
+	}
+
 	c, ok := global.FindCommand(commandName)
 
 	if !ok {
-		println("sdfkhj")
 		return resp.MakeErrorData("error: unsupported command"), false
 	}
 
@@ -125,17 +129,28 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 	return ret, c.IsWriteCommand()
 }
 
-func CheckCommandAndLength(cmd *[][]byte, name string, minLength int) (resp.RedisData, bool) {
-	cmdName := strings.ToLower(string((*cmd)[0]))
+func CheckCommandAndLength(cmd [][]byte, name string, minLength int) (resp.RedisData, bool) {
+	cmdName := strings.ToLower(string((cmd)[0]))
 	if cmdName != name {
 		return resp.MakeErrorData("Server error"), false
 	}
 
-	if len(*cmd) < minLength {
-		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (*cmd)[0])), false
+	if len(cmd) < minLength {
+		return resp.MakeErrorData(fmt.Sprintf("ERR wrong number of arguments for '%s' command", (cmd)[0])), false
 	}
 
 	return nil, true
+}
+
+func checkAuthority(cli *Client, commandName string) bool {
+	if commandName == "auth" {
+		return true
+	}
+	if cli.auth || !cli.user.HasPassword() {
+		// 已经授权，检查是否符合条件
+		return cli.user.IsCommandAllowed(commandName)
+	}
+	return false
 }
 
 func NotTxCommand(cmd string) bool {

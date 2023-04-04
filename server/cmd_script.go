@@ -9,7 +9,7 @@ import (
 
 func eval(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
-	e, ok := CheckCommandAndLength(&cmd, "eval", 3)
+	e, ok := CheckCommandAndLength(cmd, "eval", 3)
 	if !ok {
 		return e
 	}
@@ -60,7 +60,7 @@ func eval(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func evalSha(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
-	e, ok := CheckCommandAndLength(&cmd, "evalsha", 3)
+	e, ok := CheckCommandAndLength(cmd, "evalsha", 3)
 	if !ok {
 		return e
 	}
@@ -109,7 +109,7 @@ func evalSha(s *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func script(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
-	e, ok := CheckCommandAndLength(&cmd, "script", 2)
+	e, ok := CheckCommandAndLength(cmd, "script", 2)
 	if !ok {
 		return e
 	}

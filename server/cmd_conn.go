@@ -7,7 +7,7 @@ import (
 
 func ping(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "ping", 1)
+	e, ok := CheckCommandAndLength(cmd, "ping", 1)
 	if !ok {
 		return e
 	}
@@ -21,7 +21,7 @@ func ping(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 func quit(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "quit", 1)
+	e, ok := CheckCommandAndLength(cmd, "quit", 1)
 	if !ok {
 		return e
 	}
@@ -33,7 +33,7 @@ func quit(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func selectDB(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(&cmd, "select", 2)
+	e, ok := CheckCommandAndLength(cmd, "select", 2)
 	if !ok {
 		return e
 	}

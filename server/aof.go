@@ -37,7 +37,7 @@ func (s *Server) recoverFromAOF(filename string) {
 		return
 	}
 
-	client := NewClient(nil)
+	client := NewFakeClient()
 
 	parser := resp.NewParser(reader)
 
