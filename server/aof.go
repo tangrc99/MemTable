@@ -20,11 +20,11 @@ func (s *Server) appendAOF(event *Event) {
 
 	// 只有写命令需要持久化
 
-	//if cli.dbSeq != 0 {
-	// 多数据库场景需要加入数据库选择语句
-	dbStr := strconv.Itoa(event.cli.dbSeq)
-	s.aof.append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
-	//}
+	if event.cli.dbSeq != 0 {
+		// 多数据库场景需要加入数据库选择语句
+		dbStr := strconv.Itoa(event.cli.dbSeq)
+		s.aof.append([]byte(fmt.Sprintf("*2\r\n$6\r\nselect\r\n$%d\r\n%s\r\n", len(dbStr), dbStr)))
+	}
 
 	s.aof.append(event.raw)
 }
@@ -40,6 +40,8 @@ func (s *Server) recoverFromAOF(filename string) {
 	client := NewFakeClient()
 
 	parser := resp.NewParser(reader)
+
+	selected := false
 
 	for {
 
@@ -64,6 +66,13 @@ func (s *Server) recoverFromAOF(filename string) {
 
 		// 执行服务命令
 		_, _ = ExecCommand(s, client, client.cmd, client.raw)
+
+		if !selected && client.dbSeq > 0 {
+			selected = true
+		} else {
+			selected = false
+			client.dbSeq = 0
+		}
 
 	}
 }

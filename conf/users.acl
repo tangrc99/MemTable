@@ -1,1 +1,1 @@
-user default on >123 ~.* +@all
+user default on nopass ~.* +@all
