@@ -14,7 +14,7 @@ setmetatable(_G, {
                end
             end,
 
-            __index = function (t, n, v)
+            __index = function (_, n,_)
                if string.sub(n,1,2) ~= 'f_' then
                     error("attempt to read undeclared variable '"..tostring(n).."'", 2)
                end
