@@ -203,7 +203,6 @@ func TestACLUserBasic2(t *testing.T) {
 	assert.False(t, user.IsCommandAllowed("get"))
 	assert.True(t, user.IsCommandAllowed("del"))
 	assert.False(t, user.IsCommandAllowed("dsf"))
-
 }
 
 func TestACLUserBasic3(t *testing.T) {
