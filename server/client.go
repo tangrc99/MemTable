@@ -61,15 +61,15 @@ type Client struct {
 
 func NewClient(conn net.Conn) *Client {
 	return &Client{
-		parser: resp.NewParser(conn),
-		cnn:    conn,
-		id:     uuid.Must(uuid.NewV1()),
-		tp:     global.Now,
-		status: WAIT,
-		dbSeq:  0,
-		res:    make(chan *resp.RedisData, 10),
-		user:   acl.DefaultUser(),
-
+		parser:  resp.NewParser(conn),
+		cnn:     conn,
+		id:      uuid.Must(uuid.NewV1()),
+		tp:      global.Now,
+		status:  WAIT,
+		dbSeq:   0,
+		res:     make(chan *resp.RedisData, 10),
+		user:    acl.DefaultUser(),
+		auth:    false,
 		blocked: false,
 	}
 }

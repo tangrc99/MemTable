@@ -272,6 +272,9 @@ func (cfg *Config) parseFile() error {
 					return err
 				}
 				cfg.SlowLogMaxLen = max
+			} else if cfgName == "aclfile" {
+
+				cfg.ACLFile = fields[1]
 			}
 
 		}

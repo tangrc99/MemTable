@@ -469,7 +469,7 @@ func luaRedisErrorReply(L *lua.LState) int {
 	}
 
 	t := L.NewTable()
-	L.SetTable(t, lua.LString("err"), L.CheckAny(1))
+	L.SetTable(t, lua.LString("errors"), L.CheckAny(1))
 
 	return 1
 }
@@ -498,7 +498,7 @@ func luaRedisStatusReply(L *lua.LState) int {
 * ------------------------------------------------------------------------- */
 
 // generateError 会根据是否在保护模式下采取不同的处理。
-// 在保护模式下如果出错，pcall 返回结果是一个表，表中字段 err 存储错误信息；
+// 在保护模式下如果出错，pcall 返回结果是一个表，表中字段 errors 存储错误信息；
 // 在非保护模式下，将会直接 raiseError。
 func generateError(L *lua.LState, msg string, protected bool) int {
 
@@ -513,7 +513,7 @@ func generateError(L *lua.LState, msg string, protected bool) int {
 
 	// 产生错误表并放入到 lua 栈顶
 	ret := L.NewTable()
-	L.SetTable(ret, lua.LString("err"), lua.LString(errMsg))
+	L.SetTable(ret, lua.LString("errors"), lua.LString(errMsg))
 	L.Push(ret)
 
 	return 1
@@ -624,10 +624,10 @@ func luaDataToResp(data lua.LValue) resp.RedisData {
 		}
 
 		// 检查是否是错误信息
-		if v := t.RawGetString("err"); v != lua.LNil {
+		if v := t.RawGetString("errors"); v != lua.LNil {
 			// 状态信息必须为 string 或 number 类型
 			if v.Type() != lua.LTString || v.Type() != lua.LTNumber {
-				return resp.MakeErrorData("ERR content of err/err_reply is not string or number")
+				return resp.MakeErrorData("ERR content of errors/err_reply is not string or number")
 			}
 			return resp.MakeStringData(v.String())
 		}

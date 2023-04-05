@@ -193,8 +193,8 @@ func bitfield(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	// 进行类型检查，会自动检查过期选项
-	if err := checkType(value, STRING); err != nil {
-		return err
+	if errors := checkType(value, STRING); errors != nil {
+		return errors
 	}
 
 	if len(cmd) == 2 {
@@ -221,14 +221,14 @@ func bitfield(db *db.DataBase, cmd [][]byte) resp.RedisData {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 
-			nums, err := strconv.Atoi(string(cmd[i+1][1:]))
-			if err != nil || nums >= 64 || (commands[i-2][1] == "u" && nums == 64) {
+			nums, errors := strconv.Atoi(string(cmd[i+1][1:]))
+			if errors != nil || nums >= 64 || (commands[i-2][1] == "u" && nums == 64) {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 			commands[i-2][2] = nums
 
-			pos, err := strconv.Atoi(string(cmd[i+2]))
-			if err != nil {
+			pos, errors := strconv.Atoi(string(cmd[i+2]))
+			if errors != nil {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 
@@ -249,21 +249,21 @@ func bitfield(db *db.DataBase, cmd [][]byte) resp.RedisData {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 
-			nums, err := strconv.Atoi(string(cmd[i+1][1:]))
-			if err != nil || nums >= 64 || (commands[i-2][1] == "u" && nums == 64) {
+			nums, errors := strconv.Atoi(string(cmd[i+1][1:]))
+			if errors != nil || nums >= 64 || (commands[i-2][1] == "u" && nums == 64) {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 			commands[i-2][2] = nums
 
-			pos, err := strconv.Atoi(string(cmd[i+2]))
-			if err != nil {
+			pos, errors := strconv.Atoi(string(cmd[i+2]))
+			if errors != nil {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 
 			commands[i-2][3] = pos
 
-			val, err := strconv.Atoi(string(cmd[i+3]))
-			if err != nil || (commands[i-2][1] == "u" && 2^pos < val) ||
+			val, errors := strconv.Atoi(string(cmd[i+3]))
+			if errors != nil || (commands[i-2][1] == "u" && 2^pos < val) ||
 				(commands[i-2][1] == "i" && float64(2^(pos-1)) < amath.Abs(float64(val))) {
 				return resp.MakeErrorData("ERR value is not an integer or out of range")
 			}
@@ -285,21 +285,21 @@ func bitfield(db *db.DataBase, cmd [][]byte) resp.RedisData {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 
-			nums, err := strconv.Atoi(string(cmd[i+1][1:]))
-			if err != nil || nums >= 64 || (commands[i-2][1] == "u" && nums == 64) {
+			nums, errors := strconv.Atoi(string(cmd[i+1][1:]))
+			if errors != nil || nums >= 64 || (commands[i-2][1] == "u" && nums == 64) {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 			commands[i-2][2] = nums
 
-			pos, err := strconv.Atoi(string(cmd[i+2]))
-			if err != nil {
+			pos, errors := strconv.Atoi(string(cmd[i+2]))
+			if errors != nil {
 				return resp.MakeErrorData("ERR Invalid bitfield type. Use something like i16 u8. Note that u64 is not supported but i64 is.")
 			}
 
 			commands[i-2][3] = pos
 
-			val, err := strconv.Atoi(string(cmd[i+3]))
-			if err != nil || (commands[i-2][1] == "u" && 2^pos < val) ||
+			val, errors := strconv.Atoi(string(cmd[i+3]))
+			if errors != nil || (commands[i-2][1] == "u" && 2^pos < val) ||
 				(commands[i-2][1] == "i" && float64(2^(pos-1)) < amath.Abs(float64(val))) {
 				return resp.MakeErrorData("ERR value is not an integer or out of range")
 			}

@@ -161,7 +161,7 @@ func (s *Server) sendPSyncToMaster(url string) bool {
 		rd, err := client.cnn.Read(rdBuff)
 		handshakeBuff = append(handshakeBuff, rdBuff[0:rd]...)
 
-		//rd, err := client.cnn.Read(handshakeBuff[rdLen:])
+		//rd, errors := client.cnn.Read(handshakeBuff[rdLen:])
 		rdLen += rd
 		if err != nil {
 			logger.Error("PSync: Read Failed", err.Error())

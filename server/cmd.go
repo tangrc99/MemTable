@@ -84,15 +84,17 @@ func ExecCommand(server *Server, cli *Client, cmds [][]byte, raw []byte) (ret re
 
 	commandName := strings.ToLower(string(cmds[0]))
 
-	passed := checkAuthority(cli, commandName)
-	if !passed {
-		return resp.MakeErrorData("ERR operation not permitted"), false
-	}
-
+	// 判断命令是否存在
 	c, ok := global.FindCommand(commandName)
 
 	if !ok {
 		return resp.MakeErrorData("error: unsupported command"), false
+	}
+
+	// 判断是否有权限访问
+	passed := checkAuthority(cli, commandName)
+	if !passed {
+		return resp.MakeErrorData("ERR operation not permitted"), false
 	}
 
 	writeAllowed := !(server.role == Slave && cli != server.Master)
@@ -146,7 +148,10 @@ func checkAuthority(cli *Client, commandName string) bool {
 	if commandName == "auth" {
 		return true
 	}
+
 	if cli.auth || !cli.user.HasPassword() {
+		// 防止无密码账号修改密码，影响登录状态
+		cli.auth = true
 		// 已经授权，检查是否符合条件
 		return cli.user.IsCommandAllowed(commandName)
 	}
