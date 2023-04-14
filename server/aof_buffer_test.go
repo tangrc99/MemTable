@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestAOFBufferPage(t *testing.T) {
@@ -121,6 +122,10 @@ func TestAOFBufferAsync(t *testing.T) {
 		bytes, _ := os.ReadFile("test.aof")
 		assert.Equal(t, []byte("12345678"), bytes)
 	}
+
+	// 等待一段时间
+	time.Sleep(time.Second)
+
 	{
 		aof.flush()
 		for atomic.LoadInt32(&aof.writing) > 0 {

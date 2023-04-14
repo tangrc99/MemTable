@@ -178,7 +178,7 @@ func (buff *aofBuffer) syncToDisk() {
 	}
 }
 
-// quit 会阻塞并清空所有的缓冲区
+// quit 会阻塞直至清空所有的缓冲区
 func (buff *aofBuffer) quit() {
 
 	if buff.writer == nil {
@@ -199,23 +199,12 @@ func (buff *aofBuffer) quit() {
 // flush 通知协程进行持久化操作
 func (buff *aofBuffer) flush() {
 
-	writingStatus := atomic.LoadInt32(&buff.writing)
-
-	// 当前有正在发生的写入操作
-	if writingStatus > 0 {
-		return
-	}
-
 	// 通知协程进行写入操作
 	buff.notification <- struct{}{}
 }
 
 // append 将内容写入到 AOF 缓冲区中，如果当前缓冲区已满，函数会阻塞直到刷盘清理出一部分可写入的缓冲区
 func (buff *aofBuffer) append(bytes []byte) {
-
-	if buff.writer == nil {
-		return
-	}
 
 	result := buff.pages[buff.appendSeq%buff.pageSize].append(bytes)
 
