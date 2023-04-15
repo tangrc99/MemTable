@@ -54,6 +54,7 @@ func (buff *bufferPage) append(bytes []byte) appendResult {
 			buff.appendix = append(buff.appendix, bytes)
 			return appendAppendix
 		}
+		// 没有足够的缓冲区写入
 		return appendFail
 	}
 
@@ -107,6 +108,7 @@ type aofBuffer struct {
 	quitFlag     chan struct{}
 }
 
+// newAOFBuffer 会创建一个 AOF 缓冲区，缓冲区的将会采取一定策略写入到 filename 文件中
 func newAOFBuffer(filename string) *aofBuffer {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
@@ -140,6 +142,7 @@ func (buff *aofBuffer) asyncTask() {
 	q := false
 	for !q {
 		select {
+		// 控制刷盘
 		case <-buff.notification:
 			// 写入 os 缓冲区
 			atomic.StoreInt32(&buff.writing, 1)
@@ -149,8 +152,9 @@ func (buff *aofBuffer) asyncTask() {
 			atomic.StoreInt32(&buff.writing, 2)
 			buff.syncToDisk()
 
+			// 完成刷盘工作
 			atomic.StoreInt32(&buff.writing, 0)
-
+		// 控制退出
 		case <-buff.quitFlag:
 			q = true
 		}

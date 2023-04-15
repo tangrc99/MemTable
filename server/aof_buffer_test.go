@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// TestAOFBufferPage 测试 page 能否正常写入
 func TestAOFBufferPage(t *testing.T) {
 
 	file, err := os.OpenFile("test.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -123,7 +124,7 @@ func TestAOFBufferAsync(t *testing.T) {
 		assert.Equal(t, []byte("12345678"), bytes)
 	}
 
-	// 等待一段时间
+	// 等待一段时间直到 AOF 缓冲区全部写入到硬盘中
 	time.Sleep(time.Second)
 
 	{
