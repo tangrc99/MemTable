@@ -168,8 +168,6 @@ func (s *Server) sendPSyncToMaster(url string) bool {
 			return false
 		}
 
-		println(string(handshakeBuff[0:rdLen]))
-
 		if shakeStatus == PING {
 
 			// 验证 pingRes 是否为 +pong\r\n

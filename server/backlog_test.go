@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/stretchr/testify/assert"
 	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/logger"
 	"testing"
@@ -17,14 +18,17 @@ func TestBackLog(t *testing.T) {
 	s := NewServer()
 	s.InitModules()
 	s.standAloneToMaster()
-	println(s.backLog.LowWaterLevel())
+	assert.Equal(t, uint64(0), s.backLog.LowWaterLevel())
 
 	event := &Event{raw: []byte("sdfsdfsdfds"), cli: NewClient(nil)}
-	println(s.backLog.LowWaterLevel())
+	assert.Equal(t, uint64(0), s.backLog.LowWaterLevel())
 
 	s.appendBackLog(event)
-	println(s.backLog.LowWaterLevel())
-	println(s.backLog.HighWaterLevel())
+	assert.Equal(t, uint64(0), s.backLog.LowWaterLevel())
+
+	assert.Equal(t, uint64(34), s.backLog.HighWaterLevel())
+
 	rd := s.backLog.Read(0, 34)
-	println(string(rd))
+
+	assert.Equal(t, []byte("*2\r\n$6\r\nselect\r\n$1\r\n0\r\nsdfsdfsdfds"), rd)
 }

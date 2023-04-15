@@ -54,7 +54,7 @@ func (tree *TrieTree) AddNode(paths []string, value Object) *trieTreeNode {
 	for _, path := range paths {
 		node, exists := cur.children[path]
 		if !exists {
-			node = newTrieTreeNode(path, nil, false, cur, tree)
+			node = newTrieTreeNode(path, Nil{}, false, cur, tree)
 			tree.cost += node.Cost()
 			cur.children[path] = node
 		}
@@ -80,7 +80,7 @@ func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value Object) (*trieTreeN
 	for _, path := range paths {
 		node, exists := cur.children[path]
 		if !exists {
-			node = newTrieTreeNode(path, nil, false, cur, tree)
+			node = newTrieTreeNode(path, Nil{}, false, cur, tree)
 			tree.cost += node.Cost()
 			cur.children[path] = node
 		}
