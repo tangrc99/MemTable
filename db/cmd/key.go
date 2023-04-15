@@ -66,7 +66,7 @@ func expire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	period, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Error("expire Function: cmd[2] %s is not int", string(cmd[2]))
+		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
@@ -90,7 +90,7 @@ func expireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	tp, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Error("expire Function: cmd[2] %s is not int", string(cmd[2]))
+		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
@@ -112,7 +112,7 @@ func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	period, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Error("expire Function: cmd[2] %s is not int", string(cmd[2]))
+		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
@@ -136,7 +136,7 @@ func pExpireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	tp, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Error("expire Function: cmd[2] %s is not int", string(cmd[2]))
+		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 

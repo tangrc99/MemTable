@@ -110,7 +110,7 @@ func Debug(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(DEBUG)
-	logger.Println(v)
+	logger.Println(v...)
 }
 
 // Debugf 写入 DEBUG 等级日志
@@ -121,7 +121,7 @@ func Debugf(format string, v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(DEBUG)
-	logger.Printf(format, v)
+	logger.Printf(format, v...)
 }
 
 // Info 写入 INFO 等级日志
@@ -132,7 +132,7 @@ func Info(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(INFO)
-	logger.Println(v)
+	logger.Println(v...)
 }
 
 // Infof 写入 INFO 等级日志
@@ -143,7 +143,7 @@ func Infof(format string, v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(INFO)
-	logger.Printf(format, v)
+	logger.Printf(format, v...)
 }
 
 // Warning 写入 WARNING 等级日志
@@ -154,7 +154,7 @@ func Warning(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(WARNING)
-	logger.Println(v)
+	logger.Println(v...)
 }
 
 // Warningf 写入 WARNING 等级日志
@@ -165,7 +165,7 @@ func Warningf(format string, v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(WARNING)
-	logger.Printf(format, v)
+	logger.Printf(format, v...)
 }
 
 // Error 写入 ERROR 等级日志
@@ -176,7 +176,7 @@ func Error(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(ERROR)
-	logger.Println(v)
+	logger.Println(v...)
 }
 
 // Errorf 写入 ERROR 等级日志
@@ -187,7 +187,7 @@ func Errorf(format string, v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(ERROR)
-	logger.Printf(format, v)
+	logger.Printf(format, v...)
 }
 
 // Panic 写入 PANIC 等级日志
@@ -198,7 +198,7 @@ func Panic(v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(PANIC)
-	logger.Fatal(v)
+	logger.Fatal(v...)
 }
 
 // Panicf 写入 PANIC 等级日志
@@ -209,5 +209,5 @@ func Panicf(format string, v ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	setPrefix(PANIC)
-	logger.Fatalf(format, v)
+	logger.Fatalf(format, v...)
 }

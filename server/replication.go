@@ -165,7 +165,7 @@ func (s *ReplicaStatus) sendBackLog() {
 			n, err := cli.cnn.Write(bytes)
 			cli.offset += uint64(n)
 			if err != nil {
-				logger.Error("Send Backlog Error %s", err.Error())
+				logger.Errorf("Send Backlog Error %s", err.Error())
 				// 如果发生错误，等待 slave 的offset 落后会自动转换为 offline
 				continue
 			}
