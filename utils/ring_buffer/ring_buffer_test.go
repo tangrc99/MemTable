@@ -1,6 +1,9 @@
 package ring_buffer
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestRingBuffer(t *testing.T) {
 	r := RingBuffer{}
@@ -29,4 +32,26 @@ func TestRingBuffer(t *testing.T) {
 	if !r.ringed || r.LowWaterLevel()+r.capacity != uint64(2) || r.HighWaterLevel() != 2 {
 		t.Error("OverFlow Failed")
 	}
+}
+
+func TestRingBufferLargerThanCap(t *testing.T) {
+	r := RingBuffer{}
+	r.Init(5)
+
+	assert.Equal(t, uint64(8), r.capacity)
+
+	r.Append([]byte("1111"))
+	r.Append([]byte("222222222"))
+
+	assert.Equal(t, uint64(16), r.capacity)
+
+	bytes := r.ReadSince(r.LowWaterLevel())
+
+	assert.Equal(t, []byte("1111222222222"), bytes)
+
+	r.Append([]byte("333"))
+
+	bytes = r.ReadSince(r.LowWaterLevel())
+	assert.Equal(t, []byte("1111222222222333"), bytes)
+
 }

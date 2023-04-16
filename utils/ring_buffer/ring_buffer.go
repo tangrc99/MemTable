@@ -21,6 +21,7 @@ func (b *RingBuffer) Init(capacity uint64) {
 	b.capacity = capacity
 	b.buffer = make([]byte, capacity, capacity)
 	b.offset = 0
+	b.ringed = false
 }
 
 // LowWaterLevel 返回环形缓冲区中保留的最小序列号
@@ -39,8 +40,17 @@ func (b *RingBuffer) HighWaterLevel() uint64 {
 // Append 将内容拷贝到 RingBuffer 中，并返回拷贝后的 offset
 func (b *RingBuffer) Append(content []byte) uint64 {
 
+	// 如果内容过大，需要进行动态扩充
 	if uint64(len(content)) >= b.capacity {
-		panic("Content Length is Larger Than Capacity")
+
+		// 读取旧值
+		oldContent := b.ReadSince(b.LowWaterLevel())
+		// 计算所需大小，并且向上取整
+		b.Init(uint64(len(content)) + uint64(len(oldContent)))
+
+		b.Append(oldContent)
+		b.Append(content)
+		return uint64(len(content))
 	}
 
 	Len := uint64(len(content))
