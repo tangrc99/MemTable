@@ -3,15 +3,15 @@ MemTable 是一个仿照 redis 架构写成的基于内存的键值对存储服�
 
 ## Features
 
-- 支持 redis 客户端和 RESP 通信协议
-- 支持 redis pipeline 通信
-- 支持 String,List,Set,ZSet,Hash,Bitmap 等多种数据结构
-- 支持 pub/sub，基于前缀树实现路径递归发布
-- 支持 TTL 功能，可以设置键值对过期
-- 支持 AOF、RDB 持久化
-- 支持 Lua 脚本
-- 支持主从复制
-- 支持分片集群，暂时不支持自动故障恢复
+- 支持 redis 客户端和 RESP 通信协议，支持 redis pipeline 通信；
+- 支持 String,List,Set,ZSet,Hash,Bitmap 等多种数据结构；
+- 支持 pub/sub，基于前缀树实现路径递归发布；
+- 支持 TTL 功能，可以设置键值对过期；
+- 支持 AOF、RDB 持久化；
+- 支持 Lua 脚本扩展；
+- 支持 ACL 控制；
+- 支持主从复制；
+- 支持分片集群，暂时不支持自动故障恢复；
 
 ## Usage
 
@@ -20,7 +20,7 @@ MemTable 是一个仿照 redis 架构写成的基于内存的键值对存储服�
 go build -o memtable main.go
 
 # run
-./memtable default.conf
+./memtable conf/default.conf
 ```
 
 ## Support Commands
@@ -116,21 +116,15 @@ Summary:
         0.582     0.040     0.487     1.087     1.647     4.303
 ```
 
-可以看到使用 go net 网络写成的 redis 服务吞吐量差别不大，使用 pprof 工具生成调用图，可以看到 net 网络库中的 IO 占据了 CPU 的绝大多数时间片。
+对比相关类型的项目，可以看到性能差距并不大，并且本项目由于使用了单线程的设计，更容易去实现一些拓展功能。而对比 redis-server，本项目由于 goroutine 过多，导致调度耗时过高，因此无法达到类似的并发量。
 
-![image-20230108035814657](pprof.png)
+## Blog
 
-将 MemTable 中的网络部分，更换为 gnet 网络库，在相同条件下测试，得到结果：
+下面几篇文章本项目中的一些收获，记录在我的个人博客中，欢迎阅读：
 
-```shell
-# 使用 gnet 网络库
-Summary:
-  throughput summary: 67977.26 requests per second
-  latency summary (msec):
-          avg       min       p50       p95       p99       max
-        0.590     0.120     0.543     1.079     1.439     2.335
-```
-
-## TODO
-
-- 在 cluster 状态下，事务操作将不会检查所有的键是否都位于一个实例中，可能会发生错误导致事务终端
+- [使用 goroutine 模拟 redis IO 模型](https://tangrc99.com/2022/12/27/使用%20goroutine%20模拟%20redis%20IO%20模型/)
+- [gnet 与 net 网络库性能对比](https://tangrc99.com/2023/01/09/gnet-与-net-网络库性能对比/)
+- [以freecache和bigcache为例看go进程内缓存](https://tangrc99.com/2023/01/27/以freecachebigcache为例看go进程内缓存/)
+- [Ristretto 源码阅读笔记](https://tangrc99.com/2023/02/25/Ristretto-源码阅读笔记/)
+- [从unsafe.Pointer出发，浅析Go反射原理](https://tangrc99.com/2023/03/01/从unsafe.Pointer出发，浅析Go反射原理/)
+- [Go 仿写 Redis 的一些思考](https://tangrc99.com/2023/04/06/Go-仿写-Redis-的一些思考/)
