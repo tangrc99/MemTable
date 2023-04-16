@@ -2,6 +2,7 @@
 package db
 
 import (
+	"github.com/gofrs/uuid"
 	"github.com/tangrc99/MemTable/db/eviction"
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/server/global"
@@ -20,6 +21,7 @@ type DataBase struct {
 	dict    *structure.Dict // 存储键值对
 	ttlKeys *structure.Dict // 存储过期键
 	watches *watcher        // 存储监视键
+	blocked *blockMap       // 阻塞命令
 
 	rookies     *eviction.RookieList // 预备表，优先从预备表中淘汰
 	evict       eviction.Eviction
@@ -36,6 +38,7 @@ func NewDataBase(slot int, ops ...Option) *DataBase {
 		ttlKeys:     structure.NewDict(1),
 		watches:     newWatcher(),
 		evict:       eviction.NewNoEviction(),
+		blocked:     newBlockMap(),
 		enableEvict: false,
 	}
 	for _, op := range ops {
@@ -289,6 +292,10 @@ func (db_ *DataBase) ReviseNotifyAll() {
 // WatchSize 返回数据库中被监控的键值对数目
 func (db_ *DataBase) WatchSize() int {
 	return db_.watches.Size()
+}
+
+func (db_ *DataBase) RegisterBlocked(key string, id uuid.UUID, n chan<- []byte, ddl int64) {
+	db_.blocked.register(key, id, n, ddl)
 }
 
 func (db_ *DataBase) SlotCount(slotSeq int) int {

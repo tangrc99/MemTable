@@ -1,7 +1,10 @@
 package server
 
 import (
+	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
+	"strconv"
 )
 
 func publish(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
@@ -55,8 +58,93 @@ func unsubscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeArrayData(res)
 }
 
+func bLPop(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+
+	dataBase := server.dbs[cli.dbSeq]
+
+	e, ok := CheckCommandAndLength(cmd, "blpop", 3)
+	if !ok {
+		return e
+	}
+
+	for i := 1; i < len(cmd)-1; i++ {
+		value, ok := dataBase.GetKey(string(cmd[i]))
+		if !ok {
+			continue
+		}
+		// 如果可以取出，则直接取出
+		listVal, ok := value.(*structure.List)
+		if !ok {
+			return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
+		}
+		if !listVal.Empty() {
+			v, _ := listVal.PopFront().(structure.Slice)
+			return resp.MakeBulkData(v)
+		}
+	}
+
+	timeout, w := strconv.Atoi(string(cmd[len(cmd)-1]))
+	if w != nil {
+		return resp.MakeErrorData("ERR timeout is not an integer or out of range")
+	}
+	deadline := global.Now.Unix() + int64(timeout)
+	if timeout == 0 {
+		deadline = -1
+	}
+	for i := 1; i < len(cmd)-1; i++ {
+		dataBase.RegisterBlocked(string(cmd[i]), cli.id, cli.msg, deadline)
+	}
+
+	cli.blocked = true
+	return nil
+}
+
+func bRPop(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+
+	dataBase := server.dbs[cli.dbSeq]
+
+	e, ok := CheckCommandAndLength(cmd, "brpop", 3)
+	if !ok {
+		return e
+	}
+
+	for i := 1; i < len(cmd)-1; i++ {
+		value, ok := dataBase.GetKey(string(cmd[i]))
+		if !ok {
+			continue
+		}
+		// 如果可以取出，则直接取出
+		listVal, ok := value.(*structure.List)
+		if !ok {
+			return resp.MakeErrorData("WRONGTYPE Operation against a key holding the wrong kind of value")
+		}
+		if !listVal.Empty() {
+			v, _ := listVal.PopBack().(structure.Slice)
+			return resp.MakeBulkData(v)
+		}
+	}
+
+	timeout, w := strconv.Atoi(string(cmd[len(cmd)-1]))
+	if w != nil {
+		return resp.MakeErrorData("ERR timeout is not an integer or out of range")
+	}
+	deadline := global.Now.Unix() + int64(timeout)
+	if timeout == 0 {
+		deadline = -1
+	}
+	for i := 1; i < len(cmd)-1; i++ {
+		dataBase.RegisterBlocked(string(cmd[i]), cli.id, cli.msg, deadline)
+	}
+
+	cli.blocked = true
+	return nil
+}
+
 func registerPubSubCommands() {
 	RegisterCommand("publish", publish, RD)
 	RegisterCommand("subscribe", subscribe, RD)
 	RegisterCommand("unsubscribe", unsubscribe, RD)
+
+	RegisterCommand("blpop", bLPop, RD)
+	RegisterCommand("brpop", bRPop, RD)
 }

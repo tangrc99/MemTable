@@ -38,8 +38,8 @@ type Client struct {
 
 	pipelined bool
 
-	user *acl.User
-	auth bool
+	user *acl.User // 当前客户端的登录用户，默认为 default
+	auth bool      // 当前用户是否完成了授权
 
 	// 发布订阅
 	chs map[string]struct{} //订阅频道

@@ -487,13 +487,6 @@ func lMove(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 }
 
-/*
-
-
-func bLPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
-func bRPop(db *db.DataBase, cmd [][]byte) resp.RedisData  {}
-*/
-
 func registerListCommands() {
 	registerCommand("llen", lLen, RD)
 	registerCommand("lpush", lPush, WR)
