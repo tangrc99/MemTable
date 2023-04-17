@@ -83,7 +83,6 @@ func (parser *Parser) Parse() *ParsedRes {
 
 			} else {
 
-				// TODO: 这里如果是 tls 层报错，会多次继续读取数据
 				// Protocol error
 				logger.Error(err)
 				*parser.state = readState{}

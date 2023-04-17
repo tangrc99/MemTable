@@ -196,3 +196,16 @@ func (r *PlainData) ToCommand() [][]byte {
 	}
 	return res
 }
+
+// ToArray 将 redis-pipeline 类型数据转化为 RESP 类型数据
+func (r *PlainData) ToArray() RedisData {
+
+	segs := strings.Split(r.data, " ")
+	lines := make([]RedisData, len(segs))
+
+	for i := range segs {
+		lines[i] = MakeBulkData([]byte(segs[i]))
+	}
+
+	return MakeArrayData(lines)
+}
