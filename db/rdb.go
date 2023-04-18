@@ -20,7 +20,7 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 	keys := 0
 	ttls := 0
 
-	for _, dict := range *dicts {
+	for _, dict := range dicts {
 		for k, v := range dict {
 
 			v = v.(*eviction.Item).Value
@@ -85,7 +85,7 @@ func (db_ *DataBase) Encode(enc *core.Encoder) error {
 
 				kvs, _ := hash.GetAll()
 				entrys := make(map[string][]byte)
-				for key, value := range (*kvs)[0] {
+				for key, value := range (kvs)[0] {
 					entrys[key] = value.(structure.Slice)
 				}
 
