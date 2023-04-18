@@ -53,7 +53,8 @@ type Client struct {
 	revised bool             //监控是否被修改
 
 	// 阻塞监听
-	blocked bool // 客户端是否执行阻塞等待的命令
+	blocked   bool // 客户端是否执行阻塞等待的命令
+	monitored bool
 
 	// 主从复制
 	SlaveStatus
@@ -126,8 +127,20 @@ func (cli *Client) InitTX() {
 }
 
 func (cli *Client) InitWatchers() {
-	cli.watched = make(map[int][]string)
+	if cli.watched == nil {
+		cli.watched = make(map[int][]string)
+		cli.revised = false
+	}
+}
+
+func (cli *Client) ClearWatchers() {
+	cli.watched = nil
 	cli.revised = false
+}
+
+// IsRemovable 用于判断当前客户端是否能够被驱逐。当客户端处于事务、监控、主从复制状态下是无法驱逐的。
+func (cli *Client) IsRemovable() bool {
+	return !cli.inTx && !cli.monitored && cli.slaveStatus == slaveNot
 }
 
 func (cli *Client) Cost() int64 {
@@ -207,7 +220,7 @@ func (clients *ClientList) RemoveLongNotUsed(maxRemove, maxTraverse int, d time.
 			clients.list.RemoveNode(node)
 			node = prev
 
-		} else if cli.slaveStatus == slaveNot && (cli.tp.Before(expired) || cli.status == ERROR || cli.status == EXIT) {
+		} else if cli.IsRemovable() && cli.tp.Before(expired) {
 			// 清理过期和失效客户端
 			prev := node.Prev()
 			clients.removeClientWithPosition(cli, node)

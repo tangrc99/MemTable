@@ -60,6 +60,8 @@ type Server struct {
 
 	// 慢查询日志
 	slowlog *slowLog
+	// 监视器
+	monitors *Monitor
 
 	// 协程池
 	gopool *gopool.Pool // 用于客户端启动的协程池
@@ -110,6 +112,7 @@ func NewServer() *Server {
 		aofEnabled: config.Conf.AppendOnly,
 		aofFile:    "appendonly.aof",
 		slowlog:    newSlowLog(config.Conf.SlowLogMaxLen),
+		monitors:   NewMonitor(),
 		acl:        acl.NewAccessControlList(config.Conf.ACLFile),
 	}
 
@@ -299,11 +302,8 @@ func (s *Server) eventLoop() {
 		case <-timer.C:
 
 			timer.Reset(100 * time.Millisecond)
-
-			//logger.Debug("EventLoop: Timer trigger")
 			// 需要完成定时任务，这里是非阻塞的，可以使用全局时钟
 			s.tl.ExecuteManyDuring(global.Now, 25*time.Millisecond)
-			//s.tl.ExecuteOneIfExpire()
 
 		case event := <-s.events:
 
@@ -317,22 +317,20 @@ func (s *Server) eventLoop() {
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
-				logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
-				cli.UnSubscribeAll(s.Chs)
-				s.clis.RemoveClient(cli)
+				s.shutdownClient(cli)
 				continue
 			}
 
 			// 用于判断是否为新连接
-			ok := s.clis.AddClientIfNotExist(cli)
-
-			// 如果是新连接
-			if ok {
+			if s.clis.AddClientIfNotExist(cli) {
 				logger.Debug("EventLoop: New Client", cli.id.String())
 			}
 
 			// 更新时间戳
 			cli.UpdateTimestamp(global.Now)
+
+			// monitor
+			s.monitors.NotifyAll(event)
 
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, event.cmd, event.raw)
@@ -340,9 +338,9 @@ func (s *Server) eventLoop() {
 			global.UpdateGlobalClock()
 			endTs := global.Now
 
+			// slow log
 			if config.Conf.SlowLogSlowerThan >= 0 {
 				// this is a slow command
-
 				if d := endTs.Sub(startTs).Microseconds(); d >= config.Conf.SlowLogSlowerThan {
 					s.slowlog.appendEntry(event.cmd, d)
 				}
@@ -432,6 +430,17 @@ func (s *Server) acceptLoop(listener net.Listener) {
 	}
 	logger.Infof("Server: Shutdown on %s", listener.Addr().String())
 
+}
+
+// shutdownClient 会完成一个客户端关闭后的善后工作
+func (s *Server) shutdownClient(cli *Client) {
+	// 释放客户端资源
+	logger.Debug("EventLoop: Remove Closed Client", cli.id.String())
+	cli.UnSubscribeAll(s.Chs)
+	s.clis.RemoveClient(cli)
+	if cli.monitored {
+		s.monitors.RemoveMonitor(cli)
+	}
 }
 
 func (s *Server) initTimeEvents() {
