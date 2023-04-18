@@ -65,10 +65,13 @@ func Init(dir string, filename string, level LogLevel) error {
 	logcfg = &LogConfig{
 		Path:  dir,
 		Name:  filename,
-		Level: INFO,
+		Level: level,
 	}
 
-	logcfg.Level = level
+	if filename == "" {
+		logger = log.New(os.Stdout, "", log.LstdFlags)
+		return nil
+	}
 
 	if _, err = os.Stat(logcfg.Path); err != nil {
 		mkErr := os.Mkdir(logcfg.Path, 0755)
