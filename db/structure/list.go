@@ -1,6 +1,9 @@
 package structure
 
-import "unsafe"
+import (
+	"reflect"
+	"unsafe"
+)
 
 // ListNode 是一个双向链表节点
 type ListNode struct {
@@ -147,6 +150,16 @@ func (list *List) RemoveNode(at *ListNode) Object {
 	list.size--
 	list.cost -= at.Cost()
 	return at.Value
+}
+
+func (list *List) Remove(value Object) bool {
+	for n := list.FrontNode(); n != nil; n = n.Next() {
+		if reflect.DeepEqual(n.Value, value) {
+			list.RemoveNode(n)
+			return true
+		}
+	}
+	return false
 }
 
 // PushFront 创建一个 ListNode 对象，并插入到链表头

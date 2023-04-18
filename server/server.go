@@ -24,8 +24,10 @@ import (
 type Server struct {
 	url         string       // 监听 url
 	tlsUrl      string       // tls url
-	tlsListener net.Listener // tls listener
+	uds         string       // unix domain socket
 	listener    net.Listener // listener
+	tlsListener net.Listener // tls listener
+	uListener   net.Listener // uds listener
 	dir         string       // 工作目录
 
 	// 数据库部分
@@ -392,6 +394,9 @@ func (s *Server) eventLoop() {
 	if s.tlsListener != nil {
 		_ = s.tlsListener.Close()
 	}
+	if s.uListener != nil {
+		_ = s.uListener.Close()
+	}
 
 	// 进行数据持久化
 	s.saveData()
@@ -530,6 +535,7 @@ func (s *Server) Start() {
 
 	var err error
 
+	// start network server
 	if s.url != "" {
 
 		s.listener, err = net.Listen("tcp", s.url)
@@ -542,6 +548,7 @@ func (s *Server) Start() {
 		go s.acceptLoop(s.listener)
 	}
 
+	// start tls server
 	if s.tlsUrl != "" {
 
 		// 载入服务端证书和私钥
@@ -577,6 +584,18 @@ func (s *Server) Start() {
 
 		logger.Info("TLS Server: Listen at", s.tlsUrl)
 		go s.acceptLoop(s.tlsListener)
+	}
+
+	// start unix domain server
+	if s.uds != "" {
+		s.uListener, err = net.Listen("unix", s.uds)
+		if err != nil {
+			logger.Error("UDS Server:", err.Error())
+			return
+		}
+
+		logger.Info("UDS Server: Listen at", s.url)
+		go s.acceptLoop(s.uListener)
 	}
 
 	quit := make(chan os.Signal)
