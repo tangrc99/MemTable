@@ -56,6 +56,10 @@ func (dict *Dict) countShard(key string) *Shard {
 	return &dict.shards[pos]
 }
 
+func (dict *Dict) ShardNum() int {
+	return dict.size
+}
+
 // Get 从 Dict 中查找键值对并返回值，如果不存在将会返回 nil
 func (dict *Dict) Get(key string) (Object, bool) {
 
@@ -218,7 +222,7 @@ func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
 
 	now := global.Now.Unix()
 
-	keys := make([]string, dict.count)
+	keys := make([]string, 0, dict.count)
 	i := 0
 	for _, shard := range dict.shards {
 
@@ -243,7 +247,7 @@ func (dict *Dict) KeysWithTTL(ttl *Dict, pattern string) ([]string, int) {
 					}
 				}
 				if ok {
-					keys[i] = key
+					keys = append(keys, key)
 					i++
 				}
 			}
@@ -373,8 +377,8 @@ func (dict *Dict) RandomKeys(num int) map[string]struct{} {
 	return selected
 }
 
-func (dict *Dict) GetAll() (*[]map[string]Object, int) {
-	return &dict.shards, dict.count
+func (dict *Dict) GetAll() ([]map[string]Object, int) {
+	return dict.shards, dict.count
 }
 
 // ShardCount 返回指定分片中的键值对数量
