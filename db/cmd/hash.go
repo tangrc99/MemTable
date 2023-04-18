@@ -221,7 +221,7 @@ func hGetAll(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	res := make([]resp.RedisData, n*2)
 
 	i := 0
-	for _, dict := range *dicts {
+	for _, dict := range dicts {
 		for k, v := range dict {
 			res[i] = resp.MakeBulkData([]byte(k))
 			res[i+1] = resp.MakeBulkData(v.(structure.Slice))
@@ -283,7 +283,7 @@ func hVals(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	res := make([]resp.RedisData, n)
 
 	i := 0
-	for _, dict := range *dicts {
+	for _, dict := range dicts {
 		for _, v := range dict {
 			res[i] = resp.MakeBulkData(v.(structure.Slice))
 			i++
