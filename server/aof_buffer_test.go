@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/tangrc99/MemTable/logger"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -11,10 +12,10 @@ import (
 // TestAOFBufferPage 测试 page 能否正常写入
 func TestAOFBufferPage(t *testing.T) {
 
-	file, err := os.OpenFile("test.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	file, err := os.OpenFile("TestAOFBufferPage.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	assert.Nil(t, err)
 	t.Cleanup(func() {
-		err = os.Remove("test.aof")
+		err = os.Remove("TestAOFBufferPage.aof")
 	})
 	page := newBufferPage(5)
 
@@ -36,7 +37,7 @@ func TestAOFBufferPage(t *testing.T) {
 
 	page.flush(file)
 
-	bytes, err := os.ReadFile("test.aof")
+	bytes, err := os.ReadFile("TestAOFBufferPage.aof")
 
 	assert.Equal(t, []byte("1234567890"), bytes)
 
@@ -47,11 +48,11 @@ func TestAOFBufferPage(t *testing.T) {
 
 func TestAOFBuffer(t *testing.T) {
 
-	file, err := os.OpenFile("test.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	file, err := os.OpenFile("TestAOFBuffer.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	assert.Nil(t, err)
 
 	t.Cleanup(func() {
-		err = os.Remove("test.aof")
+		err = os.Remove("TestAOFBuffer.aof")
 	})
 
 	aof := &aofBuffer{
@@ -74,24 +75,24 @@ func TestAOFBuffer(t *testing.T) {
 
 	{
 		aof.flushBuffer()
-		bytes, _ := os.ReadFile("test.aof")
+		bytes, _ := os.ReadFile("TestAOFBuffer.aof")
 		assert.Equal(t, []byte("12345678"), bytes)
 	}
 
 	{
 		aof.flushBuffer()
-		bytes, _ := os.ReadFile("test.aof")
+		bytes, _ := os.ReadFile("TestAOFBuffer.aof")
 		assert.Equal(t, []byte("1234567890"), bytes)
 	}
 }
 
 func TestAOFBufferAsync(t *testing.T) {
 
-	file, err := os.OpenFile("test.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	file, err := os.OpenFile("TestAOFBufferAsync.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	assert.Nil(t, err)
 
 	t.Cleanup(func() {
-		err = os.Remove("test.aof")
+		err = os.Remove("TestAOFBufferAsync.aof")
 	})
 	aof := &aofBuffer{
 		writer:       file,
@@ -120,7 +121,7 @@ func TestAOFBufferAsync(t *testing.T) {
 		for atomic.LoadInt32(&aof.writing) > 0 {
 		}
 
-		bytes, _ := os.ReadFile("test.aof")
+		bytes, _ := os.ReadFile("TestAOFBufferAsync.aof")
 		assert.Equal(t, []byte("12345678"), bytes)
 	}
 
@@ -132,42 +133,27 @@ func TestAOFBufferAsync(t *testing.T) {
 		for atomic.LoadInt32(&aof.writing) > 0 {
 		}
 
-		bytes, _ := os.ReadFile("test.aof")
+		bytes, _ := os.ReadFile("TestAOFBufferAsync.aof")
 		assert.Equal(t, []byte("1234567890"), bytes)
 	}
+	aof.quitFlag <- struct{}{}
 }
 
 func TestAOFBufferAsyncQuit(t *testing.T) {
 
-	file, err := os.OpenFile("test.aof", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-	assert.Nil(t, err)
+	_ = logger.Init("", "", logger.WARNING)
+
+	aof := newAOFBuffer("TestAOFBufferAsyncQuit.aof")
 
 	t.Cleanup(func() {
-		err = os.Remove("test.aof")
+		_ = os.Remove("TestAOFBufferAsyncQuit.aof")
 	})
-	aof := &aofBuffer{
-		writer:       file,
-		pages:        make([]*bufferPage, 2),
-		flushSeq:     0,
-		appendSeq:    0,
-		pageSize:     3,
-		writing:      0,
-		notification: make(chan struct{}),
-		quitFlag:     make(chan struct{}),
-	}
-	for i := range aof.pages {
-		aof.pages[i] = newBufferPage(5)
-	}
-
-	go func() {
-		aof.asyncTask()
-	}()
 
 	aof.append([]byte("12"))
 	aof.append([]byte("345678"))
 	aof.append([]byte("90"))
 
 	aof.quit()
-	bytes, _ := os.ReadFile("test.aof")
+	bytes, _ := os.ReadFile("TestAOFBufferAsyncQuit.aof")
 	assert.Equal(t, []byte("1234567890"), bytes)
 }
