@@ -19,11 +19,16 @@ type SysStatus struct {
 	VMS uint64 // 虚拟内存
 
 	// CPU
-	CPUPercents []float64
+	CPUPercents float64
 }
 
 func (s *SysStatus) UpdateSysStatus() {
-	s.CPUPercents, _ = cpu.Percent(time.Millisecond, true)
+	CPUPercents, _ := cpu.Percent(time.Millisecond, true)
+	sum := float64(0)
+	for _, n := range CPUPercents {
+		sum += n
+	}
+	s.CPUPercents = sum / float64(len(CPUPercents))
 
 	memInfo, _ := mem.VirtualMemory()
 	s.MemUsed = memInfo.Used

@@ -157,6 +157,10 @@ func (s *Server) InitModules() {
 		s.gopool = gopool.NewPool(config.Conf.GoPoolSize, 0, config.Conf.GoPoolSpawn)
 		logger.Debug("Config: GoPool Enabled")
 	}
+
+	global.UpdateGlobalClock()
+	s.collectCost()
+	s.UpdateStatus()
 }
 
 func (s *Server) handleRead(conn net.Conn) {
@@ -504,7 +508,7 @@ func (s *Server) initTimeEvents() {
 	s.tl.AddTimeEvent(NewPeriodTimeEvent(func() {
 		logger.Debug("TimeEvent: Update Status")
 
-		s.sts.UpdateStatus()
+		s.UpdateStatus()
 
 	}, time.Now().Add(global.TEUpdateStatus).Unix(), global.TEUpdateStatus,
 	))
@@ -656,6 +660,8 @@ func (s *Server) collectCost() {
 	if uint64(s.cost) > config.Conf.MaxMemory {
 		s.full = true
 	}
+
+	logger.Debugf("Server memory cost: %d", s.cost)
 }
 
 // handleReadWithoutGoroutine  不使用额外协程进行解析，在性能较差的机器上会表现较好

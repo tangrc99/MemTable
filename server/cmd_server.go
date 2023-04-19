@@ -153,6 +153,23 @@ func slowlog(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeErrorData(fmt.Sprintf("ERR unknown subcommand '%s' of slowlog", subcommand))
 }
 
+// info 用于显示服务器的状态，命令格式： info [section]
+func info(server *Server, _ *Client, cmd [][]byte) resp.RedisData {
+
+	e, ok := CheckCommandAndLength(cmd, "info", 1)
+	if !ok {
+		return e
+	}
+
+	section := ""
+
+	if len(cmd) == 2 {
+		section = string(cmd[1])
+	}
+
+	return resp.MakeStringData(server.Information(section))
+}
+
 func registerServerCommand() {
 	RegisterCommand("shutdown", shutdown, RD)
 	RegisterCommand("flushdb", flushdb, WR)
@@ -161,4 +178,5 @@ func registerServerCommand() {
 	RegisterCommand("save", save, RD)
 	RegisterCommand("bgsave", bgsave, RD)
 	RegisterCommand("slowlog", slowlog, RD)
+	RegisterCommand("info", info, RD)
 }
