@@ -1,6 +1,9 @@
 package structure
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestTrieTree(t *testing.T) {
 
@@ -39,4 +42,21 @@ func TestTrieTree(t *testing.T) {
 		t.Error("DeletePath Failed")
 	}
 
+	_, ok := tree.AddNodeIfNotLeaf(path2, Slice("p2"))
+	assert.False(t, ok)
+
+	_, ok = tree.GetLeafNode(path4)
+	assert.False(t, ok)
+
+	_, ok = tree.GetValue(path4)
+	assert.False(t, ok)
+
+	_, ok = tree.AddNodeIfNotLeaf(path4, Slice("p2"))
+	assert.True(t, ok)
+
+	_, ok = tree.GetLeafNode(path4)
+	assert.True(t, ok)
+
+	_, ok = tree.GetValue(path4)
+	assert.True(t, ok)
 }

@@ -224,7 +224,6 @@ func (tree *TrieTree) dfsGetLeafNodes(node *trieTreeNode, r *[]*trieTreeNode) {
 	}
 
 	for _, child := range node.children {
-
 		tree.dfsGetLeafNodes(child, r)
 	}
 }
