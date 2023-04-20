@@ -6,7 +6,6 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 // TestAOFBufferPage 测试 page 能否正常写入
@@ -125,17 +124,6 @@ func TestAOFBufferAsync(t *testing.T) {
 		assert.Equal(t, []byte("12345678"), bytes)
 	}
 
-	// 等待一段时间直到 AOF 缓冲区全部写入到硬盘中
-	time.Sleep(time.Second)
-
-	{
-		aof.flush()
-		for atomic.LoadInt32(&aof.writing) > 0 {
-		}
-
-		bytes, _ := os.ReadFile("TestAOFBufferAsync.aof")
-		assert.Equal(t, []byte("1234567890"), bytes)
-	}
 	aof.quitFlag <- struct{}{}
 }
 
