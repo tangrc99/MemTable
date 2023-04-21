@@ -27,7 +27,7 @@ func setbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		byteVal = value.(structure.Slice)
 	}
 
-	pos, err := strconv.Atoi(string(cmd[3]))
+	pos, err := strconv.Atoi(string(cmd[2]))
 	if err != nil {
 		return resp.MakeErrorData("ERR bit offset is not an integer or out of range")
 	}
@@ -64,7 +64,7 @@ func getbit(db *db.DataBase, cmd [][]byte) resp.RedisData {
 		return err
 	}
 
-	pos, err := strconv.Atoi(string(cmd[3]))
+	pos, err := strconv.Atoi(string(cmd[2]))
 	if err != nil {
 		return resp.MakeErrorData("ERR bit offset is not an integer or out of range")
 	}
