@@ -170,7 +170,7 @@ func (t *Terminal) ReadLine() [][]byte {
 
 	t.clear()
 	// 恢复终端设置
-	SetTermios(old)
+	_ = setTermios(int(os.Stdout.Fd()), old)
 
 	return SplitRepeatableSeg(c, ' ')
 }
@@ -208,7 +208,7 @@ func (t *Terminal) ReadLineAndExec(f TerminalCommand) {
 
 	t.clear()
 	// 恢复终端设置
-	SetTermios(old)
+	_ = setTermios(int(os.Stdout.Fd()), old)
 }
 
 func (t *Terminal) StoreHistory(line []byte) {

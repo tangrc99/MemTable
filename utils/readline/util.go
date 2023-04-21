@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"syscall"
-	"unsafe"
 )
 
 func IsOrdinaryInput(input byte) bool {
@@ -59,10 +58,9 @@ func MoveCursor(x, y int) {
 }
 
 func DisableTerminal() *Termios {
-	newState := Termios{}
 
-	_, _, _ = syscall.Syscall6(syscall.SYS_IOCTL, os.Stdin.Fd(), syscall.TIOCGETA, uintptr(unsafe.Pointer(&newState)), 0, 0, 0)
-	oldState := newState
+	newState, _ := getTermios(int(os.Stdin.Fd()))
+	oldState := *newState
 	// This attempts to replicate the behaviour documented for cfmakeraw in
 	// the termios(3) manpage.
 
@@ -79,12 +77,9 @@ func DisableTerminal() *Termios {
 	newState.Cc[syscall.VMIN] = 1
 	newState.Cc[syscall.VTIME] = 0
 
-	_, _, _ = syscall.Syscall6(syscall.SYS_IOCTL, os.Stdin.Fd(), syscall.TIOCSETA, uintptr(unsafe.Pointer(&newState)), 0, 0, 0)
-	return &oldState
-}
+	_ = setTermios(int(os.Stdin.Fd()), newState)
 
-func SetTermios(t *Termios) {
-	_, _, _ = syscall.Syscall6(syscall.SYS_IOCTL, os.Stdin.Fd(), syscall.TIOCGETA, uintptr(unsafe.Pointer(t)), 0, 0, 0)
+	return &oldState
 }
 
 func SplitRepeatableSeg(s []byte, seg byte) [][]byte {
