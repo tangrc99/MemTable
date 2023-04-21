@@ -1,8 +1,12 @@
 package structure
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
+
+func TestBloomCreate(t *testing.T) {
+}
 
 func TestBloom(t *testing.T) {
 
@@ -19,9 +23,16 @@ func TestBloom(t *testing.T) {
 		bloom.add(d)
 	}
 	for _, d := range data {
-		if !bloom.Has(d) {
-			t.Error("Exist key is not counted")
-		}
+		assert.True(t, bloom.Has(d))
 	}
 
+	for _, d := range data {
+		assert.False(t, bloom.AddIfNotHas(d))
+	}
+
+	assert.Equal(t, uint64(0x1fff), bloom.Capacity())
+	bloom.Clear()
+	assert.True(t, bloom.AddIfNotHas(654365346))
+
+	assert.Equal(t, int64(1064), bloom.Cost())
 }
