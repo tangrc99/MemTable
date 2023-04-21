@@ -40,6 +40,42 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestListB(t *testing.T) {
+
+	list := NewList()
+
+	assert.Nil(t, list.FrontNode())
+	assert.Nil(t, list.BackNode())
+
+	list.PushBack(Int64(0))
+	list.PushBack(Int64(1))
+	list.PushBack(Int64(2))
+	list.PushBack(Int64(3))
+
+	assert.Equal(t, Int64(0), list.FrontNode().Value)
+	assert.Equal(t, Int64(3), list.BackNode().Value)
+	assert.Equal(t, Int64(0), list.Front())
+	assert.Equal(t, Int64(3), list.Back())
+
+	n := list.InsertBeforeNode(Int64(-1), list.FrontNode())
+	assert.Equal(t, n, list.FrontNode())
+
+	ok := list.InsertBefore(Int64(-1), 0)
+	ok = list.InsertAfter(Int64(-1), 0)
+
+	_ = ok
+
+	list.Clear()
+	assert.True(t, list.Empty())
+
+	assert.Nil(t, list.PopFront())
+	assert.Nil(t, list.PopBack())
+
+	list.PushFront(Int64(0))
+	assert.Equal(t, Int64(0), list.PopBack())
+
+}
+
 func TestListCost(t *testing.T) {
 
 	list := NewList()
@@ -53,7 +89,7 @@ func TestListCost(t *testing.T) {
 
 	list.PushBack(Slice("1234567890"))
 	assert.Equal(t, int64(48+34), list.Cost())
-	list.RemoveNode(list.BackNode())
+	assert.True(t, list.Remove(list.BackNode().Value))
 	assert.Equal(t, int64(48), list.Cost())
 
 	list.PushBack(Slice("1234567890"))

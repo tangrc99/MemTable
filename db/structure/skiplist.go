@@ -285,7 +285,7 @@ func (sl *SkipList) CountByRange(min, max Float32) int {
 func (sl *SkipList) GetPosByKey(key Float32) int {
 	pos := -1
 	cur := sl.head
-	for ; cur != nil && cur.key <= key; cur = cur.getNextNode(0) {
+	for ; cur != nil && cur.key < key; cur = cur.getNextNode(0) {
 		pos++
 	}
 	if cur == nil || cur.key != key {

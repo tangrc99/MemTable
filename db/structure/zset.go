@@ -101,7 +101,7 @@ func (zset *ZSet) PosByScore(score Float32) int {
 func (zset *ZSet) ReviseScore(key string, score Float32) bool {
 	old, exist := zset.dict.Get(key)
 
-	if exist {
+	if !exist {
 
 		return false
 

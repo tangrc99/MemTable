@@ -44,7 +44,7 @@ func TestDict(t *testing.T) {
 	}
 
 	if !dict.Delete("1") || dict.Size() != 0 || !dict.Empty() {
-		t.Error("Delete failed")
+		t.Error("delete failed")
 	}
 
 	if len(dict.Random(100)) != 0 {
