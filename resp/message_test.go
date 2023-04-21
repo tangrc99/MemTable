@@ -1,6 +1,7 @@
 package resp
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -84,4 +85,23 @@ func TestPlainData2(t *testing.T) {
 	assert.IsType(t, &ArrayData{}, rdata)
 
 	assert.Equal(t, data.ToCommand(), rdata.(*ArrayData).ToCommand())
+}
+
+func TestToReadableString(t *testing.T) {
+	sdata := MakeStringData("123")
+	edata := MakeErrorData("123")
+	bdata := MakeBulkData([]byte("123"))
+	idata := MakeIntData(123)
+	pdata := MakePlainData("set key value")
+
+	adata := MakeArrayData([]RedisData{sdata, edata, bdata, idata})
+	adata2 := MakeArrayData([]RedisData{adata})
+	fmt.Printf("%s\n", ToReadableString(sdata, ""))
+	fmt.Printf("%s\n", ToReadableString(edata, ""))
+	fmt.Printf("%s\n", ToReadableString(bdata, ""))
+	fmt.Printf("%s\n", ToReadableString(idata, ""))
+	fmt.Printf("%s\n", ToReadableString(pdata, ""))
+	fmt.Printf("%s\n", ToReadableString(adata, ""))
+	fmt.Printf("%s\n", ToReadableString(adata2, ""))
+
 }
