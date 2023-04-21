@@ -82,7 +82,6 @@ func keyHandlerEnter(t *Terminal, _ byte) {
 		return
 	}
 
-	FlushString("\n")
 	t.finish()
 
 }
@@ -101,6 +100,7 @@ func keyHandlerSIGINT(t *Terminal, _ byte) {
 	t.maybeClearCompletion()
 	t.maybeClearHelper()
 	_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	t.abort()
 }
 
 // keyHandlerSIGTSTP 处理信号 control-Z
@@ -108,6 +108,8 @@ func keyHandlerSIGTSTP(t *Terminal, _ byte) {
 	t.maybeClearCompletion()
 	t.maybeClearHelper()
 	_ = syscall.Kill(syscall.Getpid(), syscall.SIGTSTP)
+	t.finished = true
+	t.abort()
 }
 
 // keyHandlerSIGQUIT 处理信号 control-\
@@ -115,6 +117,7 @@ func keyHandlerSIGQUIT(t *Terminal, _ byte) {
 	t.maybeClearCompletion()
 	t.maybeClearHelper()
 	_ = syscall.Kill(syscall.Getpid(), syscall.SIGQUIT)
+	t.abort()
 }
 
 func keyHandlerTab(t *Terminal, _ byte) {

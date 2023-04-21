@@ -101,7 +101,7 @@ func (l *Line) currentWord() []byte {
 	return l.content[i+1 : j]
 }
 
-type TerminalCommand func(input [][]byte) int
+type TerminalCommand func(input [][]byte, abort bool) int
 
 // Terminal 是对当前终端显示内容的一个抽象，负责维护终端上的光标以及内容
 type Terminal struct {
@@ -109,6 +109,7 @@ type Terminal struct {
 	line     int     // 当前操作的行
 	buffer   []byte  // 用于处理多字节的命令
 	finished bool    // 是否解析完毕
+	aborted  bool    // 因为信号而退出
 
 	histories [][]byte // 执行成功过的历史命令
 	hlimit    int      //  历史命令上线
@@ -139,7 +140,8 @@ func NewTerminal() *Terminal {
 	}
 }
 
-func (t *Terminal) ReadLine() [][]byte {
+// ReadLine 阻塞并解析一行命令，如果期间发生信号中断，abort 标识位为 true
+func (t *Terminal) ReadLine() (cmd [][]byte, abort bool) {
 
 	old := DisableTerminal()
 
@@ -172,7 +174,7 @@ func (t *Terminal) ReadLine() [][]byte {
 	// 恢复终端设置
 	_ = setTermios(int(os.Stdout.Fd()), old)
 
-	return SplitRepeatableSeg(c, ' ')
+	return SplitRepeatableSeg(c, ' '), t.aborted
 }
 
 // ReadLineAndExec 读取一行命令并且执行；如果执行返回值为 0，记录该命令。
@@ -199,7 +201,7 @@ func (t *Terminal) ReadLineAndExec(f TerminalCommand) {
 	command := SplitRepeatableSeg(c, ' ')
 
 	// 如果运行成功，记录历史命令
-	if f(command) == 0 {
+	if f(command, t.aborted) == 0 {
 		t.histories = append(t.histories, c)
 		if len(t.histories) > t.hlimit {
 			t.histories = t.histories[1:]
@@ -298,8 +300,12 @@ func (t *Terminal) delete() {
 	MoveCursor(-len(content), 0)
 }
 
+// lastByte 返回当前行的最后一个字符，如果行为空，返回 0
 func (t *Terminal) lastByte() byte {
 	c := t.currentLine().content
+	if len(c) == 0 {
+		return 0
+	}
 	return c[len(c)-1]
 }
 
@@ -329,9 +335,16 @@ func (t *Terminal) maybeDisplayHelper() {
 
 	// Display
 	x, y := ReadCursor()
-	MoveCursorTo(0, y+1)
-	FlushString(fmt.Sprintf("\033[;37m%s\033[0m ", t.helper))
-	MoveCursorTo(x, y)
+	//MoveCursorTo(0, y+1)
+	FlushString(fmt.Sprintf("\n\033[;37m%s\033[0m ", t.helper))
+
+	// 判断终端是否写满
+	_, cy := ReadCursor()
+	if cy == y {
+		MoveCursorTo(x, y-1)
+	} else {
+		MoveCursorTo(x, y)
+	}
 }
 
 func (t *Terminal) maybeClearHelper() {
@@ -385,6 +398,12 @@ func (t *Terminal) clear() {
 // finish 表示完成当前行的读取
 func (t *Terminal) finish() {
 	t.finished = true
+	FlushString("\n")
+}
+
+func (t *Terminal) abort() {
+	t.aborted = true
+	t.finish()
 }
 
 func (t *Terminal) maybeClearCompletion() {
@@ -507,12 +526,13 @@ func (t *Terminal) showCompletions() bool {
 
 	x, y := ReadCursor()
 
-	// 清理之前的输出
-	MoveCursorTo(0, y+1)
-	Flush(bytes.Repeat([]byte{' '}, t.displayedLen))
+	t.maybeClearHelper()
 
-	// 显示补全
-	MoveCursorTo(0, y+1)
+	// 切换到下一行，如果写满则换行
+	FlushString("\n")
+	// 清理之前的输出
+	Flush(bytes.Repeat([]byte{' '}, t.displayedLen))
+	MoveCursor(-t.displayedLen, 0)
 
 	toDisplay := t.targets
 	toHighlight := t.highlight
@@ -533,8 +553,13 @@ func (t *Terminal) showCompletions() bool {
 		t.displayedLen += len(toDisplay[i]) + 1
 	}
 
-	MoveCursorTo(x, y)
-
+	// 判断终端是否写满
+	_, cy := ReadCursor()
+	if cy == y {
+		MoveCursorTo(x, y-1)
+	} else {
+		MoveCursorTo(x, y)
+	}
 	return true
 }
 
