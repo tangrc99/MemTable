@@ -111,10 +111,10 @@ type Terminal struct {
 	finished bool    // 是否解析完毕
 	aborted  bool    // 因为信号而退出
 
-	histories [][]byte // 执行成功过的历史命令
-	hlimit    int      // 历史命令上限
-	hpos      int      // 当前显示的历史命令
-	hauto     bool     // 是否自动存储历史命令
+	histories  *history
+	hauto      bool   // 是否自动存储历史命令
+	search     []byte // 用于搜索的命令
+	searchMode bool
 
 	completer    *Completer // 补全器
 	highlight    int        // 补全信息高亮显示的位置
@@ -135,15 +135,15 @@ func NewTerminal() *Terminal {
 		completer:    NewCompleter(),
 		displayLimit: 8,
 		highlight:    -1,
-		hlimit:       20,
-		histories:    make([][]byte, 0, 20),
+		histories:    newHistory(20),
 		hauto:        true,
 		prefix:       "> ",
 		quit:         []byte("quit"),
 	}
 }
 
-// ReadLine 阻塞并解析一行命令，如果期间发生信号中断或用户输入了退出命令，abort 标识位为 true
+// ReadLine 阻塞并解析一行命令，如果期间发生信号中断或用户输入了退出命令，abort 标识位为 true。
+// 如果命令被拦截，cmd == [][]byte{}
 func (t *Terminal) ReadLine() (cmd [][]byte, abort bool) {
 
 	old := DisableTerminal()
@@ -166,11 +166,8 @@ func (t *Terminal) ReadLine() (cmd [][]byte, abort bool) {
 	}
 
 	// 记录历史命令
-	if t.hauto {
-		t.histories = append(t.histories, c)
-		if len(t.histories) > t.hlimit {
-			t.histories = t.histories[1:]
-		}
+	if t.hauto && len(c) > 0 {
+		t.histories.recordCommand(c)
 	}
 
 	t.clear()
@@ -212,10 +209,7 @@ func (t *Terminal) ReadLineAndExec(f TerminalCommand) {
 	}
 	// 如果运行成功，记录历史命令
 	if f(command, t.aborted) == 0 {
-		t.histories = append(t.histories, c)
-		if len(t.histories) > t.hlimit {
-			t.histories = t.histories[1:]
-		}
+		t.histories.recordCommand(c)
 	}
 
 	t.clear()
@@ -224,10 +218,12 @@ func (t *Terminal) ReadLineAndExec(f TerminalCommand) {
 }
 
 func (t *Terminal) StoreHistory(line []byte) {
-	t.histories = append(t.histories, line)
-	if len(t.histories) > t.hlimit {
-		t.histories = t.histories[1:]
-	}
+	t.histories.recordCommand(line)
+}
+
+// Quit 用于控制 Terminal 退出
+func (t *Terminal) Quit() {
+	t.aborted = true
 }
 
 func (t *Terminal) WithCompleter(completer *Completer) *Terminal {
@@ -236,20 +232,10 @@ func (t *Terminal) WithCompleter(completer *Completer) *Terminal {
 }
 
 func (t *Terminal) WithHistoryLimitation(max int) *Terminal {
-
 	if max < 0 {
 		max = 0
 	}
-
-	if max > t.hlimit {
-		old := t.histories
-		t.histories = make([][]byte, 0, max)
-		copy(t.histories, old)
-	} else {
-		t.histories = t.histories[:max]
-	}
-
-	t.hlimit = max
+	t.histories.setLimitation(max)
 	return t
 }
 
@@ -339,6 +325,20 @@ func (t *Terminal) lastByte() byte {
 	return c[len(c)-1]
 }
 
+// bytes 返回当前 Terminal 内所有行的缓存内容
+func (t *Terminal) bytes() []byte {
+
+	l := 0
+	for i := range t.content {
+		l += len(t.content[i].content)
+	}
+	c := make([]byte, 0, l)
+	for _, line := range t.content {
+		c = append(c, line.content...)
+	}
+	return c
+}
+
 // newLine 创建一个新行，"\\n"会导致换行出现
 func (t *Terminal) newLine() {
 
@@ -347,6 +347,54 @@ func (t *Terminal) newLine() {
 	MoveCursor(-t.currentLine().head()-1, 1)
 	t.line++
 }
+
+func (t *Terminal) handleInput(input byte) {
+
+	// 处理控制类型输入
+	if len(t.buffer) != 0 {
+		keyHandlerMap[ESC](t, input)
+		return
+	}
+
+	handler, exist := keyHandlerMap[input]
+	if exist {
+		handler(t, input)
+		return
+	}
+
+	if IsOrdinaryInput(input) {
+		keyHandlerAlpha(t, input)
+	} else {
+		panic(fmt.Sprintf("Read Unknown char '%d'", input))
+	}
+
+}
+
+// clear 清除当前行的缓存信息
+func (t *Terminal) clear() {
+	t.buffer = []byte{}
+	t.content = []*Line{newLine()}
+	t.line = 0
+	t.helper = ""
+	t.targets = []string{}
+	t.finished = false
+	t.histories.resetCursor()
+}
+
+// finish 表示完成当前行的读取
+func (t *Terminal) finish() {
+	t.finished = true
+	FlushString("\n")
+}
+
+func (t *Terminal) abort() {
+	t.aborted = true
+	t.finish()
+}
+
+/* ---------------------------------------------------------------------------
+* Helper
+* ------------------------------------------------------------------------- */
 
 func (t *Terminal) maybeDisplayHelper() {
 
@@ -391,49 +439,9 @@ func (t *Terminal) maybeClearHelper() {
 	t.helper = ""
 }
 
-func (t *Terminal) handleInput(input byte) {
-
-	// 处理控制类型输入
-	if len(t.buffer) != 0 {
-		keyHandlerMap[ESC](t, input)
-		return
-	}
-
-	handler, exist := keyHandlerMap[input]
-	if exist {
-		handler(t, input)
-		return
-	}
-
-	if IsOrdinaryInput(input) {
-		keyHandlerAlpha(t, input)
-	} else {
-		panic(fmt.Sprintf("Read Unknown char '%d'", input))
-	}
-
-}
-
-// clear 清除当前行的缓存信息
-func (t *Terminal) clear() {
-	t.buffer = []byte{}
-	t.content = []*Line{newLine()}
-	t.line = 0
-	t.helper = ""
-	t.targets = []string{}
-	t.finished = false
-	t.hpos = len(t.histories)
-}
-
-// finish 表示完成当前行的读取
-func (t *Terminal) finish() {
-	t.finished = true
-	FlushString("\n")
-}
-
-func (t *Terminal) abort() {
-	t.aborted = true
-	t.finish()
-}
+/* ---------------------------------------------------------------------------
+* Completion
+* ------------------------------------------------------------------------- */
 
 func (t *Terminal) maybeClearCompletion() {
 	if t.highlight >= 0 {
@@ -441,8 +449,8 @@ func (t *Terminal) maybeClearCompletion() {
 	}
 }
 
-// completionDisplayed 判断当前是否显示了补全内容
-func (t *Terminal) completionDisplayed() bool {
+// inCompletionMode 判断当前是否显示了补全内容
+func (t *Terminal) inCompletionMode() bool {
 	return t.highlight >= 0
 }
 
@@ -462,6 +470,12 @@ func (t *Terminal) clearCompletion() {
 
 // selectCompletion 切换选择的补全命令
 func (t *Terminal) selectCompletion(x, y int) {
+
+	// 如果已经移动到头或尾位置，闪烁一次屏幕
+	if (t.highlight == 0 && (x < 0 || y < 0)) || (t.highlight == len(t.targets)-1 && (x > 0 || y > 0)) {
+		TwinkleScreen()
+		return
+	}
 
 	// 上下翻页不直接循环
 	t.highlight += y * t.displayLimit
@@ -534,7 +548,7 @@ func (t *Terminal) showCompletions() bool {
 	}
 
 	// 如果没有正在显示，则读取
-	if !t.completionDisplayed() {
+	if !t.inCompletionMode() {
 		t.targets = t.completer.Query(string(word))
 	}
 
@@ -592,24 +606,95 @@ func (t *Terminal) showCompletions() bool {
 	return true
 }
 
+/* ---------------------------------------------------------------------------
+* History
+* ------------------------------------------------------------------------- */
+
 func (t *Terminal) switchHistory(offset int) {
 
-	// nothing to do
-	if len(t.histories) == 0 {
+	var toDisplay []byte
+	var end = false
+	if offset < 0 {
+		toDisplay, end = t.histories.moveCursor(true)
+	} else {
+		toDisplay, end = t.histories.moveCursor(false)
+	}
+
+	if end == true {
+		TwinkleScreen()
 		return
 	}
 
-	t.hpos += offset
+	// 清除现有的行，不直接清行，防止自动换行导致无法全部清除
+	head := t.currentLine().head()
 
-	if t.hpos >= len(t.histories) {
-		t.hpos = len(t.histories)
-	} else if t.hpos <= 0 {
-		t.hpos = 0
+	t.currentLine().moveCursor(-head)
+	MoveCursor(-head, 0)
+
+	x, y := ReadCursor()
+	Flush(bytes.Repeat([]byte{' '}, len(t.currentLine().content)))
+	MoveCursorTo(x, y)
+
+	t.content[t.line] = newLineFrom(toDisplay)
+	Flush(toDisplay)
+}
+
+func (t *Terminal) inSearchMode() bool {
+	return t.searchMode
+}
+
+func (t *Terminal) maybeClearSearch() {
+
+	if t.searchMode == false {
+		return
 	}
 
-	var toDisplay []byte
-	if t.hpos < len(t.histories) {
-		toDisplay = t.histories[t.hpos]
+	x, y := ReadCursor()
+	MoveCursorTo(0, y+1)
+
+	l := 9 + len(t.search)
+
+	Flush(bytes.Repeat([]byte{' '}, l))
+
+	MoveCursorTo(x, y)
+
+	t.search = []byte{}
+	t.searchMode = false
+}
+
+func (t *Terminal) displaySearch() {
+	t.maybeClearHelper()
+	t.maybeClearCompletion()
+
+	t.searchMode = true
+
+	// 清理之前显示的
+	if len(t.search) > 0 {
+		x, y := ReadCursor()
+		MoveCursorTo(8, y+1)
+		Flush(bytes.Repeat([]byte{' '}, len(t.search)+1))
+		MoveCursorTo(x, y)
+	}
+
+	x, y := ReadCursor()
+	FlushString(fmt.Sprintf("\nsearch: %s", t.search))
+	FlushStringWithUnderline(" ")
+	// 判断终端是否写满
+	_, cy := ReadCursor()
+	if cy == y {
+		MoveCursorTo(x, y-1)
+	} else {
+		MoveCursorTo(x, y)
+	}
+
+}
+
+func (t *Terminal) searchHistory() {
+	toDisplay := t.histories.searchCommand(t.bytes())
+
+	if len(toDisplay) == 0 {
+		TwinkleScreen()
+		return
 	}
 
 	// 清除现有的行，不直接清行，防止自动换行导致无法全部清除

@@ -4,10 +4,21 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 )
 
 func IsOrdinaryInput(input byte) bool {
 	return input >= 32 && input <= 126
+}
+
+// TwinkleScreen 闪烁一次屏幕
+func TwinkleScreen() {
+	x, y := ReadCursor()
+	// 保存屏幕内容，然后清屏
+	FlushString(fmt.Sprintf("\033[?47h\033[2J\033[%d;%dH", y, x))
+	time.Sleep(5 * time.Millisecond)
+	// 等待一段时间后恢复屏幕内容
+	FlushString("\033[?47l")
 }
 
 func ClearLine(y int) {
@@ -32,6 +43,10 @@ func Flush(content []byte) {
 // FlushString 输出到屏幕
 func FlushString(content string) {
 	_, _ = os.Stdout.WriteString(content)
+}
+
+func FlushStringWithUnderline(content string) {
+	_, _ = os.Stdout.WriteString("\033[4m" + content + "\033[0m")
 }
 
 // MoveCursorTo 将光标移动到目标位置
