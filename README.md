@@ -16,11 +16,17 @@ MemTable 是一个仿照 redis 架构写成的基于内存的键值对存储服�
 ## Usage
 
 ```shell
-# build
-go build -o memtable main.go
+# build all
+make
 
-# run
-./memtable conf/default.conf
+# build and run test
+make test
+
+# run server
+./bin/memtable conf/default.conf
+
+# run client
+./bin/memtable-cli
 ```
 
 ## Support Commands
@@ -117,6 +123,15 @@ Summary:
 ```
 
 对比相关类型的项目，可以看到性能差距并不大，并且本项目由于使用了单线程的设计，更容易去实现一些拓展功能。而对比 redis-server，本项目由于 goroutine 过多，导致调度耗时过高，因此无法达到类似的并发量。
+
+## Client
+一个可交互的客户端，能够读取用户输入并执行命令，支持命令提示与命令补全功能。
+### Completion
+按下`TAB`键可以显示待选命令，使用`TAB`以及方向键可以切换待选词，使用`ENTER`键选中待选词进行补全。当待选词切换完毕时，屏幕闪烁提示用户。
+### Hinter
+当输入一个完整命令时，将自动提示该命令的用法。
+### History
+按下`UP`与`DOWN`键可以切换历史命令；按下`CONTROL+R`进入搜索模式，根据用户输入搜索历史命令。
 
 ## Blog
 
