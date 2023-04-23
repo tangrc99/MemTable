@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/db"
 	"github.com/tangrc99/MemTable/db/structure"
-	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/resp"
 	"github.com/tangrc99/MemTable/server/global"
 	"strconv"
@@ -28,11 +27,6 @@ func del(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	return resp.MakeIntData(int64(deleted))
-}
-
-func dump(db *db.DataBase, cmd [][]byte) resp.RedisData {
-
-	return resp.MakeErrorData("")
 }
 
 // exists 检查多个键是否存在，返回存在数量
@@ -66,7 +60,6 @@ func expire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	period, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
@@ -80,28 +73,28 @@ func expire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(0)
 }
 
+/*
 func expireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
-	// 进行输入类型检查
-	e, ok := checkCommandAndLength(&cmd, "expireat", 3)
-	if !ok {
-		return e
+		// 进行输入类型检查
+		e, ok := checkCommandAndLength(&cmd, "expireat", 3)
+		if !ok {
+			return e
+		}
+
+		tp, err := strconv.ParseInt(string(cmd[2]), 10, 64)
+		if err != nil {
+			return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
+		}
+
+		ok = db.SetTTL(string(cmd[1]), tp)
+
+		if ok {
+			return resp.MakeIntData(1)
+		}
+		return resp.MakeIntData(0)
 	}
-
-	tp, err := strconv.ParseInt(string(cmd[2]), 10, 64)
-	if err != nil {
-		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
-		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
-	}
-
-	ok = db.SetTTL(string(cmd[1]), tp)
-
-	if ok {
-		return resp.MakeIntData(1)
-	}
-	return resp.MakeIntData(0)
-}
-
+*/
 func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
@@ -112,7 +105,6 @@ func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	period, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
@@ -126,6 +118,7 @@ func pExpire(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(0)
 }
 
+/*
 func pExpireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 进行输入类型检查
@@ -136,7 +129,6 @@ func pExpireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	tp, err := strconv.ParseInt(string(cmd[2]), 10, 64)
 	if err != nil {
-		logger.Errorf("expire Function: cmd[2] %s is not int", string(cmd[2]))
 		return resp.MakeErrorData(fmt.Sprintf("error: %s is not int", string(cmd[2])))
 	}
 
@@ -147,6 +139,7 @@ func pExpireAt(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 	return resp.MakeIntData(0)
 }
+*/
 
 // keys 返回所有键，首行为个数
 func keys(db *db.DataBase, cmd [][]byte) resp.RedisData {
@@ -218,11 +211,6 @@ func rename(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	}
 
 	return resp.MakeStringData("OK")
-}
-
-func renameNX(db *db.DataBase, cmd [][]byte) resp.RedisData {
-
-	return resp.MakeErrorData("")
 }
 
 func typeKey(db *db.DataBase, cmd [][]byte) resp.RedisData {
