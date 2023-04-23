@@ -1,222 +1,151 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/tangrc99/MemTable/db"
-	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/resp"
+	"github.com/tangrc99/MemTable/server/global"
 	"testing"
 )
 
-func initDatabase() *db.DataBase {
-
+func TestCmdList(t *testing.T) {
 	database := db.NewDataBase(1)
-	database.SetKey("test", structure.NewList())
 
-	return database
-}
+	tests := []struct {
+		input    [][]byte
+		expected resp.RedisData
+	}{
 
-func TestCmdListLPush(t *testing.T) {
+		{[][]byte{[]byte("llen"), []byte("test")},
+			resp.MakeIntData(0)},
 
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
+		{[][]byte{[]byte("lpop"), []byte("test")},
+			resp.MakeStringData("nil")},
 
-	lPush(database, [][]byte{
-		[]byte("lpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
+		{[][]byte{[]byte("rpop"), []byte("test")},
+			resp.MakeStringData("nil")},
 
-	vals, num := list.Range(0, -1)
+		{[][]byte{[]byte("lindex"), []byte("test"), []byte("1")},
+			resp.MakeStringData("nil")},
 
-	assert.Equal(t, 4, num)
-	assert.Equal(t, structure.Slice("4"), vals[0])
-	assert.Equal(t, structure.Slice("1"), vals[3])
-}
+		{[][]byte{[]byte("lpos"), []byte("test"), []byte("1")},
+			resp.MakeStringData("nil")},
 
-func TestCmdListRPush(t *testing.T) {
+		{[][]byte{[]byte("lset"), []byte("test"), []byte("1"), []byte("1")},
+			resp.MakeErrorData("ERR no such key")},
 
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
+		{[][]byte{[]byte("lpush"), []byte("test"), []byte("2"), []byte("1")},
+			resp.MakeIntData(2)},
 
-	rPush(database, [][]byte{
-		[]byte("rpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
+		{[][]byte{[]byte("rpush"), []byte("test"), []byte("3"), []byte("4")},
+			resp.MakeIntData(2)},
 
-	vals, num := list.Range(0, -1)
+		{[][]byte{[]byte("llen"), []byte("test")},
+			resp.MakeIntData(4)},
 
-	assert.Equal(t, 4, num)
-	assert.Equal(t, structure.Slice("1"), vals[0])
-	assert.Equal(t, structure.Slice("4"), vals[3])
-}
+		{[][]byte{[]byte("lpos"), []byte("test"), []byte("10")},
+			resp.MakeStringData("nil")},
 
-func TestCmdListLLen(t *testing.T) {
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
+		{[][]byte{[]byte("lpos"), []byte("test"), []byte("3")},
+			resp.MakeIntData(2)},
 
-	assert.Equal(t, 0, list.Size())
+		{[][]byte{[]byte("lset"), []byte("test"), []byte("f"), []byte("1")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	rPush(database, [][]byte{
-		[]byte("rpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
+		{[][]byte{[]byte("lset"), []byte("test"), []byte("10"), []byte("1")},
+			resp.MakeErrorData("ERR index out of range")},
 
-	assert.Equal(t, 4, list.Size())
+		{[][]byte{[]byte("lset"), []byte("test"), []byte("3"), []byte("4")},
+			resp.MakeStringData("OK")},
 
-}
+		{[][]byte{[]byte("lrange"), []byte("test"), []byte("f"), []byte("4")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-func TestCmdListLPop(t *testing.T) {
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
+		{[][]byte{[]byte("lrange"), []byte("test"), []byte("3"), []byte("f")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	err := lPop(database, [][]byte{
-		[]byte("lpop"), []byte("test"), []byte("f"),
-	})
+		{[][]byte{[]byte("lrange"), []byte("test"), []byte("0"), []byte("0")},
+			resp.MakeArrayData([]resp.RedisData{resp.MakeBulkData([]byte("1"))})},
 
-	assert.IsType(t, &resp.ErrorData{}, err)
+		{[][]byte{[]byte("lrem"), []byte("test"), []byte("100"), []byte("3")},
+			resp.MakeIntData(0)},
 
-	empty := lPop(database, [][]byte{
-		[]byte("lpop"), []byte("test"), []byte("1"),
-	})
+		{[][]byte{[]byte("lrem"), []byte("test"), []byte("f"), []byte("3")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	assert.Equal(t, []byte(""), empty.ByteData())
+		{[][]byte{[]byte("lpop"), []byte("test"), []byte("1")},
+			resp.MakeArrayData([]resp.RedisData{
+				resp.MakeBulkData([]byte("1")),
+			})},
 
-	rPush(database, [][]byte{
-		[]byte("rpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
+		{[][]byte{[]byte("lpop"), []byte("test"), []byte("f")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	resp := lPop(database, [][]byte{
-		[]byte("lpop"), []byte("test"), []byte("4"),
-	})
+		{[][]byte{[]byte("rpop"), []byte("test"), []byte("1")},
+			resp.MakeArrayData([]resp.RedisData{
+				resp.MakeBulkData([]byte("4")),
+			})},
 
-	assert.Equal(t, []byte("1234"), resp.ByteData())
-}
+		{[][]byte{[]byte("rpop"), []byte("test"), []byte("f")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-func TestCmdListRPop(t *testing.T) {
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
+		{[][]byte{[]byte("ltrim"), []byte("test"), []byte("f"), []byte("1")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	err := rPop(database, [][]byte{
-		[]byte("rpop"), []byte("test"), []byte("f"),
-	})
+		{[][]byte{[]byte("ltrim"), []byte("test"), []byte("1"), []byte("f")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	assert.IsType(t, &resp.ErrorData{}, err)
+		{[][]byte{[]byte("ltrim"), []byte("test"), []byte("-1"), []byte("0")},
+			resp.MakeStringData("OK")},
 
-	empty := rPop(database, [][]byte{
-		[]byte("rpop"), []byte("test"), []byte("1"),
-	})
+		{[][]byte{[]byte("llen"), []byte("test")},
+			resp.MakeIntData(0)},
 
-	assert.Equal(t, []byte(""), empty.ByteData())
+		{[][]byte{[]byte("rpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4")},
+			resp.MakeIntData(4)},
 
-	lPush(database, [][]byte{
-		[]byte("lpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
+		{[][]byte{[]byte("lmove"), []byte("test"), []byte("l"), []byte("LEFT"), []byte("RIGHT")},
+			resp.MakeStringData("OK")},
 
-	resp := rPop(database, [][]byte{
-		[]byte("rpop"), []byte("test"), []byte("4"),
-	})
+		{[][]byte{[]byte("lmove"), []byte("test"), []byte("l"), []byte("LEFT"), []byte("LEFT")},
+			resp.MakeStringData("OK")},
 
-	assert.Equal(t, []byte("1234"), resp.ByteData())
-}
+		{[][]byte{[]byte("lmove"), []byte("test"), []byte("l"), []byte("RIGHT"), []byte("LEFT")},
+			resp.MakeStringData("OK")},
 
-func TestCmdListLIndex(t *testing.T) {
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
+		{[][]byte{[]byte("lmove"), []byte("test"), []byte("l"), []byte("RIGHT"), []byte("RIGHT")},
+			resp.MakeStringData("OK")},
 
-	err := lIndex(database, [][]byte{
-		[]byte("lindex"), []byte("test"), []byte("f"),
-	})
+		{[][]byte{[]byte("llen"), []byte("test")},
+			resp.MakeIntData(0)},
 
-	assert.IsType(t, &resp.ErrorData{}, err)
+		{[][]byte{[]byte("lindex"), []byte("l"), []byte("1")},
+			resp.MakeBulkData([]byte("2"))},
 
-	empty := lIndex(database, [][]byte{
-		[]byte("lindex"), []byte("test"), []byte("1"),
-	})
+		{[][]byte{[]byte("lindex"), []byte("l"), []byte("100")},
+			resp.MakeStringData("nil")},
 
-	assert.Equal(t, []byte("nil"), empty.ByteData())
+		{[][]byte{[]byte("lindex"), []byte("l"), []byte("f")},
+			resp.MakeErrorData("ERR value is not an integer or out of range")},
 
-	rPush(database, [][]byte{
-		[]byte("rpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
+		{[][]byte{[]byte("lpop"), []byte("l"), []byte("4")},
+			resp.MakeArrayData([]resp.RedisData{
+				resp.MakeBulkData([]byte("4")),
+				resp.MakeBulkData([]byte("2")),
+				resp.MakeBulkData([]byte("1")),
+				resp.MakeBulkData([]byte("3")),
+			})},
+	}
 
-	index0 := lIndex(database, [][]byte{
-		[]byte("lindex"), []byte("test"), []byte("0"),
-	})
-	assert.Equal(t, []byte("1"), index0.ByteData())
+	for i, test := range tests {
+		cmd, exist := global.FindCommand(string(test.input[0]))
+		assert.True(t, exist)
+		c := cmd.Function().(command)
 
-	index2 := lIndex(database, [][]byte{
-		[]byte("lindex"), []byte("test"), []byte("2"),
-	})
-	assert.Equal(t, []byte("3"), index2.ByteData())
-
-	index_1 := lIndex(database, [][]byte{
-		[]byte("lindex"), []byte("test"), []byte("-1"),
-	})
-	assert.Equal(t, []byte("4"), index_1.ByteData())
-
-}
-
-//
-//func TestCmdListLPos(t *testing.T) {
-//	database := db.NewDataBase(1)
-//	list := structure.NewList()
-//	database.SetKey("test", list)
-//
-//}
-//
-//func TestCmdListLSet(t *testing.T) {
-//	database := db.NewDataBase(1)
-//	list := structure.NewList()
-//	database.SetKey("test", list)
-//
-//}
-//
-//func TestCmdListLRem(t *testing.T) {
-//	database := db.NewDataBase(1)
-//	list := structure.NewList()
-//	database.SetKey("test", list)
-//
-//}
-//
-//func TestCmdListLRange(t *testing.T) {
-//	database := db.NewDataBase(1)
-//	list := structure.NewList()
-//	database.SetKey("test", list)
-//
-//}
-//
-//func TestCmdListLTrim(t *testing.T) {
-//	database := db.NewDataBase(1)
-//	list := structure.NewList()
-//	database.SetKey("test", list)
-//
-//}
-//
-//func TestCmdListLMove(t *testing.T) {
-//	database := db.NewDataBase(1)
-//	list := structure.NewList()
-//	database.SetKey("test", list)
-//
-//}
-
-func TestCmdListNotify(t *testing.T) {
-
-	database := db.NewDataBase(1)
-	list := structure.NewList()
-	database.SetKey("test", list)
-
-	revised := false
-	database.Watch("test", &revised)
-
-	oldCost := database.Cost()
-
-	lPush(database, [][]byte{
-		[]byte("lpush"), []byte("test"), []byte("1"), []byte("2"), []byte("3"), []byte("4"),
-	})
-
-	assert.Equal(t, true, revised)
-	assert.Positive(t, database.Cost()-oldCost)
+		ret := c(database, test.input)
+		if !assert.Equal(t, test.expected, ret) {
+			fmt.Printf("test case %d", i)
+		}
+	}
 }
