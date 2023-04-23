@@ -203,7 +203,7 @@ func sPop(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 func sRandMember(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := checkCommandAndLength(&cmd, "spop", 3)
+	e, ok := checkCommandAndLength(&cmd, "srandmember", 3)
 	if !ok {
 		return e
 	}
@@ -445,7 +445,7 @@ func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 	dstSet := structure.NewSet()
 
 	if len(cmd) == 3 {
-		value, ok := db.GetKey(string(cmd[3]))
+		value, ok := db.GetKey(string(cmd[2]))
 		if !ok {
 			return resp.MakeIntData(0)
 		}
@@ -465,10 +465,10 @@ func sInterStore(db *db.DataBase, cmd [][]byte) resp.RedisData {
 
 	// 哈希表
 	ks := make(map[string]int)
-	sl := len(cmd) - 1
+	sl := len(cmd) - 2
 
 	// 取出所有集合元素指针，如果 key 不是集合，则存储为 nil
-	for _, s := range cmd[1:] {
+	for _, s := range cmd[2:] {
 		value, ok := db.GetKey(string(s))
 		if !ok {
 			continue
