@@ -112,7 +112,7 @@ type Terminal struct {
 	aborted  bool    // 因为信号而退出
 
 	histories [][]byte // 执行成功过的历史命令
-	hlimit    int      //  历史命令上线
+	hlimit    int      // 历史命令上限
 	hpos      int      // 当前显示的历史命令
 	hauto     bool     // 是否自动存储历史命令
 
@@ -121,9 +121,10 @@ type Terminal struct {
 	targets      []string   // 当前正在显示的补全信息
 	helper       string     // 当前正在显示的帮助信息
 	displayLimit int        // 一次最大显示的补全个数
-	displayedLen int
+	displayedLen int        // 已经显示的字符串长度
 
 	prefix string // 输入行的前缀提示符
+	quit   []byte // 退出控制语句
 }
 
 func NewTerminal() *Terminal {
@@ -135,12 +136,14 @@ func NewTerminal() *Terminal {
 		displayLimit: 8,
 		highlight:    -1,
 		hlimit:       20,
+		histories:    make([][]byte, 0, 20),
 		hauto:        true,
 		prefix:       "> ",
+		quit:         []byte("quit"),
 	}
 }
 
-// ReadLine 阻塞并解析一行命令，如果期间发生信号中断，abort 标识位为 true
+// ReadLine 阻塞并解析一行命令，如果期间发生信号中断或用户输入了退出命令，abort 标识位为 true
 func (t *Terminal) ReadLine() (cmd [][]byte, abort bool) {
 
 	old := DisableTerminal()
@@ -174,7 +177,12 @@ func (t *Terminal) ReadLine() (cmd [][]byte, abort bool) {
 	// 恢复终端设置
 	_ = setTermios(int(os.Stdout.Fd()), old)
 
-	return SplitRepeatableSeg(c, ' '), t.aborted
+	commands := SplitRepeatableSeg(c, ' ')
+	if len(t.quit) > 0 && len(commands) > 0 && bytes.Equal(commands[0], t.quit) {
+		t.aborted = true
+	}
+
+	return commands, t.aborted
 }
 
 // ReadLineAndExec 读取一行命令并且执行；如果执行返回值为 0，记录该命令。
@@ -199,7 +207,9 @@ func (t *Terminal) ReadLineAndExec(f TerminalCommand) {
 	}
 
 	command := SplitRepeatableSeg(c, ' ')
-
+	if len(t.quit) > 0 && len(command) > 0 && bytes.Equal(command[0], t.quit) {
+		t.aborted = true
+	}
 	// 如果运行成功，记录历史命令
 	if f(command, t.aborted) == 0 {
 		t.histories = append(t.histories, c)
@@ -226,6 +236,19 @@ func (t *Terminal) WithCompleter(completer *Completer) *Terminal {
 }
 
 func (t *Terminal) WithHistoryLimitation(max int) *Terminal {
+
+	if max < 0 {
+		max = 0
+	}
+
+	if max > t.hlimit {
+		old := t.histories
+		t.histories = make([][]byte, 0, max)
+		copy(t.histories, old)
+	} else {
+		t.histories = t.histories[:max]
+	}
+
 	t.hlimit = max
 	return t
 }
@@ -246,6 +269,13 @@ func (t *Terminal) WithDisplayLimit(limit int) *Terminal {
 	if limit > 0 {
 		t.displayLimit = limit
 	}
+	return t
+}
+
+// WithQuitCommand 设置退出命令，如果 command == ""，代表无退出命令。退出命令应该设置为单一单词
+// 退出命令默认为 "quit"。
+func (t *Terminal) WithQuitCommand(command string) *Terminal {
+	t.quit = []byte(command)
 	return t
 }
 
@@ -335,7 +365,6 @@ func (t *Terminal) maybeDisplayHelper() {
 
 	// Display
 	x, y := ReadCursor()
-	//MoveCursorTo(0, y+1)
 	FlushString(fmt.Sprintf("\n\033[;37m%s\033[0m ", t.helper))
 
 	// 判断终端是否写满
