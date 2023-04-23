@@ -21,8 +21,11 @@ jobs:
       with:
         go-version: 1.19
 
-    - name: Build
-      run: go build -v .
+    - name: Build Server
+      run: make server
+
+    - name: Build Client
+      run: make client
 
     - name: Test
-      run: go test -v ./...
+      run: make test
