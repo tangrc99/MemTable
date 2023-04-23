@@ -58,3 +58,19 @@ uninstall:
 	@if [ -e "$(INSTALL_DIR)/$(BINARY)" ]; then rm $(INSTALL_DIR)/$(BINARY) ; fi
 	@if [ -e "$(INSTALL_DIR)/$(CLIENT)" ]; then rm $(INSTALL_DIR)/$(CLIENT) ; fi
 	@printf "%bmake uninstall finished%b\n" $(HINTER_COLOR) $(END_COLOR)
+
+.PHONY: help
+help:
+	@echo "Usages: "
+	@printf "  %-15s: %s\n" "make [all]" "build server and client"
+	@printf "  %-15s: %s\n" "make server" "build server only"
+	@printf "  %-15s: %s\n" "make client" "build client only"
+	@printf "  %-15s: %s\n" "make test" "build and run tests"
+	@printf "  %-15s: %s\n" "make clean" "remove built files"
+	@printf "  %-15s: %s\n" "make install" "install built files"
+	@printf "  %-15s: %s\n" "make uninstall" "remove installed built files"
+	@echo "ARGS: "
+	@printf "  %-15s: %s\n" "BINARY" "output file name of server"
+	@printf "  %-15s: %s\n" "CLIENT" "output file name of client"
+	@printf "  %-15s: %s\n" "INSTALL_DIR" "directory to install built files"
+
