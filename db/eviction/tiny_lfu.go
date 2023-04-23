@@ -5,10 +5,10 @@ import (
 	"github.com/tangrc99/MemTable/utils"
 )
 
-// tinyLFU is an admission helper that keeps track of access frequency using
+// TinyLFU is an admission helper that keeps track of access frequency using
 // tiny (4-bit) counters in the form of a count-min sketch.
-// tinyLFU is NOT thread safe.
-type tinyLFU struct {
+// TinyLFU is NOT thread safe.
+type TinyLFU struct {
 	freq    *cmSketch
 	door    *structure.Bloom // 布隆过滤器
 	incrs   int64
@@ -17,20 +17,20 @@ type tinyLFU struct {
 	Eviction
 }
 
-func NewTinyLFU(numCounters int64) *tinyLFU {
-	return &tinyLFU{
+func NewTinyLFU(numCounters int64) *TinyLFU {
+	return &TinyLFU{
 		freq:    newCmSketch(numCounters),
 		door:    structure.NewBloomFilter(float64(numCounters), 0.01),
 		resetAt: numCounters,
 	}
 }
 
-func (p *tinyLFU) Permitted(key string) bool {
+func (p *TinyLFU) Permitted(key string) bool {
 	hashVal := utils.MemHashString(key)
 	return p.door.Has(hashVal)
 }
 
-func (p *tinyLFU) KeyUsed(key string, item *Item) {
+func (p *TinyLFU) KeyUsed(key string, _ *Item) {
 
 	hashVal := utils.MemHashString(key)
 
@@ -51,7 +51,7 @@ func (p *tinyLFU) KeyUsed(key string, item *Item) {
 }
 
 // Estimate 估算 key 的命中值
-func (p *tinyLFU) Estimate(key string) int64 {
+func (p *TinyLFU) Estimate(key string) int64 {
 	hashVal := utils.MemHashString(key)
 
 	hits := p.freq.Estimate(hashVal)
@@ -61,7 +61,7 @@ func (p *tinyLFU) Estimate(key string) int64 {
 	return hits
 }
 
-func (p *tinyLFU) Clear() {
+func (p *TinyLFU) Clear() {
 	p.incrs = 0
 	p.door.Clear()
 	p.freq.Clear()
