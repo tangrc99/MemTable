@@ -192,8 +192,10 @@ func (db_ *DataBase) RenameKey(old, new string) bool {
 	db_.ttlKeys.Delete(old)
 	db_.dict.Delete(old)
 
-	db_.dict.Set(new, value)
-	db_.ttlKeys.Set(new, ttl)
+	db_.dict.Set(new, &eviction.Item{Value: value})
+	if ttl != nil {
+		db_.ttlKeys.Set(new, ttl)
+	}
 
 	db_.ReviseNotify(old, 0, 0)
 	db_.ReviseNotify(new, 0, 0)
@@ -254,8 +256,8 @@ func (db_ *DataBase) CleanExpiredKeys(samples int) int {
 
 // Clear 用于情况 DataBase 中的所有信息
 func (db_ *DataBase) Clear() {
-	db_.dict = structure.NewDict(12)
-	db_.ttlKeys = structure.NewDict(1)
+	db_.dict = structure.NewDict(db_.dict.ShardNum())
+	db_.ttlKeys = structure.NewDict(db_.ttlKeys.ShardNum())
 }
 
 // Size 返回数据库中键值对数量，函数不会检查键值对的过期情况。
@@ -270,6 +272,7 @@ func (db_ *DataBase) TTLSize() int {
 
 // Watch 监控一个键是否被修改，如果键值被修改 flag 变量将会被设置为 false
 func (db_ *DataBase) Watch(key string, flag *bool) {
+	*flag = false
 	db_.watches.watch(key, flag)
 }
 
