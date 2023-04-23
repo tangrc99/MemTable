@@ -57,18 +57,16 @@ func MoveCursorTo(dstX, dstY int) {
 // MoveCursor 将光标移动指定的偏移量
 func MoveCursor(x, y int) {
 
-	for ; x < 0; x++ {
-		_, _ = os.Stdout.WriteString("\033[D")
-	}
-	for ; x > 0; x-- {
-		_, _ = os.Stdout.WriteString("\033[C")
+	if x < 0 {
+		_, _ = os.Stdout.WriteString(fmt.Sprintf("\033[%dD", 0-x))
+	} else if x > 0 {
+		_, _ = os.Stdout.WriteString(fmt.Sprintf("\033[%dC", x))
 	}
 
-	for ; y < 0; y++ {
-		_, _ = os.Stdout.WriteString("\033[A")
-	}
-	for ; y > 0; y-- {
-		_, _ = os.Stdout.WriteString("\033[B")
+	if y < 0 {
+		_, _ = os.Stdout.WriteString(fmt.Sprintf("\033[%dA", -y))
+	} else if y > 0 {
+		_, _ = os.Stdout.WriteString(fmt.Sprintf("\033[%dB", y))
 	}
 }
 
@@ -97,6 +95,7 @@ func DisableTerminal() *Termios {
 	return &oldState
 }
 
+// SplitRepeatableSeg 会将 s 按照 seg 来进行切割，忽略 "" 之间的 seg
 func SplitRepeatableSeg(s []byte, seg byte) [][]byte {
 	var splits [][]byte
 	i, j := 0, 0
@@ -108,10 +107,10 @@ func SplitRepeatableSeg(s []byte, seg byte) [][]byte {
 			} else {
 				i++
 			}
-		} else if s[j] == '"' && (j == 0 || s[j-1] == ' ') {
+		} else if s[j] == '"' && (j == 0 || s[j-1] == seg) {
 			k := j + 1
 			for ; k < len(s); k++ {
-				if s[k] == '"' && s[k-1] != '\\' && (k == len(s)-1 || s[k+1] == ' ') {
+				if s[k] == '"' && s[k-1] != '\\' && (k == len(s)-1 || s[k+1] == seg) {
 					splits = append(splits, s[j+1:k])
 					i, j = k+1, k
 					break
