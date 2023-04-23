@@ -124,21 +124,24 @@ type Terminal struct {
 	displayedLen int        // 已经显示的字符串长度
 
 	prefix string // 输入行的前缀提示符
-	quit   []byte // 退出控制语句
+	quit   string // 退出控制语句
 }
 
 func NewTerminal() *Terminal {
+	c := NewCompleter()
+	addDefaultCommands(c)
+
 	return &Terminal{
 		content:      []*Line{newLine()},
 		line:         0,
 		buffer:       make([]byte, 0),
-		completer:    NewCompleter(),
+		completer:    c,
 		displayLimit: 8,
 		highlight:    -1,
 		histories:    newHistory(20),
 		hauto:        true,
 		prefix:       "> ",
-		quit:         []byte("quit"),
+		quit:         "quit",
 	}
 }
 
@@ -175,8 +178,9 @@ func (t *Terminal) ReadLine() (cmd [][]byte, abort bool) {
 	_ = setTermios(int(os.Stdout.Fd()), old)
 
 	commands := SplitRepeatableSeg(c, ' ')
-	if len(t.quit) > 0 && len(commands) > 0 && bytes.Equal(commands[0], t.quit) {
-		t.aborted = true
+
+	if t.tryExecInternalCommand(commands) {
+		return [][]byte{}, t.aborted
 	}
 
 	return commands, t.aborted
@@ -204,8 +208,8 @@ func (t *Terminal) ReadLineAndExec(f TerminalCommand) {
 	}
 
 	command := SplitRepeatableSeg(c, ' ')
-	if len(t.quit) > 0 && len(command) > 0 && bytes.Equal(command[0], t.quit) {
-		t.aborted = true
+	if t.tryExecInternalCommand(command) {
+		command = [][]byte{}
 	}
 	// 如果运行成功，记录历史命令
 	if f(command, t.aborted) == 0 {
@@ -261,7 +265,9 @@ func (t *Terminal) WithDisplayLimit(limit int) *Terminal {
 // WithQuitCommand 设置退出命令，如果 command == ""，代表无退出命令。退出命令应该设置为单一单词
 // 退出命令默认为 "quit"。
 func (t *Terminal) WithQuitCommand(command string) *Terminal {
-	t.quit = []byte(command)
+	delete(commandTable, t.quit)
+	t.quit = command
+	commandTable[command] = commandQuit
 	return t
 }
 
@@ -390,6 +396,18 @@ func (t *Terminal) finish() {
 func (t *Terminal) abort() {
 	t.aborted = true
 	t.finish()
+}
+
+func (t *Terminal) tryExecInternalCommand(args [][]byte) bool {
+	if len(args) == 0 {
+		return false
+	}
+	f, exist := commandTable[string(args[0])]
+	if !exist {
+		return false
+	}
+	f(t, args)
+	return true
 }
 
 /* ---------------------------------------------------------------------------
