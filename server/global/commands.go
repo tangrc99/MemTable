@@ -10,6 +10,7 @@ const (
 	WR
 )
 
+// CommandType 用于标识命令的类型
 type CommandType int
 
 const (
@@ -18,10 +19,10 @@ const (
 )
 
 type Command struct {
-	id int
-	es ExecStatus
-	ct CommandType
-	f  any
+	id int         // 命令 id
+	es ExecStatus  // 命令读写类型
+	ct CommandType // 命令类型
+	f  any         // 命令函数，为了防止包循环引用，因此使用 any 接口
 }
 
 func (c *Command) GetId() int {
@@ -117,4 +118,13 @@ func ForAnyCommands(f func(cmdName string, cmd Command)) {
 	for i, c := range commandTable {
 		f(i, c)
 	}
+}
+
+func IsMultiKeyCommand(cmd string) bool {
+	return cmd == "del" || cmd == "exists" || cmd == "mset" || cmd == "mget"
+}
+
+// IsBlockCommand 会造成客户端一直阻塞等待回复的命令
+func IsBlockCommand(cmd string) bool {
+	return cmd == "subscribe" || cmd == "monitor"
 }
