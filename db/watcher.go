@@ -4,6 +4,7 @@ import "unsafe"
 
 const watcherBasicCost = int64(unsafe.Sizeof(watcher{}))
 
+// watcher 用于记录 watch 命令所监视的键
 type watcher struct {
 	watches map[string]map[*bool]struct{}
 	cost    int64
@@ -20,6 +21,7 @@ func (w *watcher) Cost() int64 {
 	return w.cost
 }
 
+// Size 会返回当前监控的键个数
 func (w *watcher) Size() int {
 	return len(w.watches)
 }
