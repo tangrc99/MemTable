@@ -4,7 +4,7 @@ ADD . /etc/MemTable
 WORKDIR /etc/MemTable
 
 ENV GOPROXY=https://goproxy.cn,direct
-RUN make
+RUN make server
 
 FROM ubuntu:latest
 
