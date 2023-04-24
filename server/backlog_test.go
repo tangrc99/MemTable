@@ -2,18 +2,13 @@ package server
 
 import (
 	"github.com/stretchr/testify/assert"
-	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/logger"
 	"testing"
 )
 
 func TestBackLog(t *testing.T) {
 
-	err := logger.Init(config.Conf.LogDir, "bin.log", logger.StringToLogLevel(config.Conf.LogLevel))
-	if err != nil {
-		println(err.Error())
-		return
-	}
+	_ = logger.Init("", "", logger.WARNING)
 
 	s := NewServer()
 	s.InitModules()
