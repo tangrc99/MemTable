@@ -3,7 +3,6 @@ package server
 import (
 	"github.com/tangrc99/MemTable/db/structure"
 	"github.com/tangrc99/MemTable/logger"
-	"github.com/tangrc99/MemTable/server/global"
 	"time"
 )
 
@@ -57,12 +56,7 @@ func NewTimeEventList() *TimeEventList {
 
 func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 
-	// 类型检查
-	if event.tp < global.Now.Unix() {
-		logger.Warning("TimeEventList: add an expired time Event")
-	}
-
-	if event.event == PERIOD && event.tp <= 0 {
+	if event.event == PERIOD && event.period <= 0 {
 		logger.Error("TimeEventList: period of a period Event < 0")
 		return
 	}
@@ -76,12 +70,11 @@ func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 		e, ok := node.Value.(TimeEvent)
 		// 列表元素类型不对
 		if !ok {
-
-			logger.Error("TimeEventList: type is not TimeEvent")
+			logger.Panicf("TimeEventList: type %V is not TimeEvent", node.Value)
 		}
 
 		if e.tp >= event.tp {
-			events.list.InsertBeforeNode(event, node) // fixme : 是否有问题
+			events.list.InsertBeforeNode(event, node)
 			return
 		}
 	}
@@ -92,7 +85,6 @@ func (events *TimeEventList) AddTimeEvent(event TimeEvent) {
 
 // ExecuteOneIfExpire 执行一个任务，如果无可执行任务返回 false
 func (events *TimeEventList) ExecuteOneIfExpire(now time.Time) bool {
-
 	// 无任务状态
 	if events.list.Empty() {
 		logger.Debug("TimeEventList: empty")
@@ -100,11 +92,6 @@ func (events *TimeEventList) ExecuteOneIfExpire(now time.Time) bool {
 	}
 
 	v := events.list.Front()
-	if v == nil {
-		logger.Debug("TimeEventList: empty")
-		return false
-	}
-
 	front, ok := v.(TimeEvent)
 	// 列表元素类型不对
 	if !ok {
@@ -113,7 +100,7 @@ func (events *TimeEventList) ExecuteOneIfExpire(now time.Time) bool {
 		return false
 	}
 
-	if front.tp > now.Unix() {
+	if front.tp > now.UnixMilli() {
 		return false
 	}
 
@@ -124,7 +111,7 @@ func (events *TimeEventList) ExecuteOneIfExpire(now time.Time) bool {
 
 	// 如果是周期性任务，需要再次定时
 	if front.event == PERIOD {
-		front.tp = now.Add(front.period).Unix()
+		front.tp = now.Add(front.period).UnixMilli()
 		events.AddTimeEvent(front)
 	}
 
@@ -135,16 +122,17 @@ func (events *TimeEventList) Size() int {
 	return events.list.Size()
 }
 
-func (events *TimeEventList) ExecuteManyDuring(now time.Time, duration time.Duration) {
-	expired := now.Add(duration).Unix()
+func (events *TimeEventList) ExecuteManyDuring(now time.Time, duration time.Duration) int {
+	expired := now.Add(duration).UnixMilli()
 
 	finished := 0
 
-	for expired > now.Unix() && events.ExecuteOneIfExpire(now) {
+	for expired > now.UnixMilli() && events.ExecuteOneIfExpire(now) {
 		finished++
 	}
 
 	if finished > 0 {
 		logger.Debug("TimeEventList: Finished", finished, "Tasks")
 	}
+	return finished
 }
