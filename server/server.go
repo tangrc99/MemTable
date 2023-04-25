@@ -249,7 +249,7 @@ func (s *Server) handleRead(conn net.Conn) {
 			_, err := conn.Write((*r).ToBytes())
 
 			if err != nil {
-				logger.Warning("Client", client.id, "Write Error")
+				logger.Warning("Client", client.id, "write Error")
 				running = false
 				break
 			}
@@ -278,7 +278,7 @@ sendFinish:
 			_, err := conn.Write((*r).ToBytes())
 
 			if err != nil {
-				logger.Warning("Client", client.id, "Write Error")
+				logger.Warning("Client", client.id, "write Error")
 				break sendFinish
 			}
 		default:
@@ -319,7 +319,6 @@ func (s *Server) eventLoop() {
 			cli := event.cli
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
 
-			// todo:  关闭使用定时队列来实现
 			// 底层发生异常，需要关闭客户端，或者客户端已经关闭了，那么就不处理请求了
 			if cli.status == ERROR || cli.status == EXIT {
 				// 释放客户端资源
@@ -721,7 +720,7 @@ func (s *Server) handleReadWithoutGoroutine(conn net.Conn) {
 		_, err := conn.Write((*r).ToBytes())
 
 		if err != nil {
-			logger.Warning("Client", client.id, "Write Error")
+			logger.Warning("Client", client.id, "write Error")
 			running = false
 			break
 		}

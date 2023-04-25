@@ -285,6 +285,53 @@ func (cfg *Config) parseFile() error {
 	return nil
 }
 
+func (cfg *Config) parseFlags() {
+
+	for i := 0; i < len(os.Args); i++ {
+		if os.Args[i] == "--conf" {
+			Conf.ConfFile = os.Args[i+1]
+			err := Conf.parseFile()
+			if err != nil {
+				fmt.Printf(err.Error())
+				fmt.Printf("Using Default Config")
+				Conf = defaultConf
+			}
+
+		} else if os.Args[i] == "--port" {
+			var err error
+			Conf.Port, err = strconv.Atoi(os.Args[i+1])
+			if err != nil {
+				fmt.Printf("Error format '--port %s'\n", os.Args[i+1])
+				os.Exit(1)
+			}
+
+		} else if os.Args[i] == "--host" {
+			Conf.Host = os.Args[i+1]
+
+		} else if os.Args[i] == "--tls-port" {
+			var err error
+			Conf.TLSPort, err = strconv.Atoi(os.Args[i+1])
+			if err != nil {
+				fmt.Printf("Error format '--tls-port %s'\n", os.Args[i+1])
+				os.Exit(1)
+			}
+
+		} else if os.Args[i] == "--daemonize" {
+			var err error
+			Conf.Daemonize, err = strconv.ParseBool(os.Args[i+1])
+			if err != nil {
+				fmt.Printf("Error format '--daemonize %s'\n", os.Args[i+1])
+				os.Exit(1)
+			}
+		} else if os.Args[i] == "--log-level" {
+
+			cfg.LogLevel = strings.ToLower(os.Args[i+1])
+
+		}
+
+	}
+}
+
 // defaultConf 是默认配置
 var defaultConf = Config{
 	ConfFile:    "",
@@ -300,7 +347,7 @@ var defaultConf = Config{
 	Dir:         "./",
 	MaxMemory:   1<<64 - 1,
 	AppendFsync: true,
-	AppendOnly:  false,
+	AppendOnly:  true,
 	GoPool:      true,
 	GoPoolSize:  10000,
 	GoPoolSpawn: 2000,
@@ -321,17 +368,7 @@ func init() {
 	// 默认的配置
 	Conf = defaultConf
 
-	for i := range os.Args {
-		if os.Args[i] == "--conf" {
-			Conf.ConfFile = os.Args[i+1]
-			err := Conf.parseFile()
-			if err != nil {
-				fmt.Printf(err.Error())
-				fmt.Printf("Using Default Config")
-				Conf = defaultConf
-			}
-		}
-	}
+	Conf.parseFlags()
 
 	// check tls options
 	if Conf.TLSPort == Conf.Port {
@@ -362,4 +399,5 @@ func init() {
 	if Conf.GoPoolSpawn < 0 {
 		panic(fmt.Sprintf("Err gopoolspawn < 0"))
 	}
+
 }

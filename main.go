@@ -5,12 +5,57 @@ import (
 	"github.com/tangrc99/MemTable/config"
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/server"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	_ "runtime/trace"
 	"syscall"
 	_ "time"
 )
+
+var (
+	Version = "unknown"
+)
+
+func Help() {
+
+	fmt.Printf("MemTable v%s\n\n", Version)
+	fmt.Printf("Usage: MemTable [OPTIONS] [cmd [arg [arg ...]]]\n")
+
+	format := "  --%-20s %s\n"
+
+	fmt.Printf(format, "conf <filename>", "Start server with config file.")
+	fmt.Printf(format, "host <host name>", "Start server with host.")
+	fmt.Printf(format, "port <port>", "Start server with port.")
+	fmt.Printf(format, "tls-port <tls port>", "Start server with tls-port.")
+	fmt.Printf(format, "log-level <level>", "Start server with log level debug, info, warning, error or panic.")
+	fmt.Printf(format, "pprof <host:port>", "Run pprof tool with host:port.")
+
+	fmt.Printf(format, "help", "Output this help and exit.")
+	fmt.Printf(format, "version", "Output version.")
+
+}
+
+func parseFlags() {
+
+	for i := 0; i < len(os.Args); i++ {
+		if os.Args[i] == "--help" {
+			Help()
+			os.Exit(0)
+		} else if os.Args[i] == "--version" {
+			fmt.Printf("v%s\n", Version)
+			os.Exit(0)
+		} else if os.Args[i] == "--pprof" {
+			var err error
+			go func() {
+				err = http.ListenAndServe(os.Args[i+1], nil)
+			}()
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
 
 func Daemon() (int, error) {
 
@@ -57,17 +102,13 @@ func Daemon() (int, error) {
 
 func main() {
 
-	//go func() {
-	//	fmt.Println("pprof started...")
-	//	panic(http.ListenAndServe("localhost:8080", nil))
-	//}()
+	parseFlags()
 
-	// check daemonize
+	// check if is daemonize
 	if config.Conf.Daemonize {
 		pid, err := Daemon()
 		if err != nil {
-			println(err.Error())
-			return
+			panic(err.Error())
 		}
 		if pid > 0 {
 			fmt.Printf("Server run in pid %d\n", pid)
@@ -80,13 +121,11 @@ func main() {
 
 	err := logger.Init(config.Conf.LogDir, "bin.log", logger.StringToLogLevel(config.Conf.LogLevel))
 	if err != nil {
-		println(err.Error())
-		return
+		panic(err.Error())
 	}
 
 	s := server.NewServer()
 	s.InitModules()
 	s.TryRecover()
 	s.Start()
-
 }
