@@ -11,8 +11,8 @@ func TestBackLog(t *testing.T) {
 	_ = logger.Init("", "", logger.WARNING)
 
 	s := NewServer()
-	s.InitModules()
 	s.standAloneToMaster()
+
 	assert.Equal(t, uint64(0), s.backLog.LowWaterLevel())
 
 	event := &Event{raw: []byte("sdfsdfsdfds"), cli: NewClient(nil)}
