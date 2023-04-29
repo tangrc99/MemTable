@@ -4,7 +4,7 @@ package structure
 import (
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/server/global"
-	"hash/fnv"
+	"github.com/tangrc99/MemTable/utils"
 	"math/rand"
 	"regexp"
 	"unsafe"
@@ -42,17 +42,9 @@ func NewDict(size int) *Dict {
 	return &dict
 }
 
-// hashKey 返回键值对应的分片号
-func hashKey(key string) int {
-	fnv32 := fnv.New32()
-	key = "@#&" + key + "*^%$"
-	_, _ = fnv32.Write([]byte(key))
-	return int(fnv32.Sum32())
-}
-
 // countShard 返回键值对应的 *Shard
 func (dict *Dict) countShard(key string) *Shard {
-	pos := hashKey(key) % dict.size
+	pos := utils.HashKey(key) % dict.size
 	return &dict.shards[pos]
 }
 
