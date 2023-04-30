@@ -90,6 +90,21 @@ func Init(dir string, filename string, level LogLevel) error {
 	return nil
 }
 
+// ChangeConfig 尝试变更 logger，如果变更失败，则返回一个 error 并保持原配置不变
+func ChangeConfig(dir string, filename string, level LogLevel) error {
+	if dir == logcfg.Path && filename == logcfg.Name {
+		logcfg.Level = level
+		return nil
+	}
+	l := logger
+	err := Init(dir, filename, level)
+	if err != nil {
+		logger = l
+		return err
+	}
+	return nil
+}
+
 // Disable 用于禁止日志输出
 func Disable() {
 	logger.SetOutput(io.Discard)
