@@ -247,9 +247,16 @@ func (s *Server) handleRead(conn net.Conn) {
 
 			// 将主线程的返回值写入到 socket 中
 			_, err := conn.Write((*r).ToBytes())
-
 			if err != nil {
-				logger.Warning("Client", client.id, "write Error")
+				logger.Warningf("Client %s write error: %s", conn.RemoteAddr().String(), err.Error())
+				running = false
+				break
+			}
+
+		case msg := <-client.msg:
+			_, err := conn.Write(msg)
+			if err != nil {
+				logger.Warningf("Client %s write error: %s", conn.RemoteAddr().String(), err.Error())
 				running = false
 				break
 			}
@@ -305,6 +312,14 @@ func (s *Server) eventLoop() {
 
 		select {
 
+		case e := <-config.ConfWatcher.Notification():
+
+			if e.Err != nil {
+				logger.Error(e.Err.Error())
+				continue
+			}
+			s.reloadConfig(e.Fields)
+
 		case <-timer.C:
 
 			timer.Reset(100 * time.Millisecond)
@@ -313,8 +328,7 @@ func (s *Server) eventLoop() {
 
 		case event := <-s.events:
 
-			global.UpdateGlobalClock()
-			startTs := global.Now
+			startTs := global.RealTime()
 
 			cli := event.cli
 			logger.Debug("EventLoop: New Event From Client", cli.id.String())
@@ -340,8 +354,7 @@ func (s *Server) eventLoop() {
 			// 执行命令
 			res, isWriteCommand := ExecCommand(s, cli, event.cmd, event.raw)
 
-			global.UpdateGlobalClock()
-			endTs := global.Now
+			endTs := global.RealTime()
 
 			// slow log
 			if config.Conf.SlowLogSlowerThan >= 0 {
@@ -601,11 +614,11 @@ func (s *Server) Start() {
 		go s.acceptLoop(s.uListener)
 	}
 
-	quit := make(chan os.Signal)
+	q := make(chan os.Signal)
 
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // 接受软中断信号并且传递到 channel
+	signal.Notify(q, syscall.SIGINT, syscall.SIGTERM) // 接受软中断信号并且传递到 channel
 
-	<-quit
+	<-q
 
 	// 通知主线程在完成任务后退出，防止有任务进行到一半
 	s.quit = true

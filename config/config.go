@@ -317,16 +317,16 @@ func (cfg *Config) parseFlags() {
 			}
 
 		} else if os.Args[i] == "--daemonize" {
-			var err error
-			Conf.Daemonize, err = strconv.ParseBool(os.Args[i+1])
-			if err != nil {
-				fmt.Printf("Error format '--daemonize %s'\n", os.Args[i+1])
-				os.Exit(1)
-			}
+
+			Conf.Daemonize = true
+
 		} else if os.Args[i] == "--log-level" {
 
 			cfg.LogLevel = strings.ToLower(os.Args[i+1])
 
+		} else if os.Args[i] == "--watch-config" {
+
+			confWatcherEnabled = true
 		}
 
 	}
@@ -400,4 +400,6 @@ func init() {
 		panic(fmt.Sprintf("Err gopoolspawn < 0"))
 	}
 
+	// 最后再进行 watcher 的初始化
+	initWatcher()
 }

@@ -10,3 +10,9 @@ var Now time.Time
 func UpdateGlobalClock() {
 	Now = time.Now()
 }
+
+// RealTime 会更新 global.Now 并返回
+func RealTime() time.Time {
+	Now = time.Now()
+	return Now
+}
