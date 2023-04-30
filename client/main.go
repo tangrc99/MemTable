@@ -50,6 +50,7 @@ func ParseArgs() (ops []client.Option, commands []string) {
 				panic(err.Error())
 			}
 			ops = append(ops, client.WithPort(port))
+			i++
 
 		case "--help":
 			Helper()
@@ -79,6 +80,12 @@ func ParseArgs() (ops []client.Option, commands []string) {
 			readFromStdIn = true
 
 		default:
+
+			if os.Args[i][0] == '-' {
+				fmt.Printf("Unknown args '%s', use 'memtable-cli --help' for help\n", os.Args[i])
+				os.Exit(0)
+			}
+
 			return ops, os.Args[i:]
 		}
 	}
@@ -101,18 +108,21 @@ func main() {
 	if len(commands) > 0 {
 		err := cli.Dial()
 		if err != nil {
-			fmt.Printf("%s", err.Error())
+			fmt.Printf("%s\n", err.Error())
 		}
 		for i := 0; i < repeated; i++ {
 			cli.RunSingeMode(commands)
-			time.Sleep(time.Duration(interval * time.Second.Seconds()))
+
+			// 最后一次不需要等待
+			if i != repeated-1 {
+				time.Sleep(time.Duration(interval) * time.Second)
+			}
 		}
 		return
 	}
 
 	// 交互模式运行
 	signal.Ignore(syscall.SIGINT, syscall.SIGTERM)
-
 	_ = cli.Dial()
 	cli.RunInteractiveMode()
 
