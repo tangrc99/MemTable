@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	_ "runtime/trace"
+	"strings"
 	"syscall"
 	_ "time"
 )
@@ -28,24 +29,27 @@ func Help() {
 	fmt.Printf(format, "host <host name>", "Start server with host.")
 	fmt.Printf(format, "port <port>", "Start server with port.")
 	fmt.Printf(format, "tls-port <tls port>", "Start server with tls-port.")
+	fmt.Printf(format, "daemonize ", "Start server in daemon mode.")
 	fmt.Printf(format, "log-level <level>", "Start server with log level debug, info, warning, error or panic.")
 	fmt.Printf(format, "pprof <host:port>", "Run pprof tool with host:port.")
-
+	fmt.Printf(format, "--watch-config ", "Watch change of config file.")
 	fmt.Printf(format, "help", "Output this help and exit.")
 	fmt.Printf(format, "version", "Output version.")
 
 }
 
 func parseFlags() {
-
 	for i := 0; i < len(os.Args); i++ {
-		if os.Args[i] == "--help" {
+		switch strings.ToLower(os.Args[i]) {
+		case "--help":
 			Help()
 			os.Exit(0)
-		} else if os.Args[i] == "--version" {
+
+		case "--version":
 			fmt.Printf("v%s\n", Version)
 			os.Exit(0)
-		} else if os.Args[i] == "--pprof" {
+
+		case "--pprof":
 			var err error
 			go func() {
 				err = http.ListenAndServe(os.Args[i+1], nil)
@@ -100,6 +104,19 @@ func Daemon() (int, error) {
 	return pid, nil
 }
 
+func PrintRunInformation() {
+
+	// Print logos
+	fmt.Println("      __  ___             ______      __    __")
+	fmt.Println("     /  |/  /__  ____ ___/_  __/___ _/ /_  / /__")
+	fmt.Println("    / /|_/ / _ \\/ __ `__ \\/ / / __ `/ __ \\/ / _ \\")
+	fmt.Println("   / /  / /  __/ / / / / / / / /_/ / /_/ / /  __/")
+	fmt.Println("  /_/  /_/\\___/_/ /_/ /_/_/  \\__,_/_.___/_/\\___/")
+
+	logger.Infof("MemTable is starting...")
+	logger.Infof("MemTable version=%s, pid=%d, config file=\"%s\"", Version, os.Getpid(), config.Conf.ConfFile)
+}
+
 func main() {
 
 	parseFlags()
@@ -123,7 +140,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-
+	PrintRunInformation()
 	s := server.NewServer()
 	s.InitModules()
 	s.TryRecover()
