@@ -41,11 +41,11 @@ func (c *Completer) Register(hint *Hint) {
 	c.trieTree.AddNode(path, hint)
 }
 
-// Query 查询以当前单词为前缀的单词，返回这些单词的切片
+// Query 查询以当前单词为前缀的单词，按照标准序返回这些单词的切片
 func (c *Completer) Query(word string) []string {
 
 	path := strings.Split(word, "")
-	nodes := c.trieTree.AllLeafNodeInPathRecursive(path)
+	nodes := c.trieTree.AllLeafNodeInPathRecursive(path, structure.StandardOrder)
 
 	matched := make([]string, 0, len(nodes))
 	// 类型转换

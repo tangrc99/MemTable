@@ -24,7 +24,7 @@ func TestTrieTree(t *testing.T) {
 		t.Error("AllLeafNodeInPath Failed")
 	}
 
-	if nodes := tree.AllLeafNodeInPathRecursive(path0); len(nodes) != 5 {
+	if nodes := tree.AllLeafNodeInPathRecursive(path0, StandardOrder); len(nodes) != 5 {
 		t.Error("AllLeafNodeInPathRecursive Failed")
 	}
 
@@ -59,4 +59,24 @@ func TestTrieTree(t *testing.T) {
 
 	_, ok = tree.GetValue(path4)
 	assert.True(t, ok)
+}
+
+func TestTrieTreeOrder(t *testing.T) {
+	tree := NewTrieTree()
+
+	path0 := []string{"a", "b"}
+	path1 := []string{"a", "b", "c"}
+	path2 := []string{"a", "b", "e"}
+	n1 := tree.AddNode(path0, Slice("p0"))
+	tree.AddNode(path1, Slice("p1"))
+	tree.AddNode(path2, Slice("p2"))
+
+	for i := 0; i < 100; i++ {
+		nodes := tree.bfsGetLeafNodes(n1)
+		assert.Equal(t, 3, len(nodes))
+		assert.Equal(t, "b", nodes[0].Key)
+		assert.Equal(t, "c", nodes[1].Key)
+		assert.Equal(t, "e", nodes[2].Key)
+	}
+
 }

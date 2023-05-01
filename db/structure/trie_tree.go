@@ -1,16 +1,19 @@
 package structure
 
-import "unsafe"
+import (
+	"github.com/tidwall/btree"
+	"unsafe"
+)
 
 const trieTreeNodeBasicCost = int64(unsafe.Sizeof(trieTreeNode{}))
 
 type trieTreeNode struct {
-	Key      string                   // 键
-	Value    Object                   // 值
-	isLeaf   bool                     // 判别是否为叶子节点
-	parent   *trieTreeNode            // 父结点
-	children map[string]*trieTreeNode // 子节点链表
-	tree     *TrieTree                // 所属的树
+	Key      string                            // 键
+	Value    Object                            // 值
+	isLeaf   bool                              // 判别是否为叶子节点
+	parent   *trieTreeNode                     // 父结点
+	children *btree.Map[string, *trieTreeNode] // 子节点链表
+	tree     *TrieTree                         // 所属的树
 }
 
 func newTrieTreeNode(key string, value Object, leaf bool, parent *trieTreeNode, owner *TrieTree) *trieTreeNode {
@@ -19,7 +22,7 @@ func newTrieTreeNode(key string, value Object, leaf bool, parent *trieTreeNode, 
 		Value:    value,
 		isLeaf:   leaf,
 		parent:   parent,
-		children: make(map[string]*trieTreeNode),
+		children: btree.NewMap[string, *trieTreeNode](2),
 		tree:     owner,
 	}
 }
@@ -52,11 +55,11 @@ func (tree *TrieTree) AddNode(paths []string, value Object) *trieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			node = newTrieTreeNode(path, Nil{}, false, cur, tree)
 			tree.cost += node.Cost()
-			cur.children[path] = node
+			cur.children.Set(path, node)
 		}
 		cur = node
 	}
@@ -78,11 +81,11 @@ func (tree *TrieTree) AddNodeIfNotLeaf(paths []string, value Object) (*trieTreeN
 	cur := tree.root
 
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			node = newTrieTreeNode(path, Nil{}, false, cur, tree)
 			tree.cost += node.Cost()
-			cur.children[path] = node
+			cur.children.Set(path, node)
 		}
 		cur = node
 	}
@@ -106,13 +109,13 @@ func (tree *TrieTree) DeleteLeafNode(node *trieTreeNode) bool {
 	}
 
 	cur := node.parent
-	delete(cur.children, node.Key)
+	cur.children.Delete(node.Key)
 	tree.cost -= node.Cost()
 
-	for cur != nil && !cur.isLeaf && len(cur.children) == 0 {
+	for cur != nil && !cur.isLeaf && cur.children.Len() == 0 {
 		nxt := cur.parent
 		if nxt != nil {
-			delete(nxt.children, cur.Key)
+			nxt.children.Delete(cur.Key)
 			tree.cost -= cur.Cost()
 		}
 		cur = nxt
@@ -127,7 +130,7 @@ func (tree *TrieTree) DeletePath(paths []string) bool {
 
 	// 遍历到最底下的节点
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			return false
 		}
@@ -143,7 +146,7 @@ func (tree *TrieTree) IsPathExist(paths []string) bool {
 	cur := tree.root
 
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			return false
 		}
@@ -157,7 +160,7 @@ func (tree *TrieTree) GetValue(paths []string) (Object, bool) {
 	cur := tree.root
 
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			return nil, false
 		}
@@ -171,7 +174,7 @@ func (tree *TrieTree) GetLeafNode(paths []string) (*trieTreeNode, bool) {
 	cur := tree.root
 
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			return nil, false
 		}
@@ -190,7 +193,7 @@ func (tree *TrieTree) AllLeafNodeInPath(paths []string) []*trieTreeNode {
 	cur := tree.root
 
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			return nil
 		}
@@ -202,13 +205,13 @@ func (tree *TrieTree) AllLeafNodeInPath(paths []string) []*trieTreeNode {
 	if cur.isLeaf {
 		r = append(r, cur)
 	}
-
 	// 判断子节点
-	for _, node := range cur.children {
-		if node.isLeaf {
-			r = append(r, node)
+	for it := cur.children.Iter(); it.Next(); {
+		if it.Value().isLeaf {
+			r = append(r, it.Value())
 		}
 	}
+
 	return r
 }
 
@@ -223,26 +226,57 @@ func (tree *TrieTree) dfsGetLeafNodes(node *trieTreeNode, r *[]*trieTreeNode) {
 		*r = append(*r, node)
 	}
 
-	for _, child := range node.children {
-		tree.dfsGetLeafNodes(child, r)
+	for it := node.children.Iter(); it.Next(); {
+		tree.dfsGetLeafNodes(it.Value(), r)
 	}
 }
 
+// bfsGetLeafNodes 返回当前路径以及路径下的叶子节点（递归）
+func (tree *TrieTree) bfsGetLeafNodes(node *trieTreeNode) []*trieTreeNode {
+
+	var nodes []*trieTreeNode
+	q := NewList()
+	q.PushFront(node)
+	for !q.Empty() {
+		n := q.PopFront().(*trieTreeNode)
+		for it := n.children.Iter(); it.Next(); {
+			q.PushBack(it.Value())
+		}
+		if n.isLeaf {
+			nodes = append(nodes, n)
+		}
+	}
+	return nodes
+}
+
+type SearchOrder = int
+
+const (
+	StandardOrder SearchOrder = iota
+	DictionaryOrder
+)
+
 // AllLeafNodeInPathRecursive 返回当前路径以及路径下的叶子节点（递归）
-func (tree *TrieTree) AllLeafNodeInPathRecursive(paths []string) []*trieTreeNode {
+func (tree *TrieTree) AllLeafNodeInPathRecursive(paths []string, order SearchOrder) []*trieTreeNode {
 	cur := tree.root
 
+	// 找到起始路径
 	for _, path := range paths {
-		node, exists := cur.children[path]
+		node, exists := cur.children.Get(path)
 		if !exists {
 			return nil
 		}
 		cur = node
 	}
+
+	// 标准序，使用 bfs 搜索
+	if order == StandardOrder {
+		return tree.bfsGetLeafNodes(cur)
+	}
+
+	// 字典序，使用 dfs 搜索
 	r := make([]*trieTreeNode, 0)
-
 	tree.dfsGetLeafNodes(cur, &r)
-
 	return r
 }
 
