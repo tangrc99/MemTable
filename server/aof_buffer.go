@@ -144,8 +144,9 @@ func (buff *aofBuffer) asyncTask() {
 		select {
 		// 控制刷盘
 		case <-buff.notification:
-			// 写入 os 缓冲区
-			atomic.StoreInt32(&buff.writing, 1)
+			// 自旋等待进入临界区
+			for !atomic.CompareAndSwapInt32(&buff.writing, 0, 1) {
+			}
 			buff.flushBuffer()
 
 			// os 缓冲区写入硬盘
@@ -215,9 +216,21 @@ func (buff *aofBuffer) append(bytes []byte) {
 	if result != appendSuccess {
 		buff.appendSeq++
 
-		// 如果自加后追赶上刷盘
+		// 如果缓冲区已经写满
 		if buff.appendSeq-buff.flushSeq == buff.pageSize {
-			buff.flushBuffer()
+			// 尝试进入临界区
+			if atomic.CompareAndSwapInt32(&buff.writing, 0, 1) {
+				// 成功进入临界区，刷盘腾出空间
+				buff.flushBuffer()
+				// 退出临界区
+				atomic.StoreInt32(&buff.writing, 0)
+			} else {
+				// 进入临界区失败，自旋等待刷盘完成
+				for atomic.LoadInt32(&buff.writing) != 0 {
+				}
+				// 加快写入频率
+				buff.flush()
+			}
 		}
 
 		// 如果在上一页中插入失败，需要再一次尝试写入当前页
