@@ -44,7 +44,7 @@ func subscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 func unsubscribe(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	// 进行输入类型检查
-	e, ok := CheckCommandAndLength(cmd, "subscribe", 2)
+	e, ok := CheckCommandAndLength(cmd, "unsubscribe", 2)
 	if !ok {
 		return e
 	}
