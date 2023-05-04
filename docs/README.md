@@ -1,4 +1,4 @@
-## MemTable
+# MemTable
 
 MemTable 是一个仿照 Redis 架构写成的，基于内存的键值对存储服务，使用 RESP 协议进行通信。本项目是一个完全基于 Golang 的玩具项目，仅用于学习。
 
