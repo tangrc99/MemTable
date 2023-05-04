@@ -24,7 +24,7 @@ docker run --name memtable -p 6380:6380 memtable
 
 ## Run Tests
 
-使用 Makefile 进行单元测试与覆盖率测试：
+使用 Makefile 运行单元测试与覆盖率测试：
 
 ```shell
 # run unit-tests
