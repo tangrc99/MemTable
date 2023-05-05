@@ -11,6 +11,7 @@ import (
 func TestEventList(t *testing.T) {
 
 	_ = logger.Init("", "", logger.WARNING)
+	logger.Disable()
 
 	global.UpdateGlobalClock()
 
