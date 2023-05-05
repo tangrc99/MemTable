@@ -5,7 +5,6 @@ type RingBuffer struct {
 	buffer   []byte
 	offset   uint64
 	capacity uint64
-	ringed   bool
 }
 
 // Init 将 RingBuffer 缓冲区大小初始化为 2^capacity
@@ -21,12 +20,11 @@ func (b *RingBuffer) Init(capacity uint64) {
 	b.capacity = capacity
 	b.buffer = make([]byte, capacity, capacity)
 	b.offset = 0
-	b.ringed = false
 }
 
 // LowWaterLevel 返回环形缓冲区中保留的最小序列号
 func (b *RingBuffer) LowWaterLevel() uint64 {
-	if !b.ringed && b.offset < b.capacity {
+	if b.offset < b.capacity {
 		return 0
 	}
 	return b.offset - b.capacity
@@ -65,9 +63,6 @@ func (b *RingBuffer) Append(content []byte) uint64 {
 	}
 
 	b.offset += Len
-	if b.offset-Len > b.offset {
-		b.ringed = true
-	}
 
 	return b.offset
 }
@@ -122,4 +117,9 @@ func (b *RingBuffer) ReadSince(offset uint64) []byte {
 	}
 
 	return content
+}
+
+// Capacity 返回 ring buffer 的最大容量
+func (b *RingBuffer) Capacity() uint64 {
+	return b.capacity
 }

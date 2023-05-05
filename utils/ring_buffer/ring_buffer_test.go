@@ -13,6 +13,8 @@ func TestRingBuffer(t *testing.T) {
 		t.Error("Init Failed")
 	}
 
+	assert.Equal(t, uint64(0), r.LowWaterLevel())
+
 	c1 := []byte{'1', '2', '3'}
 	r.Append(c1)
 	r.Append([]byte{'4', '5', '6'})
@@ -29,9 +31,8 @@ func TestRingBuffer(t *testing.T) {
 	r.offset = 1<<64 - 1
 	r.Append(c1)
 
-	if !r.ringed || r.LowWaterLevel()+r.capacity != uint64(2) || r.HighWaterLevel() != 2 {
-		t.Error("OverFlow Failed")
-	}
+	assert.Equal(t, uint64(0), r.LowWaterLevel())
+	assert.Equal(t, uint64(2), r.HighWaterLevel())
 }
 
 func TestRingBufferLargerThanCap(t *testing.T) {
