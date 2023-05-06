@@ -1,6 +1,9 @@
 package readline
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 // InternalCommand 是可以被注册在 Terminal 中的命令。如果输入匹配命令，则会直接执行命令，而不会返回 line。
 // args[0] 是 command name, args[1:] 是输入参数
@@ -28,10 +31,15 @@ func commandQuit(t *Terminal, _ [][]byte) {
 	t.aborted = true
 }
 
-func commandHistory(t *Terminal, _ [][]byte) {
+func commandHistory(t *Terminal, command [][]byte) {
+	if len(command) == 2 && bytes.Equal(command[1], []byte("clean")) {
+		t.histories.clean()
+		return
+	}
+
 	h := t.histories.histories()
 	for i := range h {
-		fmt.Printf("%s\n", h[i])
+		fmt.Printf("%d) %s\n", i, h[i])
 	}
 }
 

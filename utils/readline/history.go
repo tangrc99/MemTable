@@ -35,6 +35,10 @@ func (h *history) setLimitation(limit int) {
 
 // recordCommand 用于追加命令
 func (h *history) recordCommand(command []byte) {
+	// 不记录历史命令的查询
+	if bytes.Equal(command, []byte("history")) {
+		return
+	}
 	h.commands.InsertAfter(command, h.sentry)
 	if h.commands.Len()-1 > h.limit {
 		h.commands.Remove(h.commands.Back())

@@ -9,6 +9,7 @@ import (
 const (
 	SIGINT    byte = 3
 	TAB       byte = 9
+	CLEAR     byte = 12
 	ENTER     byte = 13
 	SEARCH    byte = 18
 	SIGTSTP   byte = 26
@@ -56,6 +57,11 @@ func keyHandlerESC(t *Terminal, input byte) {
 	}
 
 	if bytes.Equal(t.buffer, []byte{27, '[', 'D'}) {
+		if t.inSearchMode() {
+			t.quitSearchMode()
+			return
+		}
+
 		if t.highlight >= 0 {
 			t.selectCompletion(-1, 0)
 			t.buffer = []byte{}
@@ -63,7 +69,12 @@ func keyHandlerESC(t *Terminal, input byte) {
 		}
 		t.moveCursor(-1, 0)
 		t.buffer = []byte{}
+
 	} else if bytes.Equal(t.buffer, []byte{27, '[', 'C'}) {
+		if t.inSearchMode() {
+			t.quitSearchMode()
+			return
+		}
 		if t.highlight >= 0 {
 			t.selectCompletion(1, 0)
 			t.buffer = []byte{}
@@ -93,6 +104,11 @@ func keyHandlerESC(t *Terminal, input byte) {
 
 func keyHandlerEnter(t *Terminal, _ byte) {
 
+	if t.inSearchMode() {
+		t.quitSearchMode()
+		return
+	}
+
 	if t.highlight >= 0 {
 		t.doComplete()
 		t.maybeDisplayHelper()
@@ -113,7 +129,11 @@ func keyHandlerEnter(t *Terminal, _ byte) {
 func keyHandlerBackspace(t *Terminal, _ byte) {
 
 	if t.inSearchMode() {
+		if len(t.search) == 0 {
+			return
+		}
 		t.search = t.search[:len(t.search)-1]
+		t.displaySearch()
 		return
 	}
 
@@ -151,6 +171,11 @@ func keyHandlerSIGQUIT(t *Terminal, _ byte) {
 }
 
 func keyHandlerTab(t *Terminal, _ byte) {
+	if t.inSearchMode() {
+		t.search = append(t.search, []byte("    ")...)
+		t.displaySearch()
+		return
+	}
 	if !t.showCompletions() {
 		t.insert(' ')
 		t.insert(' ')
@@ -176,6 +201,8 @@ func keyHandlerAlpha(t *Terminal, input byte) {
 
 func keyHandlerSearch(t *Terminal, _ byte) {
 	if !t.inSearchMode() {
+		t.search = t.bytes()
+		t.clearCurrentLine()
 		t.displaySearch()
 		return
 	}

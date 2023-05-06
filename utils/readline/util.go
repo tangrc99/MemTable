@@ -16,7 +16,7 @@ func TwinkleScreen() {
 	x, y := ReadCursor()
 	// 保存屏幕内容，然后清屏
 	FlushString(fmt.Sprintf("\033[?47h\033[2J\033[%d;%dH", y, x))
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 	// 等待一段时间后恢复屏幕内容
 	FlushString("\033[?47l")
 }
@@ -52,6 +52,7 @@ func FlushStringWithUnderline(content string) {
 // MoveCursorTo 将光标移动到目标位置
 func MoveCursorTo(dstX, dstY int) {
 	_, _ = os.Stdout.WriteString(fmt.Sprintf("\033[%d;%dH", dstY, dstX))
+	_ = os.Stdout.Sync()
 }
 
 // MoveCursor 将光标移动指定的偏移量
@@ -68,6 +69,7 @@ func MoveCursor(x, y int) {
 	} else if y > 0 {
 		_, _ = os.Stdout.WriteString(fmt.Sprintf("\033[%dB", y))
 	}
+	_ = os.Stdout.Sync()
 }
 
 func DisableTerminal() *Termios {

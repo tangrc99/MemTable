@@ -356,6 +356,10 @@ func (t *Terminal) newLine() {
 
 func (t *Terminal) handleInput(input byte) {
 
+	defer func() {
+		_ = os.Stdout.Sync()
+	}()
+
 	// 处理控制类型输入
 	if len(t.buffer) != 0 {
 		keyHandlerMap[ESC](t, input)
@@ -521,7 +525,11 @@ func (t *Terminal) selectCompletion(x, y int) {
 	// 防止一次显示过多选项
 	if len(t.targets) > t.displayLimit {
 		start := t.highlight / t.displayLimit
-		toDisplay = t.targets[start*t.displayLimit : (start+1)*t.displayLimit]
+		end := (start + 1) * t.displayLimit
+		if end > len(t.targets) {
+			end = len(t.targets)
+		}
+		toDisplay = t.targets[start*t.displayLimit : end]
 		toHighlight = t.highlight - start*t.displayLimit
 	}
 
@@ -600,7 +608,11 @@ func (t *Terminal) showCompletions() bool {
 	// 防止一次显示过多选项
 	if len(t.targets) > t.displayLimit {
 		start := t.highlight / t.displayLimit
-		toDisplay = t.targets[start*t.displayLimit : (start+1)*t.displayLimit]
+		end := (start + 1) * t.displayLimit
+		if end > len(t.targets) {
+			end = len(t.targets)
+		}
+		toDisplay = t.targets[start*t.displayLimit : end]
 		toHighlight = t.highlight - start*t.displayLimit
 	}
 
@@ -670,7 +682,7 @@ func (t *Terminal) maybeClearSearch() {
 	x, y := ReadCursor()
 	MoveCursorTo(0, y+1)
 
-	l := 9 + len(t.search)
+	l := 10 + len(t.search)
 
 	Flush(bytes.Repeat([]byte{' '}, l))
 
@@ -680,19 +692,29 @@ func (t *Terminal) maybeClearSearch() {
 	t.searchMode = false
 }
 
+// displaySearch 修改搜索字符串以及搜索的结果
 func (t *Terminal) displaySearch() {
 	t.maybeClearHelper()
 	t.maybeClearCompletion()
 
-	t.searchMode = true
+	t.histories.resetCursor()
 
 	// 清理之前显示的
-	if len(t.search) > 0 {
-		x, y := ReadCursor()
-		MoveCursorTo(8, y+1)
-		Flush(bytes.Repeat([]byte{' '}, len(t.search)+1))
-		MoveCursorTo(x, y)
+	if t.searchMode {
+		if len(t.search) > 0 {
+			x, y := ReadCursor()
+			MoveCursorTo(8, y+1)
+			Flush(bytes.Repeat([]byte{' '}, len(t.search)+3))
+			MoveCursorTo(x, y)
+		} else {
+			x, y := ReadCursor()
+			MoveCursorTo(8, y+1)
+			FlushString("   ")
+			MoveCursorTo(x, y)
+		}
 	}
+
+	t.searchMode = true
 
 	x, y := ReadCursor()
 	FlushString(fmt.Sprintf("\nsearch: %s", t.search))
@@ -705,10 +727,23 @@ func (t *Terminal) displaySearch() {
 		MoveCursorTo(x, y)
 	}
 
+	toDisplay := t.histories.searchCommand(t.search)
+
+	if len(toDisplay) == 0 {
+		return
+	}
+
+	t.clearCurrentLine()
+	t.content[t.line] = newLineFrom(toDisplay)
+	Flush(toDisplay)
 }
 
+// searchHistory 执行一次搜索，只刷新搜索结果
 func (t *Terminal) searchHistory() {
-	toDisplay := t.histories.searchCommand(t.bytes())
+
+	t.searchMode = true
+
+	toDisplay := t.histories.searchCommand(t.search)
 
 	if len(toDisplay) == 0 {
 		TwinkleScreen()
@@ -716,15 +751,28 @@ func (t *Terminal) searchHistory() {
 	}
 
 	// 清除现有的行，不直接清行，防止自动换行导致无法全部清除
+	t.clearCurrentLine()
+	t.content[t.line] = newLineFrom(toDisplay)
+	Flush(toDisplay)
+}
+
+// clearCurrentLine 清理当前行输入
+func (t *Terminal) clearCurrentLine() {
+	// 清除现有的行，不直接清行，防止自动换行导致无法全部清除
 	head := t.currentLine().head()
 
 	t.currentLine().moveCursor(-head)
 	MoveCursor(-head, 0)
-
 	x, y := ReadCursor()
 	Flush(bytes.Repeat([]byte{' '}, len(t.currentLine().content)))
 	MoveCursorTo(x, y)
 
-	t.content[t.line] = newLineFrom(toDisplay)
-	Flush(toDisplay)
+	t.content = []*Line{newLine()}
+}
+
+func (t *Terminal) quitSearchMode() {
+	t.maybeClearSearch()
+	t.search = []byte{}
+	t.searchMode = false
+	t.histories.resetCursor()
 }
