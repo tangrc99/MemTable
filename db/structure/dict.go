@@ -5,7 +5,6 @@ import (
 	"github.com/tangrc99/MemTable/logger"
 	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils"
-	"math/rand"
 	"regexp"
 	"unsafe"
 )
@@ -43,9 +42,9 @@ func NewDict(size int) *Dict {
 }
 
 // countShard 返回键值对应的 *Shard
-func (dict *Dict) countShard(key string) *Shard {
+func (dict *Dict) countShard(key string) Shard {
 	pos := utils.HashKey(key) % dict.size
-	return &dict.shards[pos]
+	return dict.shards[pos]
 }
 
 func (dict *Dict) ShardNum() int {
@@ -56,7 +55,7 @@ func (dict *Dict) ShardNum() int {
 func (dict *Dict) Get(key string) (Object, bool) {
 
 	shard := dict.countShard(key)
-	obj, exist := (*shard)[key]
+	obj, exist := shard[key]
 	return obj, exist
 }
 
@@ -65,13 +64,13 @@ func (dict *Dict) Set(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
-	if v, exist := (*shard)[key]; !exist {
+	if v, exist := shard[key]; !exist {
 		dict.count++
 	} else {
 		dict.cost -= v.Cost() + int64(len(key))
 	}
 
-	(*shard)[key] = value
+	shard[key] = value
 	dict.cost += value.Cost() + int64(len(key))
 	return true
 }
@@ -81,11 +80,11 @@ func (dict *Dict) SetIfNotExist(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
-	if _, exist := (*shard)[key]; exist {
+	if _, exist := shard[key]; exist {
 		return false
 	}
 
-	(*shard)[key] = value
+	shard[key] = value
 	dict.count++
 	dict.cost += value.Cost() + int64(len(key))
 
@@ -97,8 +96,8 @@ func (dict *Dict) SetIfExist(key string, value Object) bool {
 
 	shard := dict.countShard(key)
 
-	if v, exist := (*shard)[key]; exist {
-		(*shard)[key] = value
+	if v, exist := shard[key]; exist {
+		shard[key] = value
 		dict.cost -= v.Cost()
 		dict.cost += value.Cost()
 		return true
@@ -116,8 +115,8 @@ func (dict *Dict) Update(key string, value Object) bool {
 func (dict *Dict) Delete(key string) bool {
 	shard := dict.countShard(key)
 
-	if v, exist := (*shard)[key]; exist {
-		delete(*shard, key)
+	if v, exist := shard[key]; exist {
+		delete(shard, key)
 		dict.count--
 		dict.cost -= v.Cost() + int64(len(key))
 		return true
@@ -130,8 +129,8 @@ func (dict *Dict) Delete(key string) bool {
 func (dict *Dict) DeleteGet(key string) Object {
 	shard := dict.countShard(key)
 
-	if value, exist := (*shard)[key]; exist {
-		delete(*shard, key)
+	if value, exist := shard[key]; exist {
+		delete(shard, key)
 		dict.count--
 		dict.cost -= value.Cost() + int64(len(key))
 
@@ -295,7 +294,7 @@ func (dict *Dict) KeysWithTTLByte(ttl *Dict, pattern string) ([][]byte, int) {
 func (dict *Dict) Exist(key string) bool {
 
 	shard := dict.countShard(key)
-	_, exist := (*shard)[key]
+	_, exist := shard[key]
 	return exist
 }
 
@@ -314,22 +313,16 @@ func (dict *Dict) Random(num int) map[string]Object {
 		return selected
 	}
 
+	// TODO: 概率不均衡
 	for len(selected) < num {
-
 		for i := 0; i < dict.size && len(selected) < num; i++ {
 			for k, v := range dict.shards[i] {
-				// 使用概率选择法，每一个 key 被选择的概率都是 1/n
-				n := rand.Int() % dict.count
-				if n == 0 {
-					// 成功被选择
-					selected[k] = v
-				}
-				if len(selected) < num {
+				if len(selected) == num {
 					break
 				}
+				selected[k] = v
 			}
 		}
-
 	}
 
 	return selected
@@ -349,19 +342,15 @@ func (dict *Dict) RandomKeys(num int) map[string]struct{} {
 		return selected
 	}
 
-	for len(selected) < num {
+	// TODO: 概率不均衡
 
+	for len(selected) < num {
 		for i := 0; i < dict.size && len(selected) < num; i++ {
 			for k := range dict.shards[i] {
-				// 使用概率选择法，每一个 key 被选择的概率都是 1/n
-				n := rand.Int() % dict.count
-				if n == 0 {
-					// 成功被选择
-					selected[k] = struct{}{}
-				}
-				if len(selected) < num {
+				if len(selected) == num {
 					break
 				}
+				selected[k] = struct{}{}
 			}
 		}
 
