@@ -111,7 +111,7 @@ func (a *ACL) DumpToFile() bool {
 
 	err = os.Rename(a.file+".tmp", a.file)
 	if err != nil {
-		logger.Errorf("Write aclfile fail: %s", err.Error())
+		logger.Errorf("write aclfile fail: %s", err.Error())
 		return false
 	}
 	return true
@@ -146,8 +146,15 @@ func (a *ACL) FindUser(name string) (*User, bool) {
 	return user, exist
 }
 
+// DeleteUser 根据用户名删除用户，不允许删除 default 用户
 func (a *ACL) DeleteUser(name string) bool {
-	_, exist := a.users[name]
+	u, exist := a.users[name]
+
+	// 不允许删除默认用户
+	if u == defaultUser {
+		return false
+	}
+
 	if exist {
 		delete(a.users, name)
 		return true
