@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/client/client"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -31,9 +29,22 @@ func Helper() {
 	fmt.Printf(format, "-version", "Output version.")
 }
 
+type RunMode = int
+
+const (
+	// Interactive 以交互模式运行客户端，默认设置
+	Interactive RunMode = iota
+	// Single 以非交互模式运行客户端
+	Single
+	// ReadStdIn 从标准输入读取参数
+	ReadStdIn
+	// Latency 以延迟测试模式启动客户端
+	Latency
+)
+
 var repeated = 1
 var interval = 0.0
-var readFromStdIn = false
+var mode = Interactive
 
 func ParseArgs() (ops []client.Option, commands []string) {
 
@@ -77,7 +88,10 @@ func ParseArgs() (ops []client.Option, commands []string) {
 			i++
 
 		case "-x":
-			readFromStdIn = true
+			mode = ReadStdIn
+
+		case "--latency":
+			mode = Latency
 
 		default:
 
@@ -86,6 +100,9 @@ func ParseArgs() (ops []client.Option, commands []string) {
 				os.Exit(0)
 			}
 
+			if mode != ReadStdIn {
+				mode = Single
+			}
 			return ops, os.Args[i:]
 		}
 	}
@@ -97,15 +114,23 @@ func main() {
 	ops, commands := ParseArgs()
 	cli := client.NewClient(ops...)
 
+	switch mode {
+
+	// 交互模式运行
+	case Interactive:
+		_ = cli.Dial()
+		cli.RunInteractiveMode()
+
 	// -x 命令需要从标准输入读取数据
-	if readFromStdIn {
+	case ReadStdIn:
 		input := ""
 		_, _ = fmt.Scanf("%s", &input)
 		commands = append(commands, input)
-	}
+		fallthrough
 
 	// 非交互模式运行
-	if len(commands) > 0 {
+	// WARNING: 该分支必须在 ReadStdIn 后面
+	case Single:
 		err := cli.Dial()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
@@ -118,13 +143,16 @@ func main() {
 				time.Sleep(time.Duration(interval) * time.Second)
 			}
 		}
-		return
-	}
 
-	// 交互模式运行
-	signal.Ignore(syscall.SIGINT, syscall.SIGTERM)
-	_ = cli.Dial()
-	cli.RunInteractiveMode()
+	// 测试延迟
+	case Latency:
+
+		for {
+			ret := client.TestDelayByInterval(cli, 1000)
+			ret.Print()
+		}
+
+	}
 
 	return
 }
