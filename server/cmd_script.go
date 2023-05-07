@@ -119,6 +119,6 @@ func script(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 
 func registerScriptCommands() {
 	RegisterCommand("eval", eval, WR)
-	RegisterCommand("eval", evalSha, WR)
+	RegisterCommand("evalsha", evalSha, WR)
 	RegisterCommand("script", script, WR)
 }
