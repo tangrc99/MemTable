@@ -16,7 +16,7 @@ func ping(_ *Server, _ *Client, cmd [][]byte) resp.RedisData {
 		return resp.MakeBulkData(cmd[1])
 	}
 
-	return resp.MakeStringData(string([]byte("pong")))
+	return resp.MakeStringData("pong")
 }
 
 func quit(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
@@ -28,7 +28,7 @@ func quit(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 
 	server.clis.RemoveClient(cli)
 
-	return resp.MakeStringData("")
+	return nil
 }
 
 func selectDB(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
@@ -52,8 +52,22 @@ func selectDB(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	return resp.MakeStringData("OK")
 }
 
+func monitor(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+
+	e, ok := CheckCommandAndLength(cmd, "monitor", 1)
+	if !ok {
+		return e
+	}
+
+	server.monitors.AddMonitor(cli)
+	cli.monitored = true
+
+	return resp.MakeStringData("OK")
+}
+
 func registerConnectionCommands() {
 	RegisterCommand("ping", ping, RD)
 	RegisterCommand("quit", quit, RD)
 	RegisterCommand("select", selectDB, RD)
+	RegisterCommand("monitor", monitor, RD)
 }

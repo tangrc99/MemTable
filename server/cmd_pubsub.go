@@ -144,7 +144,6 @@ func registerPubSubCommands() {
 	RegisterCommand("publish", publish, RD)
 	RegisterCommand("subscribe", subscribe, RD)
 	RegisterCommand("unsubscribe", unsubscribe, RD)
-
 	RegisterCommand("blpop", bLPop, RD)
 	RegisterCommand("brpop", bRPop, RD)
 }
