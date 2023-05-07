@@ -67,6 +67,9 @@ func (a *ACL) ParseFromFile() bool {
 
 	for {
 		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 && line[len(line)-1] == '\n' {
+			line = line[:len(line)-1]
+		}
 		if err != nil && err != io.EOF {
 			return false
 		}

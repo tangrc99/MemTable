@@ -67,6 +67,18 @@ func TestUserAuthority(t *testing.T) {
 	assert.False(t, u1.IsCommandAllowed("124"))
 }
 
+func TestUserToResp(t *testing.T) {
+
+	global.RegisterDatabaseCommand("set", nil, global.WR)
+	global.RegisterDatabaseCommand("get", nil, global.RD)
+	global.RegisterDatabaseCommand("del", nil, global.WR)
+
+	u1 := NewUser("test")
+	u1.WithPermittedCommand([]string{"set", "get"}).WithPassword("123456")
+	assert.Equal(t, "*8\r\n$5\r\nflags\r\n*1\r\n$2\r\non\r\n$9\r\npasswords\r\n*1\r\n$32\r\n"+string(utils.Sha256([]byte("123456")))+"\r\n$8\r\ncommands\r\n*0\r\n$4\r\nkeys\r\n*0\r\n",
+		string(u1.ToResp().ToBytes()))
+}
+
 func TestCategory(t *testing.T) {
 
 	global.RegisterDatabaseCommand("set", nil, global.WR)
@@ -258,6 +270,68 @@ func TestACLUserBasic4(t *testing.T) {
 	assert.False(t, user.IsCommandAllowed("dsf"))
 
 	assert.Equal(t, "user user on #"+utils.Sha256String([]byte("123456"))+" ~.* +set +del", user.ToString())
+}
+
+func TestACLUserBasic5(t *testing.T) {
+
+	global.RegisterDatabaseCommand("set", nil, global.WR)
+	global.RegisterDatabaseCommand("get", nil, global.RD)
+	global.RegisterDatabaseCommand("del", nil, global.WR)
+	initCategory()
+
+	acl := NewAccessControlList("")
+	_ = acl.CreateUser([][]byte{[]byte("user"), []byte("on"), []byte(">123456"),
+		[]byte("~.*"), []byte("+set"), []byte("+DEL")})
+
+	_ = acl.SetupUser("user", [][]byte{[]byte("-del")})
+
+	user, exist := acl.FindUser("user")
+	assert.True(t, exist)
+
+	assert.False(t, user.IsCommandAllowed("del"))
+
+	assert.False(t, acl.DeleteUser("default"))
+	assert.True(t, acl.DeleteUser("user"))
+
+}
+
+func TestACLGetUserAndCategories(t *testing.T) {
+	global.RegisterDatabaseCommand("set", nil, global.WR)
+	global.RegisterDatabaseCommand("get", nil, global.RD)
+	global.RegisterDatabaseCommand("del", nil, global.WR)
+	initCategory()
+
+	acl := NewAccessControlList("")
+	_ = acl.CreateUser([][]byte{[]byte("user"), []byte("on"), []byte(">123456"),
+		[]byte("~.*"), []byte("+set"), []byte("+DEL")})
+
+	users := []string{"user", "default"}
+
+	us := acl.GetAllUserNames()
+
+	assert.Subset(t, users, us)
+	assert.Equal(t, len(users), len(us))
+
+	us = []string{}
+
+	for _, u := range acl.GetAllUsers() {
+		us = append(us, u.name)
+	}
+
+	assert.Subset(t, users, us)
+	assert.Equal(t, len(users), len(us))
+
+	categories := []string{"all", "write", "read"}
+	cs := acl.GetCategoryNames()
+	assert.Subset(t, categories, cs)
+	assert.Equal(t, len(categories), len(cs))
+
+	_, ok := acl.FindCategory("all")
+	assert.True(t, ok)
+	_, ok = acl.FindCategory("write")
+	assert.True(t, ok)
+	_, ok = acl.FindCategory("read")
+	assert.True(t, ok)
 }
 
 func TestACLParseFile(t *testing.T) {
