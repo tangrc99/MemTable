@@ -7,6 +7,7 @@ import (
 	"github.com/tangrc99/MemTable/server/global"
 	"github.com/tangrc99/MemTable/utils/readline"
 	"net"
+	"strconv"
 	"strings"
 )
 
@@ -18,6 +19,8 @@ type Client struct {
 	parser *resp.Parser // 命令解析器
 	flag   int          // 客户端标识
 	quit   bool         // 退出标识
+
+	// TODO: db seq
 }
 
 func NewClient(options ...Option) *Client {
@@ -123,33 +126,46 @@ func (c *Client) RunInteractiveMode() {
 			continue
 		}
 
-		// 如果处于未连接状态，尝试进行连接
-		if !c.isConnected() {
-			if err := c.Dial(); err != nil {
-				fmt.Printf("%s\n", err.Error())
-				continue
+		repeated := 1
+		// 如果是多次执行相同命令
+		if r, err := strconv.Atoi(string(command[0])); err == nil {
+			if r <= 0 {
+				fmt.Printf("(error) repeated must be greater than 0, but get '%d'\n", r)
 			}
+			repeated = r
+			command = command[1:]
 		}
 
-		c.maybeChangeStatus(command)
+		for i := 0; i < repeated; i++ {
 
-		r := resp.PlainDataToResp(command)
+			// 如果处于未连接状态，尝试进行连接
+			if !c.isConnected() {
+				if err := c.Dial(); err != nil {
+					fmt.Printf("%s\n", err.Error())
+					continue
+				}
+			}
 
-		ret, err := c.Call(r.ToBytes())
+			c.maybeChangeStatus(command)
 
-		if err != nil {
-			// TODO : 这里应该有选择地报错
-			fmt.Printf("%s\n", err.Error())
-		} else {
-			fmt.Printf("%s\n", ret)
-		}
+			r := resp.PlainDataToResp(command)
 
-		for c.isConnected() && c.isBlocked() {
-			ret, err = c.WaitResponse()
+			ret, err := c.Call(r.ToBytes())
+
 			if err != nil {
+				// TODO : 这里应该有选择地报错
 				fmt.Printf("%s\n", err.Error())
 			} else {
 				fmt.Printf("%s\n", ret)
+			}
+
+			for c.isConnected() && c.isBlocked() {
+				ret, err = c.WaitResponse()
+				if err != nil {
+					fmt.Printf("%s\n", err.Error())
+				} else {
+					fmt.Printf("%s\n", ret)
+				}
 			}
 		}
 	}
