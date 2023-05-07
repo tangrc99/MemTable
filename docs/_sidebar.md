@@ -1,6 +1,7 @@
 - [Quick Start](quick_start/quick_start.md)
   - [Flags](quick_start/flags.md)
   - [Config File](quick_start/conf.md)
+  - [Client](quick_start/client.md)
 - [What can you learn](learn.md)
 - [Design](design/design.md)
   - [Event Handler](design/event_handler.md)
