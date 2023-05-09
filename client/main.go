@@ -24,6 +24,10 @@ func Helper() {
 	fmt.Printf(format, "r <repeat>", "Execute specified command N times.")
 	fmt.Printf(format, "i <interval>", "When -r is used, waits <interval> seconds per command.")
 	fmt.Printf(format, "x", "Read last argument from STDIN.")
+	fmt.Printf(format, "-latency", " Enter a special mode continuously sampling latency.")
+	fmt.Printf(format, "-user <username>", "User to use when connecting to the server.")
+	fmt.Printf(format, "-pass <password>", "Password to use when connecting to the server.")
+	fmt.Printf(format, "n <db>", "Database number.")
 
 	fmt.Printf(format, "-help", "Output this help and exit.")
 	fmt.Printf(format, "-version", "Output version.")
@@ -58,7 +62,8 @@ func ParseArgs() (ops []client.Option, commands []string) {
 		case "--port", "-p":
 			port, err := strconv.Atoi(os.Args[i+1])
 			if err != nil {
-				panic(err.Error())
+				fmt.Printf("Err --port <port>, 'port' must be integer")
+				os.Exit(0)
 			}
 			ops = append(ops, client.WithPort(port))
 			i++
@@ -74,7 +79,8 @@ func ParseArgs() (ops []client.Option, commands []string) {
 		case "-r":
 			r, err := strconv.Atoi(os.Args[i+1])
 			if err != nil {
-				panic(err.Error())
+				fmt.Printf("Err -r <repeate>, 'repeate' must be integer")
+				os.Exit(0)
 			}
 			repeated = r
 			i++
@@ -82,7 +88,8 @@ func ParseArgs() (ops []client.Option, commands []string) {
 		case "-i":
 			inter, err := strconv.ParseFloat(os.Args[i+1], 32)
 			if err != nil {
-				panic(err.Error())
+				fmt.Printf("Err -i <interval>, 'interval' must be integer")
+				os.Exit(0)
 			}
 			interval = inter
 			i++
@@ -92,6 +99,23 @@ func ParseArgs() (ops []client.Option, commands []string) {
 
 		case "--latency":
 			mode = Latency
+
+		case "--user":
+			ops = append(ops, client.WithUser(os.Args[i+1]))
+			i++
+
+		case "--pass":
+			ops = append(ops, client.WithPassword(os.Args[i+1]))
+			i++
+
+		case "-n":
+			db, err := strconv.Atoi(os.Args[i+1])
+			if err != nil {
+				fmt.Printf("Err -n <db>, 'db' must be integer")
+				os.Exit(0)
+			}
+			ops = append(ops, client.WithDatabase(db))
+			i++
 
 		default:
 

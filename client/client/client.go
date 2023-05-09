@@ -12,21 +12,30 @@ import (
 )
 
 type Client struct {
-	url    string       // url
-	host   string       // 主机名
-	port   int          // 端口
+	// network
+	url  string // url
+	host string // 主机名
+	port int    // 端口
+
+	// status
+	flag int  // 客户端标识
+	quit bool // 退出标识
+	db   int  // 数据库序列号
+
+	// acl
+	user     string
+	password string
+
 	conn   net.Conn     // socket 连接
 	parser *resp.Parser // 命令解析器
-	flag   int          // 客户端标识
-	quit   bool         // 退出标识
 
-	// TODO: db seq
 }
 
 func NewClient(options ...Option) *Client {
 	c := &Client{
 		host: "127.0.0.1",
 		port: 6379,
+		db:   0,
 	}
 	for _, op := range options {
 		op(c)
@@ -35,6 +44,7 @@ func NewClient(options ...Option) *Client {
 	return c
 }
 
+// Dial 尝试与服务器进行连接，如果设置了用户名或密码，或尝试自动登录
 func (c *Client) Dial() error {
 	if c.isConnected() {
 		return nil
@@ -44,7 +54,8 @@ func (c *Client) Dial() error {
 		return errors.New(fmt.Sprintf("Could not connect to Redis at %s: %s", c.url, err.Error()))
 	}
 	c.toConnected(conn)
-	return nil
+	_, err = c.sendAuthMessage()
+	return err
 }
 
 // Quit 退出客户端的交互模式
@@ -90,6 +101,23 @@ func (c *Client) maybeChangeStatus(command [][]byte) {
 		c.toInTx()
 	case "exec", "discard":
 		c.toNotInTx()
+	case "select":
+		if len(command) > 1 {
+			db, err := strconv.Atoi(string(command[1]))
+			if err != nil {
+				return
+			}
+			c.db = db
+		}
+
+	case "auth":
+		if len(command) == 2 {
+			c.password = string(command[1])
+		} else if len(command) == 3 {
+			c.user = string(command[1])
+			c.password = string(command[2])
+		}
+
 	}
 
 	if global.IsBlockCommand(cmdName) {
@@ -108,9 +136,14 @@ func (c *Client) RunInteractiveMode() {
 
 		// 显示前缀
 		if !c.isConnected() {
+			// 没有连接的情况下
 			fmt.Print("not connected")
 		} else {
+			// 已连接情况，需要判别 client 状态
 			fmt.Print(c.url)
+			if c.db > 0 {
+				fmt.Printf("[%d]", c.db)
+			}
 			if c.isInTx() {
 				fmt.Print("(tx)")
 			}

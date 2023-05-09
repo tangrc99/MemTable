@@ -13,3 +13,21 @@ func WithPort(port int) Option {
 		c.port = port
 	}
 }
+
+func WithUser(user string) Option {
+	return func(c *Client) {
+		c.user = user
+	}
+}
+
+func WithPassword(password string) Option {
+	return func(c *Client) {
+		c.password = password
+	}
+}
+
+func WithDatabase(number int) Option {
+	return func(c *Client) {
+		c.db = number
+	}
+}
