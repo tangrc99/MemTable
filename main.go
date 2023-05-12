@@ -21,7 +21,7 @@ var (
 func Help() {
 
 	fmt.Printf("MemTable v%s\n\n", Version)
-	fmt.Printf("Usage: MemTable [OPTIONS] [cmd [arg [arg ...]]]\n")
+	fmt.Printf("Usage: memtable [OPTIONS] [cmd [arg [arg ...]]]\n")
 
 	format := "  --%-20s %s\n"
 
@@ -29,10 +29,11 @@ func Help() {
 	fmt.Printf(format, "host <host name>", "Start server with host.")
 	fmt.Printf(format, "port <port>", "Start server with port.")
 	fmt.Printf(format, "tls-port <tls port>", "Start server with tls-port.")
-	fmt.Printf(format, "daemonize ", "Start server in daemon mode.")
+	fmt.Printf(format, "daemonize", "Start server in daemon mode.")
 	fmt.Printf(format, "log-level <level>", "Start server with log level debug, info, warning, error or panic.")
 	fmt.Printf(format, "pprof <host:port>", "Run pprof tool with host:port.")
-	fmt.Printf(format, "--watch-config ", "Watch change of config file.")
+	fmt.Printf(format, "watch-config", "Watch change of config file.")
+	fmt.Printf(format, "it", "Run in interactive mode.")
 	fmt.Printf(format, "help", "Output this help and exit.")
 	fmt.Printf(format, "version", "Output version.")
 
@@ -57,6 +58,11 @@ func parseFlags() {
 			if err != nil {
 				panic(err)
 			}
+
+		case "--it":
+			s := server.NewServer()
+			RunInteractionMode(s)
+			os.Exit(0)
 		}
 	}
 }
