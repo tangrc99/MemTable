@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/tangrc99/MemTable/db/structure"
+	"github.com/tangrc99/MemTable/server/global"
 	"testing"
 	"time"
 )
@@ -36,7 +37,7 @@ func TestScriptingAbort(t *testing.T) {
 			t.Error("Interrupt Script Before 5 Seconds", ret)
 		}
 
-		time.Sleep(5 * time.Second)
+		global.Now = global.Now.Add(5 * time.Second)
 
 		ret, ok = scriptKillCommand()
 

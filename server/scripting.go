@@ -293,7 +293,7 @@ func scriptKillCommand() (string, bool) {
 		return "No scripts in execution right now", false
 	}
 
-	if env.execTime = time.Since(env.startTime); env.execTime < slowScriptTime {
+	if env.execTime = global.Now.Sub(env.startTime); env.execTime < slowScriptTime {
 		return "current script is not a slow script", false
 	}
 
