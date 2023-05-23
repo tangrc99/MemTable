@@ -42,7 +42,7 @@ func (s *Server) RDB(file string) bool {
 	enc := encoder.NewEncoder(rdbFile).EnableCompress()
 	err = enc.WriteHeader()
 	if err != nil {
-		logger.Error("RDB: Write RDB Header Failed", err.Error())
+		logger.Error("RDB: write RDB Header Failed", err.Error())
 		return false
 	}
 	auxMap := map[string]string{
@@ -57,7 +57,7 @@ func (s *Server) RDB(file string) bool {
 	for k, v := range auxMap {
 		err = enc.WriteAux(k, v)
 		if err != nil {
-			logger.Error("RDB: Write RDB Aux Failed", err.Error())
+			logger.Error("RDB: write RDB Aux Failed", err.Error())
 			return false
 		}
 	}
@@ -70,19 +70,19 @@ func (s *Server) RDB(file string) bool {
 
 		err = enc.WriteDBHeader(uint(index), uint64(db.Size()), uint64(db.TTLSize()))
 		if err != nil {
-			logger.Error("RDB: Write RDB DB Header Failed", err.Error())
+			logger.Error("RDB: write RDB DB Header Failed", err.Error())
 			return false
 		}
 		err = db.Encode(enc)
 		if err != nil {
-			logger.Error("RDB: Write RDB DB Content Failed", err.Error())
+			logger.Error("RDB: write RDB DB Content Failed", err.Error())
 			return false
 		}
 	}
 
 	err = enc.WriteEnd()
 	if err != nil {
-		logger.Error("RDB: Write RDB End Failed", err.Error())
+		logger.Error("RDB: write RDB End Failed", err.Error())
 		return false
 	}
 
@@ -152,6 +152,13 @@ func (s *Server) waitForRDBFinished() {
 }
 
 func (s *Server) recoverFromRDB(aofFile, rdbFile string) {
+
+	_, err := os.Stat("rdb")
+	if err != nil {
+		logger.Error("Executable 'rdb' not exists")
+		logger.Error("Recover from RDB file needs third-party 'github.com/hdt3213/rdb'")
+		return
+	}
 
 	arg := []string{"-c", "protocol", "-f", aofFile, rdbFile}
 	cmd := exec.Command("rdb", arg...)

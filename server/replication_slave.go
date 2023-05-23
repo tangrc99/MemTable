@@ -65,7 +65,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 
 			_, err = client.cnn.Write([]byte("*1\r\n$4\r\nsync\r\n"))
 			if err != nil {
-				logger.Error("syncToDisk: Write SYNC Command Failed", err.Error())
+				logger.Error("syncToDisk: write SYNC Command Failed", err.Error())
 				return false
 			}
 			shakeStatus = SYNC
@@ -95,7 +95,7 @@ func (s *Server) sendSyncToMaster(url string) bool {
 				rdbFile, _ := os.Create("received.rdb")
 				_, err = rdbFile.Write(handshakeBuff[parsedPos : parsedPos+rdbSize])
 				if err != nil {
-					logger.Error("syncToDisk: Write RDBFile Failed", err.Error())
+					logger.Error("syncToDisk: write RDBFile Failed", err.Error())
 				}
 
 				// 这里需要设置 repl-id 和 repl-offset 吗
@@ -191,7 +191,7 @@ func (s *Server) sendPSyncToMaster(url string) bool {
 				len(replID), replID, len(replOffsetStr), replOffsetStr)))
 
 			if err != nil {
-				logger.Error("PSync: Write PSYNC Command Failed", err.Error())
+				logger.Error("PSync: write PSYNC Command Failed", err.Error())
 				return false
 			}
 			shakeStatus = PSYNC
@@ -262,7 +262,7 @@ func (s *Server) sendPSyncToMaster(url string) bool {
 				_, err = rdbFile.Write(handshakeBuff[parsedPos : parsedPos+rdbSize])
 
 				if err != nil {
-					logger.Error("PSync: Write RDBFile Failed", err.Error())
+					logger.Error("PSync: write RDBFile Failed", err.Error())
 				}
 
 				// 从 rdb 中恢复

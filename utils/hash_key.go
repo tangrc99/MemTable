@@ -54,12 +54,3 @@ func HashKey(key string) int {
 	}
 	return int(crc)
 }
-
-//func HashKey(key string) int {
-//
-//	crc := crc32.New((*crc32.Table)(&crc16tab))
-//
-//	//key = "@#&" + key + "*^%$"
-//	_, _ = crc.Write([]byte(key))
-//	return int(crc.Sum32())
-//}

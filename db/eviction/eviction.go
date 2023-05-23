@@ -14,6 +14,7 @@ func (item *Item) Cost() int64 {
 	return 8 + item.Value.Cost()
 }
 
+// Eviction 是对数据库中驱逐元素算法的抽象
 type Eviction interface {
 
 	// KeyUsed 表示该键值被调用一次

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	// TODO:
+	// TODO: Redis 的实现中，是根据这些标志位来确定用户的一些信息的。
 
 	UserOn          = 0x00000001
 	UserAllKeys     = 0x00000010
@@ -294,6 +294,7 @@ func (user *User) ToStringWithoutSha256() string {
 	return b.String()
 }
 
+// Reset 重置用户的各种参数
 func (user *User) Reset() {
 	user.allowed = structure.NewBitMap(1024)
 	user.flag = 0x00000001
