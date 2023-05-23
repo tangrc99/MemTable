@@ -12,7 +12,7 @@ import (
 
 type Status struct {
 
-	// Server
+	// Server Section
 	pid          int
 	host         string
 	tcpPort      int
@@ -21,20 +21,20 @@ type Status struct {
 	startTime    time.Time
 	startTimeDay time.Time
 
-	// Clients
+	// Clients Section
 	connectedClients int
 	maxClients       int
 
-	// Memory
+	// Memory Section
 	usedMemory      int64
 	usedMemoryHuman float64
 	maxMemory       uint64
 
-	// Replication
+	// Replication Section
 	role            string
 	connectedSlaves int
 	backlogSize     uint64
-	//backlogOffset   int
+	backlogOffset   int
 
 	// Keyspace
 
@@ -61,6 +61,7 @@ func NewStatus() *Status {
 	return s
 }
 
+// UpdateStatus 更新服务器的状态
 func (s *Server) UpdateStatus() {
 	sts := s.sts
 
@@ -75,6 +76,7 @@ func (s *Server) UpdateStatus() {
 	sts.UpdateSysStatus()
 }
 
+// Information 收集服务器的各个状态，并且生成字符串形式的报告
 func (s *Server) Information(section string) string {
 
 	section = strings.ToLower(section)
@@ -98,7 +100,7 @@ func (s *Server) Information(section string) string {
 	}
 
 	if section == "" || section == "clients" {
-
+		// 与上一 section 保持空格
 		if b.Len() > 0 {
 			b.WriteString("\n")
 		}
@@ -108,7 +110,7 @@ func (s *Server) Information(section string) string {
 	}
 
 	if section == "" || section == "memory" {
-
+		// 与上一 section 保持空格
 		if b.Len() > 0 {
 			b.WriteString("\n")
 		}
@@ -121,7 +123,7 @@ func (s *Server) Information(section string) string {
 	}
 
 	if section == "" || section == "system" {
-
+		// 与上一 section 保持空格
 		if b.Len() > 0 {
 			b.WriteString("\n")
 		}
@@ -131,6 +133,31 @@ func (s *Server) Information(section string) string {
 		b.WriteString(fmt.Sprintf("total_used:%d\n", s.sts.MemUsed))
 		b.WriteString(fmt.Sprintf("total_free:%d\n", s.sts.MemFree))
 		b.WriteString(fmt.Sprintf("used_percent:%.2f%%\n", float64(s.sts.MemUsed)/float64(s.sts.Total)))
+
+	}
+
+	if section == "" || section == "replication" {
+		// 与上一 section 保持空格
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString("# Replication\n")
+		switch s.Role() {
+		case StandAlone:
+			b.WriteString("role: standalone")
+		case Master:
+			b.WriteString("role: master")
+		case Slave:
+			b.WriteString("role: slave")
+
+		}
+		b.WriteString(fmt.Sprintf("connected_slaves: %d", len(s.onLineSlaves)))
+		b.WriteString(fmt.Sprintf("backlog_size: %d", s.backLog.Capacity()))
+		if s.Role() == StandAlone {
+			b.WriteString("backlog_offset: -1")
+		} else {
+			b.WriteString(fmt.Sprintf("backlog_offset: %d", s.backLog.LowWaterLevel()))
+		}
 
 	}
 
