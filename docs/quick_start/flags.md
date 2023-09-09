@@ -2,8 +2,7 @@
 
 使用 --flags 来启动`memtable`与`memtable-cli`。
 
-## Example
-
+## Server
 以 --flags 来启动`memtable`：
 
 ```shell
@@ -22,7 +21,7 @@ memtable --daemonize
 # 打印帮助文档
 memtable --help
 ```
-
+## Client
 以 --flags 来启动`memtable-cli`：
 
 ```shell

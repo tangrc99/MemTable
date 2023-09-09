@@ -42,8 +42,7 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 				server.dbs[dbSeq].UnWatch(key, &cli.revised)
 			}
 		}
-		cli.watched = make(map[int][]string)
-		cli.revised = false
+		cli.ClearWatchers()
 	}()
 
 	if cli.revised {
@@ -61,7 +60,7 @@ func execTX(server *Server, cli *Client, cmds [][]byte) resp.RedisData {
 		res, isWriteCommand := ExecCommand(server, cli, c, nil)
 
 		// 写命令需要完成aof持久化
-		if isWriteCommand {
+		if isWriteCommand && server.aof != nil {
 
 			if cli.dbSeq != 0 {
 				// 多数据库场景需要加入数据库选择语句

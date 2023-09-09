@@ -1,1 +1,2 @@
 user default on nopass ~.* +@all
+user u1 on >password ~.* +@all

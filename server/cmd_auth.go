@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tangrc99/MemTable/resp"
 	"github.com/tangrc99/MemTable/server/errors"
+	"github.com/tangrc99/MemTable/server/global"
 	"strings"
 )
 
@@ -99,7 +100,7 @@ func aclCat() {
 
 func aclDelUser(server *Server, cmd [][]byte) resp.RedisData {
 	if len(cmd) < 3 {
-		return resp.MakeErrorData("ERR wrong number of arguments for 'acl getuser' command")
+		return resp.MakeErrorData("ERR wrong number of arguments for 'acl deluser' command")
 	}
 	userName := string(cmd[2])
 
@@ -113,20 +114,30 @@ func aclDelUser(server *Server, cmd [][]byte) resp.RedisData {
 	return resp.MakeIntData(1)
 }
 
-// aclDryRun 是 acl dryrun 命令的实现，用于判断一个命令能否在当前用户下执行
-func aclDryRun(server *Server, cli *Client, cmd [][]byte) resp.RedisData {
+// aclDryRun 是 acl dryrun 命令的实现，用于判断一个命令能否在当前用户下执行，该命令只检查权限控制
+func aclDryRun(_ *Server, cli *Client, cmd [][]byte) resp.RedisData {
 	if len(cmd) < 3 {
-		return resp.MakeErrorData("ERR wrong number of arguments for 'acl getuser' command")
+		return resp.MakeErrorData("ERR wrong number of arguments for 'acl dryrun' command")
 	}
 	if !cli.user.IsOn() {
 
 	}
-	cmdName := string(cmd[2])
+	cmdName := strings.ToLower(string(cmd[2]))
 	if !cli.user.IsCommandAllowed(cmdName) {
 		return resp.MakeErrorData(fmt.Sprintf("This user has no permissions to run the '%s' command", cmdName))
 	}
 
-	// TODO:
+	if global.IsMultiKeyCommand(cmdName) {
+		for _, key := range cmd[3:] {
+			if !cli.user.IsKeyAccessible(string(key)) {
+				return resp.MakeErrorData(fmt.Sprintf("This user has no permissions to access key '%s'", key))
+			}
+		}
+	} else {
+		if !cli.user.IsKeyAccessible(string(cmd[3])) {
+			return resp.MakeErrorData(fmt.Sprintf("This user has no permissions to access key '%s'", cmd[3]))
+		}
+	}
 
 	return resp.MakeStringData("OK")
 }
